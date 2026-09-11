@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  jusc-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jusc_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/prod.db
+      - JWT_SECRET=sua_chave_jwt_super_secreta_troque_aqui
+      - PORT=3000
+    volumes:
+      # Persistência do banco de dados na VPS
+      - ./data:/app/data
+      # Persistência das fotos e uploads na VPS
+      - ./uploads:/app/public/uploads

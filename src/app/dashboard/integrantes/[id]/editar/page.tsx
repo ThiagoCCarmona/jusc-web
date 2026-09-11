@@ -1,0 +1,791 @@
+"use client";
+
+import React, { useState, useEffect, use } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import {
+  ArrowLeft,
+  Calendar,
+  Phone,
+  User,
+  Shield,
+  Clock,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  MessageSquare,
+  HeartPulse,
+  Camera,
+  Upload,
+  Trash2,
+} from "lucide-react";
+import {
+  formatarTelefone,
+  formatarDataDigitacao,
+  isoParaBrasileiro,
+  brasileiroParaIso,
+} from "@/lib/utils";
+
+export default function EditarIntegrantePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const resolvedParams = use(params);
+  const router = useRouter();
+  const id = resolvedParams.id;
+
+  const [carregando, setCarregando] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const [nomeCompleto, setNomeCompleto] = useState("");
+  const [apelido, setApelido] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [dataNascimento, setDataNascimento] = useState(""); // Formato DD/MM/AAAA
+  const [nomeResponsavel, setNomeResponsavel] = useState("");
+  const [telefoneResponsavel, setTelefoneResponsavel] = useState("");
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+
+  // Lógica de tempo de grupo com 3 níveis de precisão
+  const [tempoGrupoPrecisao, setTempoGrupoPrecisao] = useState<
+    "COMPLETA" | "MES_ANO" | "DESCONHECIDA"
+  >("COMPLETA");
+  const [tempoGrupoDataCompleta, setTempoGrupoDataCompleta] = useState(""); // Formato DD/MM/AAAA
+  const [tempoGrupoMes, setTempoGrupoMes] = useState(new Date().getMonth() + 1);
+  const [tempoGrupoAno, setTempoGrupoAno] = useState(new Date().getFullYear());
+
+  // Sacramentos
+  const [batismo, setBatismo] = useState(false);
+  const [primeiraEucaristia, setPrimeiraEucaristia] = useState(false);
+  const [crisma, setCrisma] = useState(false);
+
+  // WhatsApp
+  const [noGrupoWhatsapp, setNoGrupoWhatsapp] = useState(false);
+
+  // Saúde e Restrições Alimentares (Alergias e Intolerâncias)
+  const [possuiAlergia, setPossuiAlergia] = useState(false);
+  const [descricaoAlergia, setDescricaoAlergia] = useState("");
+  const [intoleranciaGluten, setIntoleranciaGluten] = useState(false);
+  const [intoleranciaLactose, setIntoleranciaLactose] = useState(false);
+
+  const [observacao, setObservacao] = useState("");
+  const [status, setStatus] = useState("ATIVO");
+
+  const anosDisponiveis = Array.from(
+    { length: 15 },
+    (_, i) => new Date().getFullYear() - i
+  );
+
+  useEffect(() => {
+    async function carregar() {
+      setCarregando(true);
+      try {
+        const res = await fetch(`/api/integrantes/${id}`);
+        if (!res.ok) {
+          router.push("/dashboard/integrantes");
+          return;
+        }
+        const data = await res.json();
+        const int = data.integrante;
+
+        setNomeCompleto(int.nomeCompleto || "");
+        setApelido(int.apelido || "");
+        setTelefone(formatarTelefone(int.telefone || ""));
+        setDataNascimento(isoParaBrasileiro(int.dataNascimento));
+        setNomeResponsavel(int.nomeResponsavel || "");
+        setTelefoneResponsavel(formatarTelefone(int.telefoneResponsavel || ""));
+        setFotoUrl(int.fotoUrl || null);
+
+        setTempoGrupoPrecisao(int.tempoGrupoPrecisao || "DESCONHECIDA");
+        if (int.tempoGrupoDataCompleta) {
+          setTempoGrupoDataCompleta(isoParaBrasileiro(int.tempoGrupoDataCompleta));
+        }
+        if (int.tempoGrupoMes) setTempoGrupoMes(int.tempoGrupoMes);
+        if (int.tempoGrupoAno) setTempoGrupoAno(int.tempoGrupoAno);
+
+        setBatismo(Boolean(int.batismo));
+        setPrimeiraEucaristia(Boolean(int.primeiraEucaristia));
+        setCrisma(Boolean(int.crisma));
+
+        setNoGrupoWhatsapp(Boolean(int.noGrupoWhatsapp));
+        setPossuiAlergia(Boolean(int.possuiAlergia));
+        setDescricaoAlergia(int.descricaoAlergia || "");
+        setIntoleranciaGluten(Boolean(int.intoleranciaGluten));
+        setIntoleranciaLactose(Boolean(int.intoleranciaLactose));
+
+        setObservacao(int.observacao || "");
+        setStatus(int.status || "ATIVO");
+      } catch (e) {
+        console.error(e);
+        router.push("/dashboard/integrantes");
+      } finally {
+        setCarregando(false);
+      }
+    }
+
+    carregar();
+  }, [id, router]);
+
+  // Upload de Foto
+  async function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErro("Por favor selecione uma imagem válida (JPG, PNG, WEBP).");
+      return;
+    }
+
+    setEnviandoFoto(true);
+    setErro(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setFotoUrl(data.url);
+      } else {
+        setErro(data.error || "Erro ao fazer upload da imagem.");
+      }
+    } catch {
+      setErro("Falha de conexão no envio da foto.");
+    } finally {
+      setEnviandoFoto(false);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErro(null);
+
+    // Converte e valida data de nascimento DD/MM/AAAA
+    const dataNascIso = brasileiroParaIso(dataNascimento);
+    if (!dataNascIso) {
+      setErro("Informe uma data de nascimento válida no padrão brasileiro (DD/MM/AAAA).");
+      return;
+    }
+
+    let dataEntradaIso: string | null = null;
+    if (tempoGrupoPrecisao === "COMPLETA") {
+      dataEntradaIso = brasileiroParaIso(tempoGrupoDataCompleta);
+      if (!dataEntradaIso) {
+        setErro("Informe uma data de entrada válida no padrão brasileiro (DD/MM/AAAA).");
+        return;
+      }
+    }
+
+    if (possuiAlergia && !descricaoAlergia.trim()) {
+      setErro("Você indicou que possui alergia. Por favor, especifique a que tem alergia.");
+      return;
+    }
+
+    setSalvando(true);
+
+    try {
+      const res = await fetch(`/api/integrantes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nomeCompleto,
+          apelido,
+          telefone,
+          dataNascimento: dataNascIso,
+          nomeResponsavel,
+          telefoneResponsavel,
+          fotoUrl,
+          tempoGrupoPrecisao,
+          tempoGrupoDataCompleta: dataEntradaIso,
+          tempoGrupoMes:
+            tempoGrupoPrecisao === "MES_ANO" ? Number(tempoGrupoMes) : null,
+          tempoGrupoAno:
+            tempoGrupoPrecisao === "MES_ANO" ? Number(tempoGrupoAno) : null,
+          batismo,
+          primeiraEucaristia,
+          crisma,
+          noGrupoWhatsapp,
+          possuiAlergia,
+          descricaoAlergia: possuiAlergia ? descricaoAlergia.trim() : null,
+          intoleranciaGluten,
+          intoleranciaLactose,
+          observacao,
+          status,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErro(data.error || "Erro ao atualizar dados do integrante.");
+        setSalvando(false);
+        return;
+      }
+
+      router.push(`/dashboard/integrantes/${id}`);
+      router.refresh();
+    } catch {
+      setErro("Erro de conexão com o servidor ao salvar integrante.");
+      setSalvando(false);
+    }
+  }
+
+  if (carregando) {
+    return (
+      <div className="p-12 text-center bg-white dark:bg-[#15171e] rounded-3xl border border-neutral-200 dark:border-neutral-800">
+        <div className="w-8 h-8 border-3 border-[#FFC72C] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-neutral-500">Carregando dados do integrante...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Botão Voltar */}
+      <Link
+        href={`/dashboard/integrantes/${id}`}
+        className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Voltar para o perfil do jovem
+      </Link>
+
+      <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 sm:p-8 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-6">
+        <div className="border-b border-neutral-100 dark:border-neutral-800 pb-4">
+          <h1 className="text-xl sm:text-2xl font-black text-neutral-900 dark:text-white">
+            Editar Cadastro do Integrante
+          </h1>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            Atualize dados cadastrais, foto de perfil, contato e restrições de saúde.
+          </p>
+        </div>
+
+        {erro && (
+          <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-red-700 dark:text-red-300 text-sm flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-500" />
+            <span>{erro}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Seção 0: Foto de Perfil */}
+          <div className="space-y-3 pb-4 border-b border-neutral-100 dark:border-neutral-800">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+              <Camera className="w-4 h-4" />
+              Foto do Integrante
+            </h2>
+
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-[#1c202a] border-2 border-dashed border-neutral-300 dark:border-neutral-700 flex items-center justify-center flex-shrink-0 group shadow-inner">
+                {fotoUrl ? (
+                  <>
+                    <Image
+                      src={fotoUrl}
+                      alt={nomeCompleto || "Foto de perfil"}
+                      fill
+                      className="object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFotoUrl(null)}
+                      title="Remover foto"
+                      className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-5 h-5 text-red-400" />
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center p-2">
+                    <User className="w-8 h-8 mx-auto text-neutral-400 mb-1" />
+                    <span className="text-[10px] text-neutral-400 font-bold block">Sem foto</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 text-center sm:text-left">
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold cursor-pointer transition-colors">
+                  {enviandoFoto ? (
+                    <div className="w-4 h-4 border-2 border-neutral-600 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-[#FFC72C]" />
+                  )}
+                  <span>{enviandoFoto ? "Enviando..." : "Carregar Foto de Perfil"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFotoUpload}
+                    disabled={enviandoFoto}
+                    className="sr-only"
+                  />
+                </label>
+                <p className="text-[11px] text-neutral-500">
+                  Formatos recomendados: JPG ou PNG de rosto nítido.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 1: Dados Pessoais do Jovem */}
+          <div className="space-y-4">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+              <User className="w-4 h-4" />
+              1. Dados do Integrante
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Nome Completo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={nomeCompleto}
+                  onChange={(e) => setNomeCompleto(e.target.value)}
+                  placeholder="Ex.: Gabriel Santos de Oliveira"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Apelido (como gosta de ser chamado)
+                </label>
+                <input
+                  type="text"
+                  value={apelido}
+                  onChange={(e) => setApelido(e.target.value)}
+                  placeholder="Ex.: Biel"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Telefone / WhatsApp *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={telefone}
+                  onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+                  placeholder="(45) 99999-9999"
+                  maxLength={15}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Data de Nascimento * (DD/MM/AAAA)
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input
+                    type="text"
+                    required
+                    maxLength={10}
+                    value={dataNascimento}
+                    onChange={(e) => setDataNascimento(formatarDataDigitacao(e.target.value))}
+                    placeholder="DD/MM/AAAA (ex.: 15/04/2006)"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 2: Responsável Legal */}
+          <div className="space-y-4 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+              <Phone className="w-4 h-4" />
+              2. Dados do Responsável Legal (obrigatório para menores)
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Nome do Responsável *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={nomeResponsavel}
+                  onChange={(e) => setNomeResponsavel(e.target.value)}
+                  placeholder="Ex.: Sandra Santos (mãe)"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Telefone do Responsável *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={telefoneResponsavel}
+                  onChange={(e) =>
+                    setTelefoneResponsavel(formatarTelefone(e.target.value))
+                  }
+                  placeholder="(45) 99999-9999"
+                  maxLength={15}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 3: Tempo de Grupo (com 3 níveis de precisão) */}
+          <div className="space-y-4 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <div>
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                3. Tempo de Grupo (Caminhada no JUSC)
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Selecione o nível de precisão com que o integrante recorda sua entrada no grupo.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label
+                className={`p-3.5 rounded-xl border flex flex-col cursor-pointer transition-all ${
+                  tempoGrupoPrecisao === "COMPLETA"
+                    ? "bg-[#FFC72C]/10 border-[#FFC72C] dark:border-[#FFC72C]"
+                    : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-200 dark:border-neutral-700"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="precisao"
+                  checked={tempoGrupoPrecisao === "COMPLETA"}
+                  onChange={() => setTempoGrupoPrecisao("COMPLETA")}
+                  className="sr-only"
+                />
+                <span className="text-xs font-bold text-neutral-900 dark:text-white">
+                  Data Completa
+                </span>
+                <span className="text-[11px] text-neutral-500 mt-1">
+                  Sabe o dia, mês e ano exatos
+                </span>
+              </label>
+
+              <label
+                className={`p-3.5 rounded-xl border flex flex-col cursor-pointer transition-all ${
+                  tempoGrupoPrecisao === "MES_ANO"
+                    ? "bg-[#FFC72C]/10 border-[#FFC72C] dark:border-[#FFC72C]"
+                    : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-200 dark:border-neutral-700"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="precisao"
+                  checked={tempoGrupoPrecisao === "MES_ANO"}
+                  onChange={() => setTempoGrupoPrecisao("MES_ANO")}
+                  className="sr-only"
+                />
+                <span className="text-xs font-bold text-neutral-900 dark:text-white">
+                  Apenas Mês/Ano
+                </span>
+                <span className="text-[11px] text-neutral-500 mt-1">
+                  Sabe o período aproximado
+                </span>
+              </label>
+
+              <label
+                className={`p-3.5 rounded-xl border flex flex-col cursor-pointer transition-all ${
+                  tempoGrupoPrecisao === "DESCONHECIDA"
+                    ? "bg-[#FFC72C]/10 border-[#FFC72C] dark:border-[#FFC72C]"
+                    : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-200 dark:border-neutral-700"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="precisao"
+                  checked={tempoGrupoPrecisao === "DESCONHECIDA"}
+                  onChange={() => setTempoGrupoPrecisao("DESCONHECIDA")}
+                  className="sr-only"
+                />
+                <span className="text-xs font-bold text-neutral-900 dark:text-white">
+                  Desconhecido
+                </span>
+                <span className="text-[11px] text-neutral-500 mt-1">
+                  Não recorda a data de início
+                </span>
+              </label>
+            </div>
+
+            {/* Campos condicionais de acordo com a precisão */}
+            {tempoGrupoPrecisao === "COMPLETA" && (
+              <div className="animate-fadeIn">
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Data de Entrada no JUSC * (DD/MM/AAAA)
+                </label>
+                <div className="relative w-full sm:w-64">
+                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <input
+                    type="text"
+                    required
+                    maxLength={10}
+                    value={tempoGrupoDataCompleta}
+                    onChange={(e) => setTempoGrupoDataCompleta(formatarDataDigitacao(e.target.value))}
+                    placeholder="DD/MM/AAAA (ex.: 05/03/2023)"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {tempoGrupoPrecisao === "MES_ANO" && (
+              <div className="grid grid-cols-2 gap-4 sm:w-80 animate-fadeIn">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Mês de Entrada *
+                  </label>
+                  <select
+                    value={tempoGrupoMes}
+                    onChange={(e) => setTempoGrupoMes(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                  >
+                    {[
+                      "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+                    ].map((m, idx) => (
+                      <option key={idx + 1} value={idx + 1}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Ano de Entrada *
+                  </label>
+                  <select
+                    value={tempoGrupoAno}
+                    onChange={(e) => setTempoGrupoAno(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                  >
+                    {anosDisponiveis.map((ano) => (
+                      <option key={ano} value={ano}>
+                        {ano}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Seção 4: Sacramentos */}
+          <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+              <Shield className="w-4 h-4" />
+              4. Sacramentos da Igreja Católica
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <label className="p-3 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 flex items-center gap-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-[#232834] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={batismo}
+                  onChange={(e) => setBatismo(e.target.checked)}
+                  className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                />
+                <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                  Batismo
+                </span>
+              </label>
+
+              <label className="p-3 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 flex items-center gap-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-[#232834] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={primeiraEucaristia}
+                  onChange={(e) => setPrimeiraEucaristia(e.target.checked)}
+                  className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                />
+                <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                  1ª Eucaristia
+                </span>
+              </label>
+
+              <label className="p-3 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 flex items-center gap-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-[#232834] transition-colors">
+                <input
+                  type="checkbox"
+                  checked={crisma}
+                  onChange={(e) => setCrisma(e.target.checked)}
+                  className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                />
+                <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                  Crisma
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Seção 5: Saúde e Restrições Alimentares (Alergias e Intolerâncias) */}
+          <div className="space-y-4 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <div>
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+                <HeartPulse className="w-4 h-4 text-rose-500" />
+                5. Saúde e Restrições Alimentares (opcional)
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Informações para os lanches e retiros do JUSC, garantindo a segurança alimentar de todos.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Alergias */}
+              <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={possuiAlergia}
+                    onChange={(e) => {
+                      setPossuiAlergia(e.target.checked);
+                      if (!e.target.checked) setDescricaoAlergia("");
+                    }}
+                    className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-neutral-900 dark:text-white">
+                      Possui alguma alergia?
+                    </span>
+                    <span className="text-[11px] text-neutral-500 block">
+                      Marque se o integrante tiver alergia alimentar, medicamentosa ou respiratória
+                    </span>
+                  </div>
+                </label>
+
+                {possuiAlergia && (
+                  <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 animate-fadeIn">
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Alergia a quê? *
+                    </label>
+                    <input
+                      type="text"
+                      required={possuiAlergia}
+                      value={descricaoAlergia}
+                      onChange={(e) => setDescricaoAlergia(e.target.value)}
+                      placeholder="Ex.: Amendoim, frutos do mar, dipirona, picada de abelha..."
+                      className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Intolerâncias Alimentares */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 flex items-center gap-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-[#232834] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={intoleranciaGluten}
+                    onChange={(e) => setIntoleranciaGluten(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-neutral-900 dark:text-white block">
+                      Intolerância a Glúten / Celíaco
+                    </span>
+                    <span className="text-[11px] text-neutral-500">
+                      Necessita de alimentos sem trigo/glúten
+                    </span>
+                  </div>
+                </label>
+
+                <label className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 flex items-center gap-3 cursor-pointer hover:bg-neutral-100 dark:hover:bg-[#232834] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={intoleranciaLactose}
+                    onChange={(e) => setIntoleranciaLactose(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-neutral-900 dark:text-white block">
+                      Intolerância a Lactose
+                    </span>
+                    <span className="text-[11px] text-neutral-500">
+                      Necessita de produtos sem lactose / derivados
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 6: Comunicação e Redes */}
+          <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+              <MessageSquare className="w-4 h-4 text-emerald-500" />
+              6. Comunicação e Redes
+            </h2>
+
+            <label className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-3 cursor-pointer hover:bg-emerald-100/60 dark:hover:bg-emerald-950/30 transition-colors">
+              <input
+                type="checkbox"
+                checked={noGrupoWhatsapp}
+                onChange={(e) => setNoGrupoWhatsapp(e.target.checked)}
+                className="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500"
+              />
+              <div>
+                <span className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                  Já adicionado ao Grupo Oficial de WhatsApp do JUSC
+                </span>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  Marque para controle da coordenação sobre quais jovens já estão inseridos no grupo da colmeia.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Seção 7: Observações */}
+          <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
+              7. Observações Pastorais (opcional)
+            </label>
+            <textarea
+              rows={3}
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Ex.: Toca violão, tem interesse em ministério de teatro ou acolhida..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+            />
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-neutral-100 dark:border-neutral-800">
+            <Link
+              href={`/dashboard/integrantes/${id}`}
+              className="px-5 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-semibold text-sm text-center transition-colors"
+            >
+              Cancelar
+            </Link>
+            <button
+              type="submit"
+              disabled={salvando}
+              className="px-6 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {salvando ? (
+                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
+              {salvando ? "Salvando alterações..." : "Salvar Alterações"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
