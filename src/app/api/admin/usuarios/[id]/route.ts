@@ -18,7 +18,14 @@ export async function PUT(
     if (perfil) dataUpdate.perfil = perfil;
     if (nome) dataUpdate.nome = nome.trim();
     if (novaSenha) {
-      dataUpdate.senhaHash = await hashPassword(novaSenha);
+      if (typeof novaSenha !== "string" || novaSenha.trim().length < 6) {
+        return NextResponse.json(
+          { error: "A nova senha deve ter no mínimo 6 caracteres." },
+          { status: 400 }
+        );
+      }
+      dataUpdate.senhaHash = await hashPassword(novaSenha.trim());
+      dataUpdate.primeiroAcesso = true;
     }
 
     const usuarioAtualizado = await prisma.usuario.update({
@@ -27,17 +34,24 @@ export async function PUT(
       select: {
         id: true,
         nome: true,
+        login: true,
         email: true,
         perfil: true,
         status: true,
+        primeiroAcesso: true,
       },
     });
+
+    const acaoAuditoria = novaSenha ? "REDEFINIR_SENHA_USUARIO" : "EDITAR_USUARIO";
+    const detalheAuditoria = novaSenha
+      ? `Redefiniu a senha do usuário ${usuarioAtualizado.nome} (@${usuarioAtualizado.login})`
+      : `Atualizou usuário ${usuarioAtualizado.nome} (Status: ${usuarioAtualizado.status})`;
 
     await prisma.logAuditoria.create({
       data: {
         usuarioId: adminLogado.id,
-        acao: "EDITAR_USUARIO",
-        detalhes: `Atualizou usuário ${usuarioAtualizado.email} (Status: ${usuarioAtualizado.status})`,
+        acao: acaoAuditoria,
+        detalhes: detalheAuditoria,
       },
     }).catch(() => {});
 
