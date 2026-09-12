@@ -7,15 +7,25 @@ services:
       dockerfile: Dockerfile
     container_name: jusc_web
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    networks:
+      - proxy
     environment:
       - NODE_ENV=production
       - DATABASE_URL=file:/app/data/prod.db
-      - JWT_SECRET=sua_chave_jwt_super_secreta_troque_aqui
+      - JWT_SECRET=jusc_jwt_secret_super_seguro_2026_xYz987
       - PORT=3000
     volumes:
       # Persistência do banco de dados na VPS
       - ./data:/app/data
       # Persistência das fotos e uploads na VPS
       - ./uploads:/app/public/uploads
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jusc.rule=Host(`jusc.tccodes.com.br`)"
+      - "traefik.http.routers.jusc.entrypoints=websecure"
+      - "traefik.http.routers.jusc.tls.certresolver=myresolver"
+      - "traefik.http.services.jusc.loadbalancer.server.port=3000"
+
+networks:
+  proxy:
+    external: true

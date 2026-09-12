@@ -17,6 +17,7 @@ import {
   Upload,
   Sparkles,
   MessageCircle,
+  KeyRound,
 } from "lucide-react";
 import { formatarDataHora } from "@/lib/utils";
 
@@ -52,6 +53,11 @@ export function AdminPanelClient() {
   const [novaSenha, setNovaSenha] = useState("");
   const [novoPerfil, setNovoPerfil] = useState<"ADMIN" | "COLABORADOR">("COLABORADOR");
   const [criandoUsuario, setCriandoUsuario] = useState(false);
+
+  // Estados de Redefinição de Senha
+  const [usuarioResetSenha, setUsuarioResetSenha] = useState<any | null>(null);
+  const [novaSenhaAdmin, setNovaSenhaAdmin] = useState("");
+  const [salvandoReset, setSalvandoReset] = useState(false);
 
   // Estados de Banners
   const [banners, setBanners] = useState<any[]>([]);
@@ -225,6 +231,36 @@ export function AdminPanelClient() {
       }
     } catch {
       dispararErro("Falha ao alterar status do usuário.");
+    }
+  }
+
+  async function handleRedefinirSenha(e: React.FormEvent) {
+    e.preventDefault();
+    if (!usuarioResetSenha) return;
+    if (novaSenhaAdmin.trim().length < 6) {
+      dispararErro("A senha provisória deve ter no mínimo 6 caracteres.");
+      return;
+    }
+    setSalvandoReset(true);
+    try {
+      const res = await fetch(`/api/admin/usuarios/${usuarioResetSenha.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ novaSenha: novaSenhaAdmin.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        dispararSucesso(`Senha de @${usuarioResetSenha.login} redefinida! O usuário deverá trocá-la no próximo acesso.`);
+        setUsuarioResetSenha(null);
+        setNovaSenhaAdmin("");
+        carregarDados();
+      } else {
+        dispararErro(data.error || "Erro ao redefinir senha do usuário.");
+      }
+    } catch {
+      dispararErro("Erro de conexão ao redefinir senha.");
+    } finally {
+      setSalvandoReset(false);
     }
   }
 
@@ -920,6 +956,20 @@ export function AdminPanelClient() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      onClick={() => {
+                        setUsuarioResetSenha(u);
+                        setNovaSenhaAdmin("");
+                      }}
+                      title="Redefinir senha de acesso deste usuário"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-amber-300 dark:border-amber-700/80 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      Redefinir Senha
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => alternarStatusUsuario(u.id, u.status)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
                         u.status === "ATIVO"
@@ -1056,6 +1106,69 @@ export function AdminPanelClient() {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Redefinir Senha de Usuário */}
+      {usuarioResetSenha && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-[#FFC72C]">
+              <KeyRound className="w-6 h-6 flex-shrink-0" />
+              <div>
+                <h3 className="font-extrabold text-lg text-neutral-900 dark:text-white">
+                  Redefinir Senha de Acesso
+                </h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {usuarioResetSenha.nome} (@{usuarioResetSenha.login})
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
+              Defina uma nova senha temporária para o colaborador. Ao fazer login com esta senha, o sistema exigirá que ele crie sua senha definitiva pessoal.
+            </p>
+
+            <form onSubmit={handleRedefinirSenha} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Nova Senha Provisória * (mínimo 6 caracteres)
+                </label>
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  minLength={6}
+                  value={novaSenhaAdmin}
+                  onChange={(e) => setNovaSenhaAdmin(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C] transition-colors"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={salvandoReset}
+                  onClick={() => {
+                    setUsuarioResetSenha(null);
+                    setNovaSenhaAdmin("");
+                  }}
+                  className="px-4 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={salvandoReset}
+                  className="px-5 py-2 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 text-xs font-black shadow-sm transition-all flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {salvandoReset ? "Salvando..." : "Confirmar Nova Senha"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
