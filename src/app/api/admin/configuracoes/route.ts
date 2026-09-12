@@ -34,8 +34,8 @@ export async function PUT(req: NextRequest) {
         linkGoogleMaps: body.linkGoogleMaps,
         instagramUrl: body.instagramUrl,
 
-        limiteMesesAlertaAusencia: Number(body.limiteMesesAlertaAusencia) || 3,
-        limiteMesesInativacao: Number(body.limiteMesesInativacao) || 12,
+        limiteMesesAlertaAusencia: Math.max(2, Number(body.limiteMesesAlertaAusencia) || 2),
+        limiteMesesInativacao: Math.max(3, Number(body.limiteMesesInativacao) || 12),
       },
       create: {
         id: 1,
@@ -54,8 +54,8 @@ export async function PUT(req: NextRequest) {
         linkGoogleMaps: body.linkGoogleMaps,
         instagramUrl: body.instagramUrl,
 
-        limiteMesesAlertaAusencia: Number(body.limiteMesesAlertaAusencia) || 3,
-        limiteMesesInativacao: Number(body.limiteMesesInativacao) || 12,
+        limiteMesesAlertaAusencia: Math.max(2, Number(body.limiteMesesAlertaAusencia) || 2),
+        limiteMesesInativacao: Math.max(3, Number(body.limiteMesesInativacao) || 12),
       },
     });
 

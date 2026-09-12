@@ -35,6 +35,7 @@ model Integrante {
   nomeResponsavel        String
   telefoneResponsavel    String
   fotoUrl                String?
+  sexo                   String?   @default("MASCULINO") // "MASCULINO" | "FEMININO"
 
   // Lógica de tempo de grupo com 3 níveis de precisão
   tempoGrupoPrecisao     String    @default("DESCONHECIDA") // "COMPLETA" | "MES_ANO" | "DESCONHECIDA"
@@ -127,7 +128,7 @@ model ConfiguracaoGeral {
   instagramUrl               String?  @default("https://www.instagram.com/juscpmj?stkn=MWJhbGsyd2ZidHY1Mw==")
 
   // Regras de negócio configuráveis
-  limiteMesesAlertaAusencia  Int      @default(3)
+  limiteMesesAlertaAusencia  Int      @default(2)
   limiteMesesInativacao      Int      @default(12)
 
   atualizadoEm               DateTime @updatedAt

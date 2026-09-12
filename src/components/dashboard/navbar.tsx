@@ -60,7 +60,7 @@ export function DashboardNavbar({ usuario }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-[#0d0e12]/95 backdrop-blur-md transition-colors">
+    <header className="sticky top-0 z-40 w-full border-b border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-[#0d0e12]/95 backdrop-blur-md transition-colors print:hidden">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Logo e Título */}
         <div className="flex items-center gap-6">

@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { calcularStatusPorAusencia } from "@/lib/rules";
-import { differenceInDays, differenceInMonths } from "date-fns";
+import { differenceInDays, differenceInMonths, addMonths } from "date-fns";
 
 export async function GET(req: NextRequest) {
   try {
     await requireAuth();
 
     const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
-    const limiteAlerta = config?.limiteMesesAlertaAusencia || 3;
+    const limiteAlerta = config?.limiteMesesAlertaAusencia || 2;
     const limiteInativo = config?.limiteMesesInativacao || 12;
 
     // Buscar todos os encontros ordenados cronologicamente decrescente
@@ -55,20 +55,29 @@ export async function GET(req: NextRequest) {
       const diasDesdeEntrada = differenceInDays(hoje, dataEntradaEfetiva);
       const mesesDesdeEntrada = differenceInMonths(hoje, dataEntradaEfetiva);
 
-      // Data de inativação (atualizadoEm quando status é inativo, ou calculada)
-      const diasDesdeInativacao =
-        statusInfo.statusCalculado === "INATIVO"
-          ? differenceInDays(hoje, new Date(int.atualizadoEm))
-          : null;
-      const mesesDesdeInativacao =
-        statusInfo.statusCalculado === "INATIVO"
-          ? Math.max(statusInfo.mesesSemPresenca, differenceInMonths(hoje, new Date(int.atualizadoEm)))
-          : null;
+      // Data de inativação sincronizada com a regra pastoral ou status manual
+      let dataEfetivaInativacao: Date | null = null;
+      if (int.status === "INATIVO") {
+        dataEfetivaInativacao = new Date(int.atualizadoEm);
+      } else if (statusInfo.statusCalculado === "INATIVO") {
+        const dataBase = statusInfo.ultimaPresencaData
+          ? new Date(statusInfo.ultimaPresencaData)
+          : new Date(int.dataCadastro);
+        dataEfetivaInativacao = addMonths(dataBase, limiteInativo);
+      }
+
+      const diasDesdeInativacao = dataEfetivaInativacao
+        ? Math.max(0, differenceInDays(hoje, dataEfetivaInativacao))
+        : null;
+      const mesesDesdeInativacao = dataEfetivaInativacao
+        ? Math.max(0, differenceInMonths(hoje, dataEfetivaInativacao))
+        : null;
 
       return {
         id: int.id,
         nomeCompleto: int.nomeCompleto,
         apelido: int.apelido,
+        sexo: int.sexo || "MASCULINO",
         telefone: int.telefone,
         dataNascimento: int.dataNascimento,
         nomeResponsavel: int.nomeResponsavel,
@@ -93,6 +102,7 @@ export async function GET(req: NextRequest) {
         mesesSemPresenca: statusInfo.mesesSemPresenca,
         diasDesdeInativacao,
         mesesDesdeInativacao,
+        dataInativacao: dataEfetivaInativacao ? dataEfetivaInativacao.toISOString() : null,
         motivoInativacao: int.motivoInativacao,
         presencas: int.presencas,
       };
@@ -108,6 +118,7 @@ export async function GET(req: NextRequest) {
         integranteId: int.id,
         integranteNome: int.nomeCompleto,
         integranteApelido: int.apelido,
+        integranteSexo: int.sexo || "MASCULINO",
         integranteTelefone: int.telefone,
         integranteStatus: int.statusCalculado,
         noGrupoWhatsapp: int.noGrupoWhatsapp,

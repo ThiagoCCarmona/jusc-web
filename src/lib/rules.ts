@@ -101,12 +101,19 @@ export function processarAniversariantesNascimento(
     .filter((int) => int.status === "ATIVO")
     .map((int) => {
       const nasc = new Date(int.dataNascimento);
-      const mesNasc = nasc.getMonth();
-      const diaNasc = nasc.getDate();
+      // Datas de nascimento salvas como ISO / UTC midnight (ex: "2005-09-12T00:00:00.000Z")
+      // devem ser lidas em UTC para não sofrer deslocamento de fuso horário brasileiro (-3h -> dia anterior 21h)
+      const mesNasc = nasc.getUTCMonth();
+      const diaNasc = nasc.getUTCDate();
 
       if (mesNasc !== mesAtual) return null;
 
-      const anos = differenceInYears(dataReferencia, nasc);
+      const anoAtual = dataReferencia.getFullYear();
+      const anoNasc = nasc.getUTCFullYear();
+      let anos = anoAtual - anoNasc;
+      if (diaAtual < diaNasc) {
+        anos -= 1;
+      }
       const fazHoje = diaNasc === diaAtual;
 
       return {
@@ -132,6 +139,7 @@ export interface AniversarianteGrupo {
   telefone: string;
   precisao: "COMPLETA" | "MES_ANO" | "DESCONHECIDA";
   dia: number | null;
+  anos: number;
   tempoTexto: string;
   fazHoje: boolean;
   fotoUrl: string | null;
@@ -170,9 +178,9 @@ export function processarAniversariantesGrupo(
 
     if (int.tempoGrupoPrecisao === "COMPLETA" && int.tempoGrupoDataCompleta) {
       const data = new Date(int.tempoGrupoDataCompleta);
-      const mes = data.getMonth() + 1;
-      const dia = data.getDate();
-      const ano = data.getFullYear();
+      const mes = data.getUTCMonth() + 1;
+      const dia = data.getUTCDate();
+      const ano = data.getUTCFullYear();
 
       if (mes === mesAtual) {
         const anos = anoAtual - ano;
@@ -185,6 +193,7 @@ export function processarAniversariantesGrupo(
             telefone: int.telefone,
             precisao: "COMPLETA",
             dia,
+            anos,
             tempoTexto: `${anos} ${anos === 1 ? "ano" : "anos"} de JUSC`,
             fazHoje,
             fotoUrl: int.fotoUrl,
@@ -202,6 +211,7 @@ export function processarAniversariantesGrupo(
             telefone: int.telefone,
             precisao: "MES_ANO",
             dia: null,
+            anos,
             tempoTexto: `${anos} ${anos === 1 ? "ano" : "anos"} de JUSC (mês comemorativo)`,
             fazHoje: false,
             fotoUrl: int.fotoUrl,

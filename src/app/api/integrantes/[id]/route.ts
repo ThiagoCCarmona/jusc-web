@@ -69,6 +69,7 @@ export async function PUT(
     const {
       nomeCompleto,
       apelido,
+      sexo,
       telefone,
       dataNascimento,
       nomeResponsavel,
@@ -96,6 +97,7 @@ export async function PUT(
       data: {
         nomeCompleto: nomeCompleto ? nomeCompleto.trim() : integranteAtual.nomeCompleto,
         apelido: apelido !== undefined ? (apelido ? apelido.trim() : null) : integranteAtual.apelido,
+        sexo: sexo !== undefined ? (sexo === "FEMININO" ? "FEMININO" : "MASCULINO") : (integranteAtual.sexo || "MASCULINO"),
         telefone: telefone ? telefone.trim() : integranteAtual.telefone,
         dataNascimento: dataNascimento ? new Date(dataNascimento) : integranteAtual.dataNascimento,
         nomeResponsavel: nomeResponsavel ? nomeResponsavel.trim() : integranteAtual.nomeResponsavel,

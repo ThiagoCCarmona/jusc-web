@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
     const busca = searchParams.get("busca")?.toLowerCase().trim();
     const filtroStatus = searchParams.get("status"); // "ATIVO", "INATIVO", "ALERTA"
     const filtroSacramento = searchParams.get("sacramento"); // "batismo", "eucaristia", "crisma"
+    const filtroSexo = searchParams.get("sexo"); // "MASCULINO", "FEMININO"
 
     const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
     const limiteAlerta = config?.limiteMesesAlertaAusencia || 3;
@@ -69,10 +70,20 @@ export async function GET(req: NextRequest) {
         if (filtroSacramento === "eucaristia" && !int.primeiraEucaristia) return false;
         if (filtroSacramento === "crisma" && !int.crisma) return false;
 
+        // Filtro de sexo
+        if (filtroSexo && filtroSexo !== "TODOS") {
+          const sexoInt = int.sexo || "MASCULINO";
+          if (sexoInt !== filtroSexo) return false;
+        }
+
         return true;
       });
 
-    return NextResponse.json({ integrantes: resultadoProcessado });
+    return NextResponse.json({
+      integrantes: resultadoProcessado,
+      limiteAlerta,
+      limiteInativo,
+    });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
@@ -89,6 +100,7 @@ export async function POST(req: NextRequest) {
     const {
       nomeCompleto,
       apelido,
+      sexo,
       telefone,
       dataNascimento,
       nomeResponsavel,
@@ -119,6 +131,7 @@ export async function POST(req: NextRequest) {
       data: {
         nomeCompleto: nomeCompleto.trim(),
         apelido: apelido?.trim() || null,
+        sexo: sexo === "FEMININO" ? "FEMININO" : "MASCULINO",
         telefone: telefone.trim(),
         dataNascimento: new Date(dataNascimento),
         nomeResponsavel: nomeResponsavel.trim(),

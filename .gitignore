@@ -35,3 +35,9 @@ public/uploads/*
 .vscode/
 .idea/
 Thumbs.db
+
+# Volumes persistentes Docker na VPS
+/data/
+/uploads/
+
+*.tsbuildinfo

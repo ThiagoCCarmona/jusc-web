@@ -211,53 +211,61 @@ export function BannerEvento({
   )}`;
 
   return (
-    <div className="w-full rounded-3xl bg-amber-50 dark:bg-[#1a1711] border-2 border-amber-300 dark:border-amber-800/80 shadow-md overflow-hidden transition-all">
+    <div className="w-full rounded-3xl bg-gradient-to-br from-amber-50 via-amber-100/40 to-yellow-50 dark:from-[#1a1711] dark:via-[#1e1c15] dark:to-[#16140e] border-2 border-[#FFC72C]/70 dark:border-[#FFC72C]/40 shadow-xl overflow-hidden transition-all duration-300">
       <div
         onClick={() => setExpandido(!expandido)}
-        className="p-5 sm:p-6 flex items-start gap-4 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors"
+        className="p-5 sm:p-6 flex items-start gap-4 cursor-pointer hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition-colors"
       >
-        <div className="w-12 h-12 rounded-2xl bg-[#FFC72C] text-neutral-950 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FFC72C] to-[#e5b220] text-neutral-950 flex items-center justify-center flex-shrink-0 shadow-md ring-2 ring-amber-400/30">
           <Sparkles className="w-6 h-6" />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-200 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200">
+            <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#FFC72C]/30 text-neutral-900 dark:text-[#FFC72C] border border-[#FFC72C]/40">
               Ação Pastoral Especial
             </span>
           </div>
-          <h4 className="font-black text-lg text-neutral-900 dark:text-white mt-1">
+          <h4 className="font-black text-lg sm:text-xl text-neutral-950 dark:text-white mt-1">
             {titulo}
           </h4>
-          <p className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 mt-1 line-clamp-2 leading-relaxed">
+          <p className="text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 mt-1 line-clamp-2 leading-relaxed font-medium">
             {resumo}
           </p>
         </div>
 
-        <div className="flex-shrink-0 text-neutral-500 p-1">
+        <div className="flex-shrink-0 text-neutral-600 dark:text-neutral-400 p-1">
           {expandido ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
         </div>
       </div>
 
       {expandido && (
-        <div className="px-6 pb-6 pt-3 border-t border-amber-200/80 dark:border-amber-800/40 bg-white/70 dark:bg-black/30 animate-fadeIn space-y-4">
+        <div className="px-6 pb-6 pt-4 border-t border-[#FFC72C]/30 bg-white/80 dark:bg-black/40 backdrop-blur-sm animate-fadeIn space-y-5">
           {imagemUrl && (
-            <div className="relative w-full h-52 rounded-2xl overflow-hidden border border-amber-300 dark:border-amber-900">
-              <Image src={imagemUrl} alt={titulo} fill className="object-cover" />
+            <div className="relative w-full h-64 sm:h-80 rounded-2xl overflow-hidden border-2 border-[#FFC72C]/40 shadow-lg bg-neutral-100 dark:bg-neutral-900">
+              <Image
+                src={imagemUrl}
+                alt={titulo}
+                fill
+                unoptimized
+                className="object-cover hover:scale-105 transition-transform duration-500"
+              />
             </div>
           )}
-          <p className="text-sm text-neutral-800 dark:text-neutral-200 whitespace-pre-line leading-relaxed">
+          <p className="text-sm text-neutral-800 dark:text-neutral-200 whitespace-pre-line leading-relaxed font-normal">
             {descricaoCompleta}
           </p>
-          <a
-            href={linkWhatsapp}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-neutral-950 text-white font-bold text-xs shadow-md hover:bg-neutral-800 transition-all"
-          >
-            <MessageCircle className="w-4 h-4 text-emerald-400" />
-            Saber mais no WhatsApp
-          </a>
+          <div>
+            <a
+              href={linkWhatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-neutral-950 hover:bg-neutral-800 active:scale-95 text-[#FFC72C] font-black text-xs sm:text-sm shadow-lg hover:shadow-xl transition-all"
+            >
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+              <span>Saber mais no WhatsApp</span>
+            </a>
+          </div>
         </div>
       )}
     </div>

@@ -18,6 +18,7 @@ import {
   Sparkles,
   MessageCircle,
   KeyRound,
+  Edit3,
 } from "lucide-react";
 import { formatarDataHora } from "@/lib/utils";
 
@@ -40,7 +41,7 @@ export function AdminPanelClient() {
     horarioPadrao: "Domingos às 17h",
     linkGoogleMaps: "https://maps.google.com/?q=Avenida+P%C3%B4r+do+Sol,+2200,+Conjunto+Libra,+Foz+do+Igua%C3%A7u+-+PR",
     instagramUrl: "https://www.instagram.com/juscpmj?stkn=MWJhbGsyd2ZidHY1Mw==",
-    limiteMesesAlertaAusencia: 3,
+    limiteMesesAlertaAusencia: 2,
     limiteMesesInativacao: 12,
   });
   const [salvandoConfig, setSalvandoConfig] = useState(false);
@@ -68,6 +69,12 @@ export function AdminPanelClient() {
   const [imagemBanner, setImagemBanner] = useState("");
   const [expiracaoBanner, setExpiracaoBanner] = useState("");
   const [criandoBanner, setCriandoBanner] = useState(false);
+  const [uploadingBannerImg, setUploadingBannerImg] = useState(false);
+
+  // Estados de Edição de Banner
+  const [bannerEditando, setBannerEditando] = useState<any | null>(null);
+  const [salvandoEditBanner, setSalvandoEditBanner] = useState(false);
+  const [uploadingEditBannerImg, setUploadingEditBannerImg] = useState(false);
 
   // Estados de Auditoria
   const [logs, setLogs] = useState<any[]>([]);
@@ -80,6 +87,8 @@ export function AdminPanelClient() {
 
   const fileInputCoordRef = useRef<HTMLInputElement>(null);
   const fileInputSecRef = useRef<HTMLInputElement>(null);
+  const fileInputBannerRef = useRef<HTMLInputElement>(null);
+  const fileInputEditBannerRef = useRef<HTMLInputElement>(null);
 
   // Carregar dados conforme aba
   async function carregarDados() {
@@ -297,6 +306,84 @@ export function AdminPanelClient() {
       dispararErro("Erro de conexão ao criar banner.");
     } finally {
       setCriandoBanner(false);
+    }
+  }
+
+  async function handleUploadBannerImg(file: File, isEdit: boolean = false) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (isEdit) setUploadingEditBannerImg(true);
+    else setUploadingBannerImg(true);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        if (isEdit) {
+          setBannerEditando((prev: any) => ({ ...prev, imagemUrl: data.url }));
+        } else {
+          setImagemBanner(data.url);
+        }
+        dispararSucesso("Imagem carregada com sucesso!");
+      } else {
+        dispararErro(data.error || "Erro ao carregar imagem.");
+      }
+    } catch {
+      dispararErro("Erro de conexão ao enviar imagem.");
+    } finally {
+      if (isEdit) setUploadingEditBannerImg(false);
+      else setUploadingBannerImg(false);
+    }
+  }
+
+  function abrirEdicaoBanner(banner: any) {
+    const d = new Date(banner.dataExpiracao);
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const expiracaoFmt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    setBannerEditando({
+      ...banner,
+      dataExpiracaoInput: expiracaoFmt,
+    });
+  }
+
+  async function handleSalvarEdicaoBanner(e: React.FormEvent) {
+    e.preventDefault();
+    if (!bannerEditando) return;
+
+    setSalvandoEditBanner(true);
+    try {
+      const res = await fetch(`/api/admin/banners/${bannerEditando.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: bannerEditando.titulo,
+          resumo: bannerEditando.resumo,
+          descricaoCompleta: bannerEditando.descricaoCompleta,
+          imagemUrl: bannerEditando.imagemUrl || null,
+          dataExpiracao: bannerEditando.dataExpiracaoInput
+            ? new Date(bannerEditando.dataExpiracaoInput).toISOString()
+            : undefined,
+          ativo: bannerEditando.ativo,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        dispararSucesso("Banner atualizado com sucesso!");
+        setBannerEditando(null);
+        carregarDados();
+      } else {
+        dispararErro(data.error || "Erro ao atualizar banner.");
+      }
+    } catch {
+      dispararErro("Erro de conexão ao atualizar banner.");
+    } finally {
+      setSalvandoEditBanner(false);
     }
   }
 
@@ -726,20 +813,47 @@ export function AdminPanelClient() {
                   />
                 </div>
 
-                {tipoBanner === "EVENTO" && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                      URL da Imagem (opcional)
-                    </label>
+                <div className="sm:col-span-2 space-y-2">
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Imagem do Banner (opcional — faça upload caso queira)
+                  </label>
+                  <div className="flex items-center gap-3">
                     <input
-                      type="url"
-                      value={imagemBanner}
-                      onChange={(e) => setImagemBanner(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputBannerRef}
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleUploadBannerImg(e.target.files[0], false);
+                        }
+                      }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => fileInputBannerRef.current?.click()}
+                      disabled={uploadingBannerImg}
+                      className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold text-neutral-900 dark:text-white transition-colors"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-[#FFC72C]" />
+                      {uploadingBannerImg ? "Enviando Imagem..." : imagemBanner ? "Trocar Imagem" : "Fazer Upload de Imagem"}
+                    </button>
+                    {imagemBanner && (
+                      <button
+                        type="button"
+                        onClick={() => setImagemBanner("")}
+                        className="text-xs text-red-500 hover:underline font-semibold"
+                      >
+                        Remover Foto
+                      </button>
+                    )}
                   </div>
-                )}
+                  {imagemBanner && (
+                    <div className="relative w-32 h-20 rounded-xl overflow-hidden border border-amber-300 dark:border-amber-700 mt-2">
+                      <Image src={imagemBanner} alt="Preview" fill unoptimized className="object-cover" />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end">
@@ -805,6 +919,13 @@ export function AdminPanelClient() {
 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
+                        onClick={() => abrirEdicaoBanner(b)}
+                        className="px-3 py-1.5 rounded-xl bg-[#FFC72C]/20 text-neutral-900 dark:text-[#FFC72C] hover:bg-[#FFC72C]/30 font-bold transition-colors inline-flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        Editar
+                      </button>
+                      <button
                         onClick={() => alternarAtivoBanner(b.id, b.ativo)}
                         className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
                       >
@@ -823,6 +944,157 @@ export function AdminPanelClient() {
               </div>
             )}
           </div>
+
+          {/* Modal de Edição de Banner */}
+          {bannerEditando && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 max-w-lg w-full border border-neutral-200 dark:border-neutral-800 shadow-2xl space-y-4">
+                <h2 className="text-lg font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                  <Edit3 className="w-5 h-5 text-[#FFC72C]" />
+                  Editar Banner ({bannerEditando.tipo})
+                </h2>
+
+                <form onSubmit={handleSalvarEdicaoBanner} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Título *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bannerEditando.titulo}
+                      onChange={(e) =>
+                        setBannerEditando({ ...bannerEditando, titulo: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Resumo *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bannerEditando.resumo}
+                      onChange={(e) =>
+                        setBannerEditando({ ...bannerEditando, resumo: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Descrição Completa *
+                    </label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={bannerEditando.descricaoCompleta}
+                      onChange={(e) =>
+                        setBannerEditando({
+                          ...bannerEditando,
+                          descricaoCompleta: e.target.value,
+                        })
+                      }
+                      className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Data de Expiração *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={bannerEditando.dataExpiracaoInput}
+                      onChange={(e) =>
+                        setBannerEditando({
+                          ...bannerEditando,
+                          dataExpiracaoInput: e.target.value,
+                        })
+                      }
+                      className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Imagem do Banner (opcional — faça upload caso queira)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={fileInputEditBannerRef}
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleUploadBannerImg(e.target.files[0], true);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputEditBannerRef.current?.click()}
+                        disabled={uploadingEditBannerImg}
+                        className="px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-[#FFC72C]" />
+                        {uploadingEditBannerImg ? "Enviando..." : bannerEditando.imagemUrl ? "Trocar Foto" : "Fazer Upload de Imagem"}
+                      </button>
+                      {bannerEditando.imagemUrl && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setBannerEditando({
+                              ...bannerEditando,
+                              imagemUrl: null,
+                            })
+                          }
+                          className="text-xs text-red-500 hover:underline font-semibold"
+                        >
+                          Remover Foto
+                        </button>
+                      )}
+                    </div>
+                    {bannerEditando.imagemUrl && (
+                      <div className="relative w-32 h-20 rounded-xl overflow-hidden border border-amber-300 dark:border-amber-700 mt-2">
+                        <Image
+                          src={bannerEditando.imagemUrl}
+                          alt="Preview Edição"
+                          fill
+                          unoptimized
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                    <button
+                      type="button"
+                      onClick={() => setBannerEditando(null)}
+                      disabled={salvandoEditBanner}
+                      className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 font-bold transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={salvandoEditBanner}
+                      className="px-4 py-2 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-bold shadow-sm transition-all"
+                    >
+                      {salvandoEditBanner ? "Salvando..." : "Salvar Alterações"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1035,15 +1307,15 @@ export function AdminPanelClient() {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Meses para Alerta de Ausência Prolongada
+                  Meses para Alerta de Ausência Prolongada (mínimo de 2 meses)
                 </label>
                 <input
                   type="number"
-                  min={1}
+                  min={2}
                   max={12}
                   value={config.limiteMesesAlertaAusencia}
                   onChange={(e) =>
-                    setConfig({ ...config, limiteMesesAlertaAusencia: e.target.value })
+                    setConfig({ ...config, limiteMesesAlertaAusencia: Math.max(2, Number(e.target.value)) })
                   }
                   className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
                 />

@@ -149,6 +149,7 @@ export default function DetalhesIntegrantePage({
                   src={integrante.fotoUrl}
                   alt={integrante.nomeCompleto}
                   fill
+                  unoptimized
                   className="object-cover"
                 />
               ) : (
@@ -223,6 +224,13 @@ export default function DetalhesIntegrantePage({
                     <MessageCircle className="w-3.5 h-3.5" />
                   </a>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#1a1d26]">
+                <span className="text-xs text-neutral-500">Sexo</span>
+                <span className="font-bold text-neutral-900 dark:text-white">
+                  {integrante.sexo === "FEMININO" ? "Feminino" : "Masculino"}
+                </span>
               </div>
 
               <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#1a1d26]">

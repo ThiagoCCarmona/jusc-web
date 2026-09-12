@@ -21,6 +21,7 @@ interface IntegranteItem {
   id: string;
   nomeCompleto: string;
   apelido: string | null;
+  sexo?: string | null;
   telefone: string;
   dataNascimento: string;
   nomeResponsavel: string;
@@ -46,10 +47,12 @@ interface IntegranteItem {
 
 export default function IntegrantesPage() {
   const [integrantes, setIntegrantes] = useState<IntegranteItem[]>([]);
+  const [limiteAlerta, setLimiteAlerta] = useState<number>(3);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("TODOS");
   const [filtroSacramento, setFiltroSacramento] = useState("TODOS");
+  const [filtroSexo, setFiltroSexo] = useState("TODOS");
 
   async function carregarIntegrantes() {
     setCarregando(true);
@@ -58,11 +61,13 @@ export default function IntegrantesPage() {
       if (busca) params.set("busca", busca);
       if (filtroStatus !== "TODOS") params.set("status", filtroStatus);
       if (filtroSacramento !== "TODOS") params.set("sacramento", filtroSacramento);
+      if (filtroSexo !== "TODOS") params.set("sexo", filtroSexo);
 
       const res = await fetch(`/api/integrantes?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setIntegrantes(data.integrantes || []);
+        if (data.limiteAlerta) setLimiteAlerta(data.limiteAlerta);
       }
     } catch (e) {
       console.error("Erro ao carregar integrantes:", e);
@@ -76,7 +81,7 @@ export default function IntegrantesPage() {
       carregarIntegrantes();
     }, 300);
     return () => clearTimeout(timer);
-  }, [busca, filtroStatus, filtroSacramento]);
+  }, [busca, filtroStatus, filtroSacramento, filtroSexo]);
 
   function formatarTempoGrupo(int: IntegranteItem) {
     if (int.tempoGrupoPrecisao === "COMPLETA" && int.tempoGrupoDataCompleta) {
@@ -139,8 +144,21 @@ export default function IntegrantesPage() {
             >
               <option value="TODOS">Todos os Status</option>
               <option value="ATIVO">Apenas Ativos</option>
-              <option value="ALERTA">⚠️ Alerta de Ausência (&gt; 3 meses)</option>
+              <option value="ALERTA">⚠️ Alerta de Ausência (&gt; {limiteAlerta} meses)</option>
               <option value="INATIVO">Inativos</option>
+            </select>
+          </div>
+
+          {/* Filtro Sexo */}
+          <div>
+            <select
+              value={filtroSexo}
+              onChange={(e) => setFiltroSexo(e.target.value)}
+              className="py-2 px-3 rounded-xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+            >
+              <option value="TODOS">Todos os Sexos</option>
+              <option value="MASCULINO">Masculino</option>
+              <option value="FEMININO">Feminino</option>
             </select>
           </div>
 
@@ -168,7 +186,7 @@ export default function IntegrantesPage() {
           </span>
           {filtroStatus === "ALERTA" && (
             <span className="text-amber-600 dark:text-amber-400 font-bold">
-              Exibindo apenas jovens sem presença há mais de 3 meses
+              Exibindo apenas jovens sem presença há mais de {limiteAlerta} meses
             </span>
           )}
         </div>
@@ -223,6 +241,7 @@ export default function IntegrantesPage() {
                           src={int.fotoUrl}
                           alt={int.nomeCompleto}
                           fill
+                          unoptimized
                           className="object-cover"
                         />
                       ) : (
@@ -233,11 +252,22 @@ export default function IntegrantesPage() {
                       <h3 className="font-extrabold text-sm sm:text-base text-neutral-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-[#FFC72C] transition-colors leading-tight">
                         {int.nomeCompleto}
                       </h3>
-                      {int.apelido && (
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
-                          &quot;{int.apelido}&quot;
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {int.apelido && (
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                            &quot;{int.apelido}&quot;
+                          </span>
+                        )}
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            int.sexo === "FEMININO"
+                              ? "bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300"
+                              : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                          }`}
+                        >
+                          {int.sexo === "FEMININO" ? "Feminino" : "Masculino"}
                         </span>
-                      )}
+                      </div>
                     </div>
                   </div>
 

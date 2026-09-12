@@ -132,13 +132,23 @@ export default function AniversariantesPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg border flex-shrink-0 ${
+                        className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg border flex-shrink-0 relative overflow-hidden shadow-inner ${
                           a.fazHoje
                             ? "bg-[#FFC72C] text-neutral-950 border-amber-400"
                             : "bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-white border-neutral-200 dark:border-neutral-700"
                         }`}
                       >
-                        {a.dia}
+                        {a.fotoUrl ? (
+                          <Image
+                            src={a.fotoUrl}
+                            alt={a.nomeCompleto}
+                            fill
+                            unoptimized
+                            className="object-cover"
+                          />
+                        ) : (
+                          <span>{a.dia}</span>
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -156,8 +166,8 @@ export default function AniversariantesPage() {
                         </div>
                         <p className="text-xs text-neutral-500 mt-0.5">
                           {a.idadeSendoCompletada > 0
-                            ? `Completando ${a.idadeSendoCompletada} anos`
-                            : "Data cadastrada"}
+                            ? `Completando ${a.idadeSendoCompletada} anos (Dia ${a.dia})`
+                            : `Dia ${a.dia}`}
                         </p>
                       </div>
                     </div>
@@ -226,8 +236,20 @@ export default function AniversariantesPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-pink-500/10 dark:bg-pink-500/20 text-pink-600 dark:text-pink-400 flex items-center justify-center font-black text-sm border border-pink-500/20 flex-shrink-0">
-                        {g.dia ? `Dia ${g.dia}` : "Mês"}
+                      <div className="w-14 h-14 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-[#FFC72C] flex items-center justify-center font-black text-xs border border-amber-500/20 flex-shrink-0 relative overflow-hidden shadow-inner p-1 text-center leading-tight">
+                        {g.fotoUrl ? (
+                          <Image
+                            src={g.fotoUrl}
+                            alt={g.nomeCompleto}
+                            fill
+                            unoptimized
+                            className="object-cover"
+                          />
+                        ) : (
+                          <span className="text-xs font-black">
+                            {g.anos ? `${g.anos} ${g.anos === 1 ? "ano" : "anos"}` : g.tempoTexto.replace(/ de JUSC.*/i, "")}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
@@ -245,7 +267,7 @@ export default function AniversariantesPage() {
                         </div>
                         <p className="text-xs font-semibold text-amber-600 dark:text-[#FFC72C] mt-0.5 flex items-center gap-1">
                           <Heart className="w-3.5 h-3.5 fill-current" />
-                          {g.tempoTexto}
+                          {g.tempoTexto} {g.dia ? `• Dia ${g.dia}` : ""}
                         </p>
                       </div>
                     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -43,11 +43,15 @@ export default function EditarIntegrantePage({
 
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [apelido, setApelido] = useState("");
+  const [sexo, setSexo] = useState<"MASCULINO" | "FEMININO">("MASCULINO");
   const [telefone, setTelefone] = useState("");
   const [dataNascimento, setDataNascimento] = useState(""); // Formato DD/MM/AAAA
   const [nomeResponsavel, setNomeResponsavel] = useState("");
   const [telefoneResponsavel, setTelefoneResponsavel] = useState("");
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+
+  const datePickerNascRef = useRef<HTMLInputElement>(null);
+  const datePickerEntradaRef = useRef<HTMLInputElement>(null);
 
   // Lógica de tempo de grupo com 3 níveis de precisão
   const [tempoGrupoPrecisao, setTempoGrupoPrecisao] = useState<
@@ -93,6 +97,7 @@ export default function EditarIntegrantePage({
 
         setNomeCompleto(int.nomeCompleto || "");
         setApelido(int.apelido || "");
+        setSexo(int.sexo === "FEMININO" ? "FEMININO" : "MASCULINO");
         setTelefone(formatarTelefone(int.telefone || ""));
         setDataNascimento(isoParaBrasileiro(int.dataNascimento));
         setNomeResponsavel(int.nomeResponsavel || "");
@@ -198,6 +203,7 @@ export default function EditarIntegrantePage({
         body: JSON.stringify({
           nomeCompleto,
           apelido,
+          sexo,
           telefone,
           dataNascimento: dataNascIso,
           nomeResponsavel,
@@ -385,10 +391,68 @@ export default function EditarIntegrantePage({
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Sexo *
+                </label>
+                <div className="flex items-center gap-3 pt-1">
+                  <label
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer select-none text-xs font-bold transition-all ${
+                      sexo === "MASCULINO"
+                        ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300 ring-2 ring-blue-400/20"
+                        : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="sexo"
+                      value="MASCULINO"
+                      checked={sexo === "MASCULINO"}
+                      onChange={() => setSexo("MASCULINO")}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 accent-blue-600"
+                    />
+                    <span>Masculino</span>
+                  </label>
+
+                  <label
+                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer select-none text-xs font-bold transition-all ${
+                      sexo === "FEMININO"
+                        ? "bg-pink-50 dark:bg-pink-950/40 border-pink-400 dark:border-pink-600 text-pink-700 dark:text-pink-300 ring-2 ring-pink-400/20"
+                        : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="sexo"
+                      value="FEMININO"
+                      checked={sexo === "FEMININO"}
+                      onChange={() => setSexo("FEMININO")}
+                      className="w-4 h-4 text-pink-600 focus:ring-pink-500 accent-pink-600"
+                    />
+                    <span>Feminino</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
                   Data de Nascimento * (DD/MM/AAAA)
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (datePickerNascRef.current) {
+                        if (typeof datePickerNascRef.current.showPicker === "function") {
+                          datePickerNascRef.current.showPicker();
+                        } else {
+                          datePickerNascRef.current.click();
+                        }
+                      }
+                    }}
+                    title="Clique para abrir o calendário"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer z-10"
+                  >
+                    <Calendar className="w-4 h-4 text-amber-500" />
+                  </button>
                   <input
                     type="text"
                     required
@@ -396,7 +460,20 @@ export default function EditarIntegrantePage({
                     value={dataNascimento}
                     onChange={(e) => setDataNascimento(formatarDataDigitacao(e.target.value))}
                     placeholder="DD/MM/AAAA (ex.: 15/04/2006)"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                  />
+                  {/* Input invisível nativo acionado pelo clique no ícone */}
+                  <input
+                    type="date"
+                    ref={datePickerNascRef}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setDataNascimento(isoParaBrasileiro(e.target.value));
+                      }
+                    }}
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-hidden="true"
                   />
                 </div>
               </div>
@@ -531,7 +608,22 @@ export default function EditarIntegrantePage({
                   Data de Entrada no JUSC * (DD/MM/AAAA)
                 </label>
                 <div className="relative w-full sm:w-64">
-                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (datePickerEntradaRef.current) {
+                        if (typeof datePickerEntradaRef.current.showPicker === "function") {
+                          datePickerEntradaRef.current.showPicker();
+                        } else {
+                          datePickerEntradaRef.current.click();
+                        }
+                      }
+                    }}
+                    title="Clique para abrir o calendário"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer z-10"
+                  >
+                    <Calendar className="w-4 h-4 text-amber-500" />
+                  </button>
                   <input
                     type="text"
                     required
@@ -539,7 +631,19 @@ export default function EditarIntegrantePage({
                     value={tempoGrupoDataCompleta}
                     onChange={(e) => setTempoGrupoDataCompleta(formatarDataDigitacao(e.target.value))}
                     placeholder="DD/MM/AAAA (ex.: 05/03/2023)"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                  />
+                  <input
+                    type="date"
+                    ref={datePickerEntradaRef}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setTempoGrupoDataCompleta(isoParaBrasileiro(e.target.value));
+                      }
+                    }}
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-hidden="true"
                   />
                 </div>
               </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BarChart3,
   FileSpreadsheet,
+  FileText,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -28,6 +29,8 @@ import {
   X,
 } from "lucide-react";
 import { formatarData, formatarTelefone } from "@/lib/utils";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function RelatoriosPage() {
   const [aba, setAba] = useState<
@@ -36,7 +39,12 @@ export default function RelatoriosPage() {
   const [encontros, setEncontros] = useState<any[]>([]);
   const [integrantes, setIntegrantes] = useState<any[]>([]);
   const [relatorioResponsaveis, setRelatorioResponsaveis] = useState<any[]>([]);
+  const [limiteAlerta, setLimiteAlerta] = useState<number>(2);
+  const [limiteInativo, setLimiteInativo] = useState<number>(12);
   const [carregando, setCarregando] = useState(true);
+
+  // Filtro de Sexo geral para relatórios
+  const [filtroSexo, setFiltroSexo] = useState<string>("TODOS");
 
   // Filtros de Encontros (Período)
   // "GERAL" = Todos os encontros registrados
@@ -81,6 +89,8 @@ export default function RelatoriosPage() {
         setEncontros(data.encontros || []);
         setIntegrantes(data.integrantes || []);
         setRelatorioResponsaveis(data.relatorioResponsaveis || []);
+        if (data.limiteAlerta) setLimiteAlerta(data.limiteAlerta);
+        if (data.limiteInativo) setLimiteInativo(data.limiteInativo);
         if (data.integrantes?.length > 0) {
           setIntegranteSelecionadoId(data.integrantes[0].id);
         }
@@ -109,9 +119,14 @@ export default function RelatoriosPage() {
     return encontros.slice(0, limiteQtd);
   }, [encontros, filtroPeriodoEncontros]);
 
-  // 2. Filtragem dos Integrantes de acordo com os filtros de membros e busca
+  // 2. Filtragem dos Integrantes de acordo com os filtros de membros, sexo e busca
   const integrantesFiltrados = useMemo(() => {
     return integrantes.filter((int) => {
+      // Filtro de sexo
+      if (filtroSexo !== "TODOS" && (int.sexo || "MASCULINO") !== filtroSexo) {
+        return false;
+      }
+
       // Busca textual por nome, apelido ou telefone
       if (busca.trim()) {
         const termo = busca.toLowerCase();
@@ -160,11 +175,14 @@ export default function RelatoriosPage() {
 
       return true;
     });
-  }, [integrantes, busca, filtroMembros]);
+  }, [integrantes, busca, filtroMembros, filtroSexo]);
 
-  // 3. Filtragem de Responsáveis com base na busca
+  // 3. Filtragem de Responsáveis com base na busca e sexo
   const responsaveisFiltrados = useMemo(() => {
     return relatorioResponsaveis.filter((r) => {
+      if (filtroSexo !== "TODOS" && (r.integranteSexo || "MASCULINO") !== filtroSexo) {
+        return false;
+      }
       if (!busca.trim()) return true;
       const termo = busca.toLowerCase();
       return (
@@ -174,11 +192,16 @@ export default function RelatoriosPage() {
         r.integranteTelefone.replace(/\D/g, "").includes(termo.replace(/\D/g, ""))
       );
     });
-  }, [relatorioResponsaveis, busca]);
+  }, [relatorioResponsaveis, busca, filtroSexo]);
 
   // 4. Filtragem da Aba de Saúde e Restrições Alimentares
   const saudeFiltrados = useMemo(() => {
     return integrantes.filter((int) => {
+      // Filtro de sexo
+      if (filtroSexo !== "TODOS" && (int.sexo || "MASCULINO") !== filtroSexo) {
+        return false;
+      }
+
       // Busca textual
       if (busca.trim()) {
         const termo = busca.toLowerCase();
@@ -204,11 +227,16 @@ export default function RelatoriosPage() {
 
       return true;
     });
-  }, [integrantes, busca, filtroSaude]);
+  }, [integrantes, busca, filtroSaude, filtroSexo]);
 
   // 5. Filtragem da Aba de Sacramentos
   const sacramentosFiltrados = useMemo(() => {
     return integrantes.filter((int) => {
+      // Filtro de sexo
+      if (filtroSexo !== "TODOS" && (int.sexo || "MASCULINO") !== filtroSexo) {
+        return false;
+      }
+
       // Busca textual
       if (busca.trim()) {
         const termo = busca.toLowerCase();
@@ -232,7 +260,7 @@ export default function RelatoriosPage() {
 
       return true;
     });
-  }, [integrantes, busca, filtroSacramentoRelatorio]);
+  }, [integrantes, busca, filtroSacramentoRelatorio, filtroSexo]);
 
   // Exportar Matriz de Presenças para CSV (com telefones do jovem e do responsável)
   function exportarMatrizCSV() {
@@ -477,7 +505,280 @@ export default function RelatoriosPage() {
     document.body.removeChild(link);
   }
 
-  // Cálculo individual
+  // --- EXPORTAÇÃO EM PDF (jsPDF + autoTable) ---
+
+  // PDF 1: Matriz de Presenças (Paisagem)
+  function exportarMatrizPDF() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text("JUSC — Matriz de Presenças Pastoral", 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Período: ${filtroPeriodoEncontros} encontros | Total Integrantes: ${integrantesFiltrados.length}`,
+      14,
+      21
+    );
+
+    const headEncontros = encontrosFiltrados.map((e) =>
+      new Date(e.dataHora).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+    );
+
+    const tableHead = [["Integrante", "Telefone", "Sexo", "Status", ...headEncontros, "Pres.", "%"]];
+
+    const tableBody = integrantesFiltrados.map((int) => {
+      const presencasConfirmadas = int.presencas || [];
+      const totalEnc = encontrosFiltrados.length;
+      let count = 0;
+
+      const colunasPresenca = encontrosFiltrados.map((e) => {
+        const p =
+          e.presencas?.find((pr: any) => pr.integranteId === int.id) ||
+          presencasConfirmadas.find((pr: any) => pr.encontroId === e.id);
+        if (p?.presente) {
+          count++;
+          return "P";
+        }
+        return "-";
+      });
+
+      const perc = totalEnc > 0 ? Math.round((count / totalEnc) * 100) : 0;
+
+      return [
+        int.nomeCompleto + (int.apelido ? ` (${int.apelido})` : ""),
+        int.telefone,
+        int.sexo === "FEMININO" ? "F" : "M",
+        int.temAlertaAusencia ? "Alerta" : int.statusCalculado === "ATIVO" ? "Ativo" : "Inativo",
+        ...colunasPresenca,
+        String(count),
+        `${perc}%`,
+      ];
+    });
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 25,
+      styles: { fontSize: 7, cellPadding: 1.5 },
+      headStyles: { fillColor: [255, 199, 44], textColor: [20, 20, 20], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+    });
+
+    doc.save(`matriz-presencas-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  // PDF 2: Saúde e Restrições Alimentares
+  function exportarSaudePDF() {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text("JUSC — Relatório de Saúde e Restrições Alimentares", 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Total listado: ${saudeFiltrados.length} integrantes`,
+      14,
+      21
+    );
+
+    const tableHead = [
+      ["Integrante", "Telefone", "Sexo", "Alergias Identificadas", "S/ Glúten", "S/ Lactose", "Responsável", "Tel. Resp."],
+    ];
+
+    const tableBody = saudeFiltrados.map((s) => [
+      s.nomeCompleto + (s.apelido ? ` (${s.apelido})` : ""),
+      s.telefone,
+      s.sexo === "FEMININO" ? "F" : "M",
+      s.possuiAlergia ? s.descricaoAlergia || "Possui alergia" : "Nenhuma",
+      s.intoleranciaGluten ? "Sim" : "Não",
+      s.intoleranciaLactose ? "Sim" : "Não",
+      s.nomeResponsavel || "-",
+      s.telefoneResponsavel || "-",
+    ]);
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 25,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [225, 29, 72], textColor: [255, 255, 255], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [254, 242, 242] },
+    });
+
+    doc.save(`relatorio-saude-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  // PDF 3: Sacramentos
+  function exportarSacramentosPDF() {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text("JUSC — Relatório Pastoral de Sacramentos", 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Total listado: ${sacramentosFiltrados.length} integrantes`,
+      14,
+      21
+    );
+
+    const tableHead = [
+      ["Integrante", "Telefone", "Sexo", "Batismo", "1ª Eucaristia", "Crisma", "Iniciação Cristã", "Status"],
+    ];
+
+    const tableBody = sacramentosFiltrados.map((sac) => {
+      const iniciacaoCompleta = sac.batismo && sac.primeiraEucaristia && sac.crisma;
+      return [
+        sac.nomeCompleto + (sac.apelido ? ` (${sac.apelido})` : ""),
+        sac.telefone,
+        sac.sexo === "FEMININO" ? "F" : "M",
+        sac.batismo ? "Sim" : "Pendente",
+        sac.primeiraEucaristia ? "Sim" : "Pendente",
+        sac.crisma ? "Sim" : "Pendente",
+        iniciacaoCompleta ? "Completa" : "Em curso",
+        sac.statusCalculado,
+      ];
+    });
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 25,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [255, 251, 235] },
+    });
+
+    doc.save(`relatorio-sacramentos-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  // PDF 4: Responsáveis Legais
+  function exportarResponsaveisPDF() {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text("JUSC — Relatório de Responsáveis Legais", 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Total listado: ${responsaveisFiltrados.length} responsáveis`,
+      14,
+      21
+    );
+
+    const tableHead = [
+      ["Nome do Responsável", "Telefone Responsável", "Jovem Vinculado", "Sexo Jovem", "Telefone Jovem", "Status"],
+    ];
+
+    const tableBody = responsaveisFiltrados.map((r) => [
+      r.nomeResponsavel,
+      r.telefoneResponsavel,
+      r.integranteNome + (r.integranteApelido ? ` (${r.integranteApelido})` : ""),
+      r.integranteSexo === "FEMININO" ? "Feminino" : "Masculino",
+      r.integranteTelefone,
+      r.integranteStatus,
+    ]);
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 25,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [255, 199, 44], textColor: [20, 20, 20], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+    });
+
+    doc.save(`relatorio-responsaveis-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  // PDF 5: Ausências Prolongadas
+  function exportarAusentesPDF() {
+    const ausentes = integrantes.filter(
+      (i) =>
+        (filtroSexo === "TODOS" || (i.sexo || "MASCULINO") === filtroSexo) &&
+        (i.temAlertaAusencia || i.statusCalculado === "INATIVO")
+    );
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text("JUSC — Relatório de Ausências Prolongadas", 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Regra: Alerta > ${limiteAlerta} meses | Total: ${ausentes.length} integrantes`,
+      14,
+      21
+    );
+
+    const tableHead = [
+      ["Integrante", "Telefone", "Sexo", "Situação", "Meses Ausente", "Última Presença", "Responsável", "Tel. Resp."],
+    ];
+
+    const tableBody = ausentes.map((i) => [
+      i.nomeCompleto + (i.apelido ? ` (${i.apelido})` : ""),
+      i.telefone,
+      i.sexo === "FEMININO" ? "F" : "M",
+      i.temAlertaAusencia ? `Alerta (>${limiteAlerta}m)` : "Inativo",
+      `${i.mesesSemPresenca} meses`,
+      i.ultimaPresencaData ? formatarData(i.ultimaPresencaData) : "Sem registro",
+      i.nomeResponsavel || "-",
+      i.telefoneResponsavel || "-",
+    ]);
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 25,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [245, 158, 11], textColor: [20, 20, 20], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [254, 243, 199] },
+    });
+
+    doc.save(`relatorio-ausencias-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  // PDF 6: Frequência Individual
+  function exportarIndividualPDF() {
+    if (!integranteSel) return;
+
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text(`JUSC — Ficha de Frequência: ${integranteSel.nomeCompleto}`, 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Telefone: ${integranteSel.telefone} | Status: ${integranteSel.statusCalculado} | Aproveitamento: ${percIndividual}%`,
+      14,
+      21
+    );
+
+    const tableHead = [["Data do Encontro", "Tema do Encontro", "Presença"]];
+
+    const tableBody = presencasIndividual.map((p) => [
+      new Date(p.data).toLocaleDateString("pt-BR"),
+      p.tema,
+      p.presente ? "Presente" : "Ausente",
+    ]);
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 25,
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      headStyles: { fillColor: [255, 199, 44], textColor: [20, 20, 20], fontStyle: "bold" },
+    });
+
+    doc.save(`frequencia-${integranteSel.nomeCompleto.replace(/\s+/g, "_")}.pdf`);
+  }
   const integranteSel = integrantes.find((i) => i.id === integranteSelecionadoId);
   const encontrosParaFrequencia = encontros.slice(0, qtdEncontrosFrequencia);
   const presencasIndividual = encontrosParaFrequencia.map((e) => {
@@ -512,7 +813,7 @@ export default function RelatoriosPage() {
         </div>
 
         {/* 6 Abas Modernas */}
-        <div className="flex flex-wrap items-center gap-1.5 bg-neutral-200/70 dark:bg-[#15171e] p-1 rounded-2xl border border-neutral-300/60 dark:border-neutral-800">
+        <div className="flex flex-wrap items-center gap-1.5 bg-neutral-200/70 dark:bg-[#15171e] p-1 rounded-2xl border border-neutral-300/60 dark:border-neutral-800 print:hidden">
           <button
             onClick={() => setAba("MATRIZ")}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -589,13 +890,13 @@ export default function RelatoriosPage() {
         /* Aba 1: Matriz de Presenças com Filtros Avançados */
         <div className="space-y-4">
           {/* Caixa de Filtros Avançados */}
-          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3">
+          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3 print:hidden">
             <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#FFC72C]">
               <Filter className="w-4 h-4" />
               <span>Filtros do Relatório de Presenças</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               {/* Filtro 1: Período / Encontros */}
               <div>
                 <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
@@ -641,6 +942,22 @@ export default function RelatoriosPage() {
                 </select>
               </div>
 
+              {/* Filtro Sexo */}
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                  Sexo
+                </label>
+                <select
+                  value={filtroSexo}
+                  onChange={(e) => setFiltroSexo(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                >
+                  <option value="TODOS">Todos os sexos</option>
+                  <option value="MASCULINO">Masculino</option>
+                  <option value="FEMININO">Feminino</option>
+                </select>
+              </div>
+
               {/* Filtro 3: Busca Textual */}
               <div>
                 <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
@@ -666,27 +983,40 @@ export default function RelatoriosPage() {
               </span>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={exportarMatrizPDF}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 text-xs font-bold shadow-sm transition-all"
+                >
+                  <Download className="w-4 h-4 text-neutral-950" />
+                  Exportar PDF
+                </button>
+                <button
                   onClick={exportarMatrizCSV}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                  Exportar CSV com Telefones
+                  Exportar CSV
                 </button>
                 <button
                   onClick={() => window.print()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors"
                 >
                   <Download className="w-4 h-4 text-blue-600" />
-                  Imprimir / PDF
+                  Imprimir Matriz
                 </button>
               </div>
             </div>
           </div>
 
           {/* Tabela da Matriz */}
-          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4 print:p-0 print:border-none print:shadow-none">
+            <div className="hidden print:block mb-3">
+              <h2 className="text-base font-black text-black">JUSC — Matriz de Presenças Pastoral</h2>
+              <p className="text-[10px] text-neutral-600">
+                Data de Emissão: {new Date().toLocaleDateString("pt-BR")} | Período: {filtroPeriodoEncontros} encontros | Integrantes listados: {integrantesFiltrados.length}
+              </p>
+            </div>
+            <div className="overflow-x-auto print:overflow-visible">
+              <table className="w-full text-left text-xs border-collapse print:text-[10px]">
                 <thead>
                   <tr className="border-b border-neutral-200 dark:border-neutral-800">
                     <th className="py-3 px-3 font-extrabold text-neutral-700 dark:text-neutral-300 min-w-[200px]">
@@ -694,6 +1024,9 @@ export default function RelatoriosPage() {
                     </th>
                     <th className="py-3 px-2 font-extrabold text-neutral-700 dark:text-neutral-300 min-w-[130px]">
                       Telefone
+                    </th>
+                    <th className="py-3 px-2 font-extrabold text-neutral-700 dark:text-neutral-300 min-w-[50px] text-center">
+                      Sexo
                     </th>
                     <th className="py-3 px-2 font-extrabold text-neutral-700 dark:text-neutral-300 min-w-[70px]">
                       Status
@@ -719,7 +1052,7 @@ export default function RelatoriosPage() {
                   {integrantesFiltrados.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={4 + encontrosFiltrados.length}
+                        colSpan={5 + encontrosFiltrados.length}
                         className="py-8 text-center text-xs text-neutral-500"
                       >
                         Nenhum integrante encontrado para os filtros selecionados.
@@ -776,6 +1109,17 @@ export default function RelatoriosPage() {
                           </td>
                           <td className="py-2.5 px-2 text-neutral-600 dark:text-neutral-300 font-mono text-[11px]">
                             {int.telefone}
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                int.sexo === "FEMININO"
+                                  ? "bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300"
+                                  : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                              }`}
+                            >
+                              {int.sexo === "FEMININO" ? "F" : "M"}
+                            </span>
                           </td>
                           <td className="py-2.5 px-2">
                             {int.temAlertaAusencia ? (
@@ -843,7 +1187,7 @@ export default function RelatoriosPage() {
               <span>Filtros do Relatório de Saúde & Restrições Alimentares</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
                   Filtrar por Tipo de Restrição
@@ -858,6 +1202,21 @@ export default function RelatoriosPage() {
                   <option value="INTOLERANCIA_GLUTEN">Apenas Intolerância a Glúten / Celíacos</option>
                   <option value="INTOLERANCIA_LACTOSE">Apenas Intolerância a Lactose</option>
                   <option value="TODOS_INTEGRANTES">Todos os Integrantes do Grupo</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                  Filtrar por Sexo
+                </label>
+                <select
+                  value={filtroSexo}
+                  onChange={(e) => setFiltroSexo(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                >
+                  <option value="TODOS">Todos os sexos</option>
+                  <option value="MASCULINO">Masculino</option>
+                  <option value="FEMININO">Feminino</option>
                 </select>
               </div>
 
@@ -882,13 +1241,22 @@ export default function RelatoriosPage() {
               <span>
                 Total listado: <strong>{saudeFiltrados.length}</strong> jovens com os filtros atuais.
               </span>
-              <button
-                onClick={exportarSaudeCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold transition-colors"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-rose-600" />
-                Exportar CSV Saúde
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarSaudePDF}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 font-bold transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5 text-rose-600" />
+                  Exportar PDF
+                </button>
+                <button
+                  onClick={exportarSaudeCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-rose-600" />
+                  Exportar CSV
+                </button>
+              </div>
             </div>
           </div>
 
@@ -934,6 +1302,9 @@ export default function RelatoriosPage() {
                     <th className="py-3 px-3 font-extrabold text-neutral-700 dark:text-neutral-300">
                       Integrante
                     </th>
+                    <th className="py-3 px-2 font-extrabold text-neutral-700 dark:text-neutral-300 text-center">
+                      Sexo
+                    </th>
                     <th className="py-3 px-3 font-extrabold text-neutral-700 dark:text-neutral-300">
                       Telefone
                     </th>
@@ -957,7 +1328,7 @@ export default function RelatoriosPage() {
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
                   {saudeFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-neutral-500">
+                      <td colSpan={8} className="py-8 text-center text-xs text-neutral-500">
                         Nenhum integrante com restrições alimentares encontrado para o filtro selecionado.
                       </td>
                     </tr>
@@ -985,6 +1356,17 @@ export default function RelatoriosPage() {
                                 </span>
                               )}
                             </Link>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                s.sexo === "FEMININO"
+                                  ? "bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300"
+                                  : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                              }`}
+                            >
+                              {s.sexo === "FEMININO" ? "F" : "M"}
+                            </span>
                           </td>
                           <td className="py-3 px-3 font-mono text-neutral-600 dark:text-neutral-300">
                             {s.telefone}
@@ -1063,7 +1445,7 @@ export default function RelatoriosPage() {
               <span>Filtros do Relatório de Sacramentos</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
                   Filtrar por Sacramento / Situação
@@ -1081,6 +1463,21 @@ export default function RelatoriosPage() {
                   <option value="COM_BATISMO">Com Batismo Realizado</option>
                   <option value="COM_EUCARISTIA">Com 1ª Eucaristia Realizada</option>
                   <option value="COM_CRISMA">Com Crisma Realizado</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                  Filtrar por Sexo
+                </label>
+                <select
+                  value={filtroSexo}
+                  onChange={(e) => setFiltroSexo(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                >
+                  <option value="TODOS">Todos os sexos</option>
+                  <option value="MASCULINO">Masculino</option>
+                  <option value="FEMININO">Feminino</option>
                 </select>
               </div>
 
@@ -1105,13 +1502,22 @@ export default function RelatoriosPage() {
               <span>
                 Total listado: <strong>{sacramentosFiltrados.length}</strong> integrantes.
               </span>
-              <button
-                onClick={exportarSacramentosCSV}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold transition-colors"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-[#FFC72C]" />
-                Exportar CSV Sacramentos
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarSacramentosPDF}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900 font-bold transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-600" />
+                  Exportar PDF
+                </button>
+                <button
+                  onClick={exportarSacramentosCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 font-bold transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-[#FFC72C]" />
+                  Exportar CSV
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1170,6 +1576,9 @@ export default function RelatoriosPage() {
                     <th className="py-3 px-3 font-extrabold text-neutral-700 dark:text-neutral-300">
                       Integrante
                     </th>
+                    <th className="py-3 px-2 font-extrabold text-neutral-700 dark:text-neutral-300 text-center">
+                      Sexo
+                    </th>
                     <th className="py-3 px-3 font-extrabold text-neutral-700 dark:text-neutral-300">
                       Telefone
                     </th>
@@ -1193,7 +1602,7 @@ export default function RelatoriosPage() {
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
                   {sacramentosFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-xs text-neutral-500">
+                      <td colSpan={8} className="py-8 text-center text-xs text-neutral-500">
                         Nenhum integrante encontrado para os filtros selecionados.
                       </td>
                     </tr>
@@ -1222,6 +1631,17 @@ export default function RelatoriosPage() {
                                 </span>
                               )}
                             </Link>
+                          </td>
+                          <td className="py-3 px-2 text-center">
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                sac.sexo === "FEMININO"
+                                  ? "bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300"
+                                  : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                              }`}
+                            >
+                              {sac.sexo === "FEMININO" ? "F" : "M"}
+                            </span>
                           </td>
                           <td className="py-3 px-3 font-mono text-neutral-600 dark:text-neutral-300">
                             {sac.telefone}
@@ -1306,25 +1726,45 @@ export default function RelatoriosPage() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={exportarResponsaveisPDF}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900 text-xs font-bold transition-colors"
+              >
+                <FileText className="w-4 h-4 text-amber-600" />
+                Exportar PDF
+              </button>
+              <button
                 onClick={exportarResponsaveisCSV}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors"
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                Exportar CSV de Responsáveis
+                Exportar CSV
               </button>
             </div>
           </div>
 
-          {/* Barra de busca de responsáveis */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
-            <input
-              type="text"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por responsável, jovem ou telefone..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
-            />
+          {/* Barra de busca e filtro de sexo de responsáveis */}
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+              <input
+                type="text"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por responsável, jovem ou telefone..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+              />
+            </div>
+            <div className="w-full sm:w-56">
+              <select
+                value={filtroSexo}
+                onChange={(e) => setFiltroSexo(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+              >
+                <option value="TODOS">Todos os Jovens</option>
+                <option value="MASCULINO">Jovens Masculino</option>
+                <option value="FEMININO">Jovens Feminino</option>
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -1340,6 +1780,9 @@ export default function RelatoriosPage() {
                   <th className="py-3 px-3 font-extrabold text-neutral-700 dark:text-neutral-300">
                     Jovem Vinculado
                   </th>
+                  <th className="py-3 px-2 font-extrabold text-neutral-700 dark:text-neutral-300 text-center">
+                    Sexo
+                  </th>
                   <th className="py-3 px-3 font-extrabold text-neutral-700 dark:text-neutral-300">
                     Telefone do Jovem
                   </th>
@@ -1354,7 +1797,7 @@ export default function RelatoriosPage() {
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
                 {responsaveisFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-xs text-neutral-500">
+                    <td colSpan={7} className="py-8 text-center text-xs text-neutral-500">
                       Nenhum responsável encontrado.
                     </td>
                   </tr>
@@ -1390,6 +1833,17 @@ export default function RelatoriosPage() {
                               ({r.integranteApelido})
                             </span>
                           )}
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                              r.integranteSexo === "FEMININO"
+                                ? "bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300"
+                                : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                            }`}
+                          >
+                            {r.integranteSexo === "FEMININO" ? "F" : "M"}
+                          </span>
                         </td>
                         <td className="py-3 px-3 font-mono text-neutral-600 dark:text-neutral-400">
                           {r.integranteTelefone}
@@ -1461,6 +1915,19 @@ export default function RelatoriosPage() {
                   <option value={20}>Últimos 20 encontros</option>
                 </select>
               </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <span className="text-xs text-neutral-500">
+                Acompanhamento detalhado da participação pessoal nos últimos encontros.
+              </span>
+              <button
+                onClick={exportarIndividualPDF}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 text-xs font-bold shadow-sm transition-all"
+              >
+                <FileText className="w-3.5 h-3.5 text-neutral-950" />
+                Exportar Frequência (PDF)
+              </button>
             </div>
 
             {integranteSel && (
@@ -1548,27 +2015,53 @@ export default function RelatoriosPage() {
                 Integrantes com Ausência Prolongada
               </h2>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Regra 9.1: &gt; 3 meses sem presença gera alerta pastoral; &gt; 12 meses inativa automaticamente.
+                Regra 9.1: &gt; {limiteAlerta} meses sem presença gera alerta pastoral; &gt; {limiteInativo} meses inativa automaticamente.
               </p>
             </div>
 
-            <button
-              onClick={exportarAusentesCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-amber-600" />
-              Exportar Lista CSV
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={exportarAusentesPDF}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900 text-xs font-bold transition-colors"
+              >
+                <FileText className="w-4 h-4 text-amber-600" />
+                Exportar PDF
+              </button>
+              <button
+                onClick={exportarAusentesCSV}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-amber-600" />
+                Exportar CSV
+              </button>
+            </div>
           </div>
 
-          {integrantes.filter((i) => i.temAlertaAusencia).length === 0 ? (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="text-xs text-neutral-500">
+              Jovens que necessitam de acompanhamento ou contato pastoral fraterno
+            </span>
+            <div className="w-full sm:w-56">
+              <select
+                value={filtroSexo}
+                onChange={(e) => setFiltroSexo(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+              >
+                <option value="TODOS">Todos os sexos</option>
+                <option value="MASCULINO">Apenas Masculino</option>
+                <option value="FEMININO">Apenas Feminino</option>
+              </select>
+            </div>
+          </div>
+
+          {integrantes.filter((i) => i.temAlertaAusencia && (filtroSexo === "TODOS" || (i.sexo || "MASCULINO") === filtroSexo)).length === 0 ? (
             <div className="p-8 text-center text-xs text-neutral-500">
               Nenhum integrante com alerta de ausência no momento. A assiduidade está ótima!
             </div>
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {integrantes
-                .filter((i) => i.temAlertaAusencia)
+                .filter((i) => i.temAlertaAusencia && (filtroSexo === "TODOS" || (i.sexo || "MASCULINO") === filtroSexo))
                 .map((int) => {
                   const linkWhatsapp = `https://api.whatsapp.com/send?phone=${int.telefone.replace(
                     /\D/g,
