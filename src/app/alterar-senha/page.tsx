@@ -95,16 +95,10 @@ export default function AlterarSenhaPage() {
       </div>
 
       <div className="w-full max-w-md bg-white dark:bg-[#15171e] rounded-3xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 space-y-6">
-        {/* Header com Abelhudo */}
+        {/* Header com Ícone de Segurança */}
         <div className="text-center space-y-2">
-          <div className="relative w-28 h-28 mx-auto">
-            <Image
-              src="/assets/abelhudo.png"
-              alt="Mascote Abelhudo"
-              fill
-              className="object-contain"
-              priority
-            />
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-inner">
+            <Lock className="w-10 h-10" />
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#FFC72C]/20 text-neutral-950 dark:text-[#FFC72C] text-xs font-black uppercase tracking-wider">
             <ShieldCheck className="w-4 h-4" />

@@ -28,7 +28,7 @@ function LoginForm() {
     nomeGrupo: "JUSC",
     subtituloGrupo: "Jovens Unidos Seguindo Cristo",
     logoUrl: "/assets/logo-jusc.jpeg",
-    mascoteUrl: "/assets/abelhudo.png",
+    mascoteUrl: null,
   });
 
   useEffect(() => {
@@ -40,7 +40,7 @@ function LoginForm() {
             nomeGrupo: data.config.nomeGrupo || "JUSC",
             subtituloGrupo: data.config.subtituloGrupo || "Jovens Unidos Seguindo Cristo",
             logoUrl: data.config.logoUrl || "/assets/logo-jusc.jpeg",
-            mascoteUrl: data.config.mascoteUrl || "/assets/abelhudo.png",
+            mascoteUrl: data.config.mascoteUrl || null,
           });
         }
       })

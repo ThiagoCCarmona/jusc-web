@@ -11,6 +11,7 @@ import {
   MessageCircle,
   Clock,
   Heart,
+  PartyPopper,
 } from "lucide-react";
 import { formatarData } from "@/lib/utils";
 
@@ -97,13 +98,8 @@ export default function AniversariantesPage() {
         /* Aba 1: Nascimento */
         aniversariantesNasc.length === 0 ? (
           <div className="text-center bg-white dark:bg-[#15171e] rounded-3xl p-10 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3">
-            <div className="relative w-28 h-28 mx-auto">
-              <Image
-                src="/assets/abelhudo.png"
-                alt="Mascote"
-                fill
-                className="object-contain"
-              />
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-pink-500/10 text-pink-500 flex items-center justify-center shadow-inner">
+              <Cake className="w-10 h-10" />
             </div>
             <h3 className="font-extrabold text-base text-neutral-900 dark:text-white">
               Nenhum aniversariante de nascimento neste mês
@@ -202,13 +198,8 @@ export default function AniversariantesPage() {
         /* Aba 2: Tempo de Grupo */
         aniversariantesGrupo.length === 0 ? (
           <div className="text-center bg-white dark:bg-[#15171e] rounded-3xl p-10 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3">
-            <div className="relative w-28 h-28 mx-auto">
-              <Image
-                src="/assets/abelhudo.png"
-                alt="Mascote"
-                fill
-                className="object-contain"
-              />
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-inner">
+              <PartyPopper className="w-10 h-10" />
             </div>
             <h3 className="font-extrabold text-base text-neutral-900 dark:text-white">
               Nenhum aniversário de grupo neste mês

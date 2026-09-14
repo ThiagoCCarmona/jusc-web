@@ -25,10 +25,10 @@ export default async function HomePage() {
   const subtituloGrupo = config?.subtituloGrupo || "Jovens Unidos Seguindo Cristo";
   const paroquiaNome = config?.paroquiaNome || "Paróquia Menino Jesus";
   const logoUrl = config?.logoUrl || "/assets/logo-jusc.jpeg";
-  const mascoteUrl = config?.mascoteUrl || "/assets/abelhudo.png";
+  const mascoteUrl = config?.mascoteUrl;
   const descricaoGrupo =
     config?.descricaoGrupo ||
-    "Venha fazer parte da nossa colmeia! Um grupo jovem de oração, amizade verdadeira, música e missão.";
+    "Venha participar dos nossos encontros! Um grupo de oração, amizade verdadeira, música e missão.";
 
   const coordenadorNome = config?.coordenadorNome || "Brunão";
   const coordenadorFoto = config?.coordenadorFotoUrl || "/assets/coordenador.jpg";
@@ -147,11 +147,11 @@ export default async function HomePage() {
           {/* Fundo decorativo sutil */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-72 bg-[#FFC72C]/15 dark:bg-[#FFC72C]/10 rounded-full blur-3xl -z-10" />
 
-          {/* Mascote do Grupo */}
+          {/* Logo ou Mascote do Grupo */}
           <div className="relative w-36 h-36 sm:w-44 sm:h-44 mx-auto mb-3 transform hover:scale-105 transition-transform duration-300">
             <Image
-              src={mascoteUrl || "/assets/abelhudo.png"}
-              alt={`Mascote do ${nomeGrupo}`}
+              src={mascoteUrl || logoUrl}
+              alt={`Emblema do ${nomeGrupo}`}
               fill
               unoptimized
               className="object-contain drop-shadow-lg"

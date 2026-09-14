@@ -48,13 +48,13 @@ export function AdminPanelClient() {
 
   // Estados de Configurações, Branding e Liderança
   const [config, setConfig] = useState<any>({
-    nomeGrupo: "JUSC",
-    subtituloGrupo: "Jovens Unidos Seguindo Cristo",
-    paroquiaNome: "Paróquia Menino Jesus",
+    nomeGrupo: "Grupo Jovem",
+    subtituloGrupo: "Paróquia ou Comunidade",
+    paroquiaNome: "Paróquia",
     logoUrl: "/assets/logo-jusc.jpeg",
-    mascoteUrl: "/assets/abelhudo.png",
+    mascoteUrl: "",
     corBase: "#FFC72C",
-    descricaoGrupo: "Venha fazer parte da nossa colmeia! Um grupo jovem de oração, amizade verdadeira, música e missão.",
+    descricaoGrupo: "Venha participar dos nossos encontros! Um grupo de oração, amizade verdadeira, música e missão.",
 
     coordenadorNome: "Brunão",
     coordenadorFotoUrl: "/assets/coordenador.jpg",

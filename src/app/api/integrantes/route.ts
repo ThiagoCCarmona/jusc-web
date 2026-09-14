@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
       limiteInativo,
       encontrosPausados: Boolean(config?.encontrosPausados),
       nomeGrupo: config?.nomeGrupo || "JUSC",
-      mascoteUrl: config?.mascoteUrl || "/assets/abelhudo.png",
+      mascoteUrl: config?.mascoteUrl || null,
     });
 
   } catch (error: any) {

@@ -61,7 +61,7 @@ export default function IntegrantesPage() {
   const [filtroSexo, setFiltroSexo] = useState("TODOS");
   const [filtroClj, setFiltroClj] = useState("TODOS"); // "TODOS" | "SIM" | "NAO"
   const [nomeGrupo, setNomeGrupo] = useState("JUSC");
-  const [mascoteUrl, setMascoteUrl] = useState("/assets/abelhudo.png");
+  const [mascoteUrl, setMascoteUrl] = useState<string | null>(null);
 
   // Filtro de Idade
   const [tipoDataIdade, setTipoDataIdade] = useState<"ATUAL" | "MANUAL">("ATUAL");
@@ -332,17 +332,23 @@ export default function IntegrantesPage() {
           <p className="text-xs text-neutral-500">Carregando integrantes...</p>
         </div>
       ) : integrantes.length === 0 ? (
-        /* Estado Vazio com Mascote Abelhudo */
+        /* Estado Vazio de Integrantes */
         <div className="text-center bg-white dark:bg-[#15171e] rounded-3xl p-10 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
-          <div className="relative w-32 h-32 mx-auto">
-            <Image
-              src={mascoteUrl || "/assets/abelhudo.png"}
-              alt="Mascote"
-              fill
-              unoptimized
-              className="object-contain"
-            />
-          </div>
+          {mascoteUrl ? (
+            <div className="relative w-32 h-32 mx-auto">
+              <Image
+                src={mascoteUrl}
+                alt="Mascote"
+                fill
+                unoptimized
+                className="object-contain"
+              />
+            </div>
+          ) : (
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center shadow-inner">
+              <Users className="w-10 h-10" />
+            </div>
+          )}
           <h3 className="font-extrabold text-lg text-neutral-900 dark:text-white">
             Nenhum integrante encontrado
           </h3>

@@ -172,11 +172,11 @@ model ConfiguracaoGeral {
   subtituloGrupo             String   @default("Jovens Unidos Seguindo Cristo")
   paroquiaNome               String   @default("Paróquia Menino Jesus")
   logoUrl                    String?  @default("/assets/logo-jusc.jpeg")
-  mascoteUrl                 String?  @default("/assets/abelhudo.png")
+  mascoteUrl                 String?
   corBase                    String   @default("#FFC72C")
   corSecundaria              String?  @default("#d97706")
   corDestaque                String?  @default("#f59e0b")
-  descricaoGrupo             String?  @default("Venha fazer parte da nossa colmeia! Um grupo jovem de oração, amizade verdadeira, música e missão.")
+  descricaoGrupo             String?  @default("Venha participar dos nossos encontros! Um grupo jovem de oração, amizade verdadeira, música e missão.")
 
   // Liderança
   coordenadorNome            String   @default("Brunão")

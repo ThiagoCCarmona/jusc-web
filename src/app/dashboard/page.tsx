@@ -105,7 +105,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Banner de Boas-Vindas com Mascote Abelhudo */}
+      {/* Banner de Boas-Vindas */}
       <div className="bg-gradient-to-r from-amber-400/20 via-amber-300/10 to-transparent dark:from-[#262112] dark:via-[#19160d] dark:to-transparent rounded-3xl p-6 border border-amber-300/50 dark:border-amber-900/40 relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
         <div className="space-y-2 text-center sm:text-left z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFC72C] text-neutral-950 text-xs font-black uppercase tracking-wider">
@@ -116,14 +116,14 @@ export default async function DashboardPage() {
             Olá, {usuario?.nome.split(" ")[0]}!
           </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-300 max-w-lg leading-relaxed">
-            Bem-vindo(a) ao painel de gestão do {config?.nomeGrupo || "JUSC"}. Acompanhe a caminhada dos jovens, registre presenças e cuide de nossa colmeia pastoral.
+            Bem-vindo(a) ao painel de gestão do {config?.nomeGrupo || "Grupo"}. Acompanhe a caminhada dos jovens, registre presenças e cuide de nossa comunidade pastoral.
           </p>
         </div>
 
         <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0">
           <Image
-            src={config?.mascoteUrl || "/assets/abelhudo.png"}
-            alt="Mascote"
+            src={config?.mascoteUrl || config?.logoUrl || "/assets/avatar-padrao.png"}
+            alt="Emblema"
             fill
             unoptimized
             className="object-contain drop-shadow-md"

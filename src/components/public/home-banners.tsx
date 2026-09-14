@@ -144,13 +144,13 @@ export function BannerContato({
                   priority
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-amber-300">
+                <div className="w-full h-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                   <Image
-                    src="/assets/abelhudo.png"
-                    alt="Avatar"
-                    width={72}
-                    height={72}
-                    className="object-contain"
+                    src="/assets/avatar-padrao.png"
+                    alt="Avatar Padrão"
+                    width={80}
+                    height={80}
+                    className="object-contain opacity-70"
                   />
                 </div>
               )}

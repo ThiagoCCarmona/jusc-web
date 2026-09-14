@@ -42,11 +42,11 @@ async function main() {
         subtituloGrupo: "Jovens Unidos Seguindo Cristo",
         paroquiaNome: "Paróquia Menino Jesus",
         logoUrl: "/assets/logo-jusc.jpeg",
-        mascoteUrl: "/assets/abelhudo.png",
+        mascoteUrl: null,
         corBase: "#FFC72C",
         corSecundaria: "#d97706",
         corDestaque: "#f59e0b",
-        descricaoGrupo: "Venha fazer parte da nossa colmeia! Um grupo jovem de oração, amizade verdadeira, música e missão.",
+        descricaoGrupo: "Venha participar dos nossos encontros! Um grupo jovem de oração, amizade verdadeira, música e missão.",
 
         coordenadorNome: "Coordenador",
         coordenadorFotoUrl: "/assets/coordenador.jpg",
