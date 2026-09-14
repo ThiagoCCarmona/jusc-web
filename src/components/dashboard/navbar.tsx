@@ -13,6 +13,7 @@ import {
   Cake,
   BarChart3,
   ShieldAlert,
+  Shirt,
   LogOut,
   Menu,
   X,
@@ -26,15 +27,24 @@ interface NavbarProps {
     nome: string;
     login?: string;
     email?: string | null;
-    perfil: "ADMIN" | "COLABORADOR";
+    perfil: "ADMIN" | "COLABORADOR" | "TESOUREIRO";
+  };
+  config?: {
+    nomeGrupo: string;
+    paroquiaNome: string;
+    logoUrl: string | null;
   };
 }
 
-export function DashboardNavbar({ usuario }: NavbarProps) {
+export function DashboardNavbar({ usuario, config }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuAberto, setMenuAberto] = useState(false);
   const [saindo, setSaindo] = useState(false);
+
+  const nomeGrupo = config?.nomeGrupo || "JUSC";
+  const paroquiaNome = config?.paroquiaNome || "Paróquia Menino Jesus";
+  const logoUrl = config?.logoUrl || "/assets/logo-jusc.jpeg";
 
   async function handleLogout() {
     setSaindo(true);
@@ -55,6 +65,10 @@ export function DashboardNavbar({ usuario }: NavbarProps) {
     { href: "/dashboard/relatorios", label: "Relatórios", icon: BarChart3 },
   ];
 
+  if (usuario.perfil === "ADMIN" || usuario.perfil === "TESOUREIRO") {
+    links.push({ href: "/dashboard/pedidos", label: "Pedidos", icon: Shirt });
+  }
+
   if (usuario.perfil === "ADMIN") {
     links.push({ href: "/dashboard/admin", label: "Admin", icon: ShieldAlert });
   }
@@ -65,26 +79,28 @@ export function DashboardNavbar({ usuario }: NavbarProps) {
         {/* Logo e Título */}
         <div className="flex items-center gap-6">
           <Link href="/dashboard" className="flex items-center gap-2.5 group">
-            <div className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-[#FFC72C] bg-black shadow-sm group-hover:scale-105 transition-transform">
+            <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-[#FFC72C] bg-black shadow-sm group-hover:scale-105 transition-transform flex-shrink-0 aspect-square">
               <Image
-                src="/assets/logo-jusc.jpeg"
-                alt="Logo JUSC"
+                src={logoUrl}
+                alt={`Logo ${nomeGrupo}`}
                 fill
-                className="object-cover"
+                unoptimized
+                className="object-contain"
               />
             </div>
             <div className="hidden sm:block">
               <div className="flex items-center gap-1.5 font-black text-sm tracking-tight text-neutral-900 dark:text-white">
-                JUSC
+                {nomeGrupo}
                 <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded bg-[#FFC72C] text-black">
                   Gestão
                 </span>
               </div>
-              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                Paróquia Menino Jesus
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate max-w-[180px]">
+                {paroquiaNome}
               </p>
             </div>
           </Link>
+
 
           {/* Navegação Desktop */}
           <nav className="hidden md:flex items-center gap-1">
@@ -130,7 +146,11 @@ export function DashboardNavbar({ usuario }: NavbarProps) {
               {usuario.nome.split(" ")[0]}
             </span>
             <span className="text-[10px] text-amber-600 dark:text-[#FFC72C] font-semibold uppercase">
-              {usuario.perfil === "ADMIN" ? "Administrador" : "Colaborador"}
+              {usuario.perfil === "ADMIN"
+                ? "Administrador"
+                : usuario.perfil === "TESOUREIRO"
+                ? "Tesoureiro"
+                : "Colaborador"}
             </span>
           </div>
 
@@ -164,7 +184,11 @@ export function DashboardNavbar({ usuario }: NavbarProps) {
                 {usuario.nome}
               </p>
               <p className="text-[10px] text-[#FFC72C] font-semibold uppercase">
-                {usuario.perfil === "ADMIN" ? "Administrador" : "Colaborador"}
+                {usuario.perfil === "ADMIN"
+                  ? "Administrador"
+                  : usuario.perfil === "TESOUREIRO"
+                  ? "Tesoureiro"
+                  : "Colaborador"}
               </p>
             </div>
             <Link

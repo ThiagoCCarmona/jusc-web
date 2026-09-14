@@ -48,6 +48,69 @@ body {
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
+/* Suporte para paleta dinâmica de 1 a 3 cores configurada pelo Admin */
+.bg-\[\#FFC72C\] {
+  background-color: var(--jusc-primary) !important;
+}
+
+.text-\[\#FFC72C\] {
+  color: var(--jusc-primary) !important;
+}
+
+.border-\[\#FFC72C\] {
+  border-color: var(--jusc-primary) !important;
+}
+
+.focus\:ring-\[\#FFC72C\]:focus {
+  --tw-ring-color: var(--jusc-primary) !important;
+}
+
+.hover\:bg-\[\#FFC72C\]:hover {
+  background-color: var(--jusc-primary) !important;
+}
+
+/* Mapeamento de tons de âmbar/amarelo para a paleta dinâmica */
+.theme-primary-bg {
+  background-color: var(--jusc-primary) !important;
+}
+
+.theme-primary-text {
+  color: var(--jusc-primary) !important;
+}
+
+.theme-primary-border {
+  border-color: var(--jusc-primary) !important;
+}
+
+.theme-secondary-bg {
+  background-color: var(--jusc-secondary) !important;
+}
+
+.theme-secondary-text {
+  color: var(--jusc-secondary) !important;
+}
+
+.theme-accent-bg {
+  background-color: var(--jusc-accent) !important;
+}
+
+.theme-accent-text {
+  color: var(--jusc-accent) !important;
+}
+
+/* Suavização de gradientes dourados quando cores customizadas estiverem ativas */
+.from-\[\#FFC72C\] {
+  --tw-gradient-from: var(--jusc-primary) var(--tw-gradient-from-position) !important;
+}
+
+.to-\[\#e5b220\], .to-\[\#f5b810\] {
+  --tw-gradient-to: var(--jusc-secondary) var(--tw-gradient-to-position) !important;
+}
+
+.via-\[\#ffcf40\] {
+  --tw-gradient-stops: var(--tw-gradient-from), var(--jusc-accent) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -64,8 +127,9 @@ body {
   background: #334155;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #FFC72C;
+  background: var(--jusc-gold);
 }
+
 
 /* Print optimization */
 @media print {

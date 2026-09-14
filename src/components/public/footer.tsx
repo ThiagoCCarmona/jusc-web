@@ -7,6 +7,11 @@ interface FooterProps {
   horario: string;
   linkMaps: string;
   instagramUrl?: string | null;
+  nomeGrupo?: string;
+  subtituloGrupo?: string;
+  paroquiaNome?: string;
+  logoUrl?: string | null;
+  descricaoGrupo?: string | null;
 }
 
 export function PublicFooter({
@@ -14,6 +19,11 @@ export function PublicFooter({
   horario,
   linkMaps,
   instagramUrl,
+  nomeGrupo = "JUSC",
+  subtituloGrupo = "Jovens Unidos Seguindo Cristo",
+  paroquiaNome = "Paróquia Menino Jesus",
+  logoUrl = "/assets/logo-jusc.jpeg",
+  descricaoGrupo,
 }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
@@ -24,26 +34,27 @@ export function PublicFooter({
           {/* Informações da Paróquia e Grupo */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#FFC72C] bg-black">
+              <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#FFC72C] bg-black flex-shrink-0 aspect-square">
                 <Image
-                  src="/assets/logo-jusc.jpeg"
-                  alt="Logo JUSC"
+                  src={logoUrl || "/assets/logo-jusc.jpeg"}
+                  alt={`Logo ${nomeGrupo}`}
                   fill
-                  className="object-cover"
+                  unoptimized
+                  className="object-contain"
                 />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
-                  JUSC — Paróquia Menino Jesus
+                  {nomeGrupo} — {paroquiaNome}
                 </h3>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Jovens Unidos Seguindo Cristo
+                  {subtituloGrupo}
                 </p>
               </div>
             </div>
 
             <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-              Um espaço de acolhimento, oração, partilha, missão e amizade para todos os jovens de Foz do Iguaçu.
+              {descricaoGrupo || "Um espaço de acolhimento, oração, partilha, missão e amizade para todos os jovens."}
             </p>
 
             <div className="space-y-2 pt-1 text-sm text-neutral-700 dark:text-neutral-300">
@@ -75,7 +86,7 @@ export function PublicFooter({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-semibold transition-colors"
-                  aria-label="Instagram do JUSC"
+                  aria-label={`Instagram do ${nomeGrupo}`}
                 >
                   <Instagram className="w-3.5 h-3.5 text-pink-500" />
                   Instagram
@@ -84,12 +95,14 @@ export function PublicFooter({
             </div>
           </div>
 
-          {/* Mapa Incorporado (Carregamento sempre ativo com lazy loading de alta performance) */}
+          {/* Mapa Incorporado Dinâmico */}
           <div className="w-full">
             <div className="w-full h-56 rounded-2xl overflow-hidden border border-neutral-300 dark:border-neutral-700 shadow-md bg-neutral-200 dark:bg-neutral-800 relative">
               <iframe
-                title="Localização da Paróquia Menino Jesus"
-                src="https://maps.google.com/maps?q=Par%C3%B3quia+Menino+Jesus+Foz+do+Igua%C3%A7u+Avenida+P%C3%B4r+do+Sol+2200&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                title={`Localização de ${paroquiaNome}`}
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                  endereco ? `${endereco} ${paroquiaNome}` : `${paroquiaNome} Foz do Iguaçu`
+                )}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}
@@ -102,9 +115,10 @@ export function PublicFooter({
           </div>
         </div>
 
+
         {/* Rodapé inferior com Links Legais e Copyright */}
         <div className="pt-6 border-t border-neutral-200 dark:border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400">
-          <p>© {currentYear} JUSC — Paróquia Menino Jesus. Todos os direitos reservados.</p>
+          <p>© {currentYear} {nomeGrupo} — {paroquiaNome}. Todos os direitos reservados.</p>
           <div className="flex items-center gap-4">
             <Link
               href="/politica-privacidade"

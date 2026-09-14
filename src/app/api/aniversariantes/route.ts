@@ -15,10 +15,13 @@ export async function GET() {
       orderBy: { nomeCompleto: "asc" },
     });
 
-    const nascimento = processarAniversariantesNascimento(integrantes);
-    const grupo = processarAniversariantesGrupo(integrantes);
+    const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
+    const nomeGrupo = config?.nomeGrupo || "JUSC";
 
-    return NextResponse.json({ nascimento, grupo });
+    const nascimento = processarAniversariantesNascimento(integrantes);
+    const grupo = processarAniversariantesGrupo(integrantes, new Date(), nomeGrupo);
+
+    return NextResponse.json({ nascimento, grupo, nomeGrupo });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Não autorizado." }, { status: 401 });

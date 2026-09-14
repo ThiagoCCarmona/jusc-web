@@ -2,12 +2,15 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { AlertTriangle, ChevronDown, ChevronUp, MessageCircle, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, MessageCircle, Sparkles, Shirt } from "lucide-react";
+import { normalizarModelos, formatarFaixaPrecos } from "@/lib/utils";
+import { ModalPedidoCamiseta, CampanhaModalData } from "@/components/public/modal-pedido-camiseta";
 
 interface BannerAlertaProps {
   titulo: string;
   resumo: string;
   descricaoCompleta: string;
+  imagemUrl?: string | null;
   whatsappCoordenador: string;
 }
 
@@ -15,6 +18,7 @@ export function BannerAlerta({
   titulo,
   resumo,
   descricaoCompleta,
+  imagemUrl,
   whatsappCoordenador,
 }: BannerAlertaProps) {
   const [expandido, setExpandido] = useState(false);
@@ -49,7 +53,18 @@ export function BannerAlerta({
       </div>
 
       {expandido && (
-        <div className="px-6 pb-6 pt-3 border-t border-red-500/60 bg-red-700/40 animate-fadeIn">
+        <div className="px-6 pb-6 pt-3 border-t border-red-500/60 bg-red-700/40 animate-fadeIn space-y-4">
+          {imagemUrl && (
+            <div className="relative w-full h-64 sm:h-80 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg bg-black/20">
+              <Image
+                src={imagemUrl}
+                alt={titulo}
+                fill
+                unoptimized
+                className="object-cover hover:scale-105 transition-transform duration-500"
+              />
+            </div>
+          )}
           <div className="text-sm text-white/95 whitespace-pre-line leading-relaxed mb-5">
             {descricaoCompleta}
           </div>
@@ -271,3 +286,77 @@ export function BannerEvento({
     </div>
   );
 }
+interface BannerCamisetaProps {
+  campanha: CampanhaModalData;
+}
+
+export function BannerCamiseta({ campanha }: BannerCamisetaProps) {
+  const [modalAberto, setModalAberto] = useState(false);
+  const primeiraFoto = campanha.fotos[0];
+  const fotoCapa = (typeof primeiraFoto === "object" && primeiraFoto ? primeiraFoto.url : primeiraFoto) || "/assets/logo-jusc.jpeg";
+
+  return (
+    <>
+      <div className="w-full rounded-3xl bg-gradient-to-r from-amber-500 via-[#FFC72C] to-yellow-400 text-neutral-950 p-5 sm:p-6 shadow-xl border-2 border-amber-400/90 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="flex flex-col sm:flex-row items-center gap-5 relative z-10">
+          {/* Miniatura Foto da Camiseta */}
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-2 border-neutral-950 shadow-md bg-white flex-shrink-0 group-hover:scale-105 transition-transform">
+            <Image
+              src={fotoCapa}
+              alt={campanha.titulo}
+              fill
+              unoptimized
+              className="object-contain p-1"
+            />
+            <span className="absolute bottom-1 right-1 bg-neutral-950 text-[#FFC72C] text-[10px] font-black px-1.5 py-0.5 rounded-md">
+              {campanha.fotos.length} fotos
+            </span>
+          </div>
+
+          <div className="flex-1 text-center sm:text-left space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-neutral-950 text-[#FFC72C] text-[10px] font-black uppercase tracking-wider">
+              <Shirt className="w-3.5 h-3.5" />
+              Campanha Oficial de Camisetas
+            </div>
+
+            <h3 className="text-xl sm:text-2xl font-black tracking-tight text-neutral-950">
+              {campanha.titulo}
+            </h3>
+
+            <p className="text-xs sm:text-sm text-neutral-900/90 font-medium line-clamp-2">
+              {campanha.descricao || "Garanta já a sua camiseta oficial do grupo jovem! Diversos modelos e tamanhos."}
+            </p>
+
+            <div className="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <span className="px-2.5 py-1 rounded-lg bg-neutral-950/10 font-black text-xs text-neutral-950">
+                {formatarFaixaPrecos(campanha.modelos, campanha.precoUnitario)}
+              </span>
+              <span className="text-[11px] font-semibold text-neutral-800">
+                Modelos: {normalizarModelos(campanha.modelos, campanha.precoUnitario).map((m) => m.nome).join(", ")}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex-shrink-0 w-full sm:w-auto pt-2 sm:pt-0">
+            <button
+              onClick={() => setModalAberto(true)}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-neutral-950 hover:bg-neutral-800 active:scale-95 text-[#FFC72C] font-black text-xs sm:text-sm shadow-xl transition-all flex items-center justify-center gap-2"
+            >
+              <Shirt className="w-4 h-4" />
+              <span>Fazer Pedido Online</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <ModalPedidoCamiseta
+        campanha={campanha}
+        aberto={modalAberto}
+        onFechar={() => setModalAberto(false)}
+      />
+    </>
+  );
+}
+

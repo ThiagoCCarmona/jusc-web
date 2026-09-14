@@ -16,8 +16,10 @@ import {
   ShieldCheck,
   Calendar,
 } from "lucide-react";
+import { InputDataBr } from "@/components/ui/input-data-br";
 
 interface IntegranteItem {
+
   id: string;
   nomeCompleto: string;
   apelido: string | null;
@@ -33,6 +35,8 @@ interface IntegranteItem {
   batismo: boolean;
   primeiraEucaristia: boolean;
   crisma: boolean;
+  fezClj?: boolean;
+  qualClj?: string | null;
   possuiAlergia?: boolean;
   descricaoAlergia?: string | null;
   intoleranciaGluten?: boolean;
@@ -41,6 +45,7 @@ interface IntegranteItem {
   statusCalculado: "ATIVO" | "INATIVO";
   temAlertaAusencia: boolean;
   mesesSemPresenca: number;
+  idadeCalculada?: number;
   fotoUrl: string | null;
   presencas: any[];
 }
@@ -48,11 +53,21 @@ interface IntegranteItem {
 export default function IntegrantesPage() {
   const [integrantes, setIntegrantes] = useState<IntegranteItem[]>([]);
   const [limiteAlerta, setLimiteAlerta] = useState<number>(3);
+  const [encontrosPausados, setEncontrosPausados] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("TODOS");
   const [filtroSacramento, setFiltroSacramento] = useState("TODOS");
   const [filtroSexo, setFiltroSexo] = useState("TODOS");
+  const [filtroClj, setFiltroClj] = useState("TODOS"); // "TODOS" | "SIM" | "NAO"
+  const [nomeGrupo, setNomeGrupo] = useState("JUSC");
+  const [mascoteUrl, setMascoteUrl] = useState("/assets/abelhudo.png");
+
+  // Filtro de Idade
+  const [tipoDataIdade, setTipoDataIdade] = useState<"ATUAL" | "MANUAL">("ATUAL");
+  const [dataManualIdade, setDataManualIdade] = useState("");
+  const [idadeMin, setIdadeMin] = useState("");
+  const [idadeMax, setIdadeMax] = useState("");
 
   async function carregarIntegrantes() {
     setCarregando(true);
@@ -62,12 +77,21 @@ export default function IntegrantesPage() {
       if (filtroStatus !== "TODOS") params.set("status", filtroStatus);
       if (filtroSacramento !== "TODOS") params.set("sacramento", filtroSacramento);
       if (filtroSexo !== "TODOS") params.set("sexo", filtroSexo);
+      if (filtroClj !== "TODOS") params.set("clj", filtroClj);
+      if (tipoDataIdade === "MANUAL" && dataManualIdade) {
+        params.set("dataRefIdade", dataManualIdade);
+      }
+      if (idadeMin) params.set("idadeMin", idadeMin);
+      if (idadeMax) params.set("idadeMax", idadeMax);
 
       const res = await fetch(`/api/integrantes?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setIntegrantes(data.integrantes || []);
         if (data.limiteAlerta) setLimiteAlerta(data.limiteAlerta);
+        if (data.encontrosPausados !== undefined) setEncontrosPausados(data.encontrosPausados);
+        if (data.nomeGrupo) setNomeGrupo(data.nomeGrupo);
+        if (data.mascoteUrl) setMascoteUrl(data.mascoteUrl);
       }
     } catch (e) {
       console.error("Erro ao carregar integrantes:", e);
@@ -81,7 +105,7 @@ export default function IntegrantesPage() {
       carregarIntegrantes();
     }, 300);
     return () => clearTimeout(timer);
-  }, [busca, filtroStatus, filtroSacramento, filtroSexo]);
+  }, [busca, filtroStatus, filtroSacramento, filtroSexo, filtroClj, tipoDataIdade, dataManualIdade, idadeMin, idadeMax]);
 
   function formatarTempoGrupo(int: IntegranteItem) {
     if (int.tempoGrupoPrecisao === "COMPLETA" && int.tempoGrupoDataCompleta) {
@@ -102,13 +126,14 @@ export default function IntegrantesPage() {
           <div className="flex items-center gap-2">
             <Users className="w-6 h-6 text-[#FFC72C]" />
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white">
-              Integrantes do JUSC
+              Integrantes do {nomeGrupo}
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Gestão pastoral de jovens, histórico de presenças e sacramentos
+            Gestão pastoral de jovens, histórico de presenças, CLJ e sacramentos
           </p>
         </div>
+
 
         <Link
           href="/dashboard/integrantes/novo"
@@ -119,8 +144,18 @@ export default function IntegrantesPage() {
         </Link>
       </div>
 
+      {/* Alerta de Encontros Pausados */}
+      {encontrosPausados && (
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center gap-3 animate-fadeIn">
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+          <span>
+            <strong>Encontros em Pausa / Recesso Pastoral:</strong> A contagem de tempo de ausência está pausada para que nenhum integrante seja inativado durante as férias.
+          </span>
+        </div>
+      )}
+
       {/* Barra de Filtros e Busca */}
-      <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3">
+      <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-3">
           {/* Busca textual */}
           <div className="relative flex-1">
@@ -162,6 +197,19 @@ export default function IntegrantesPage() {
             </select>
           </div>
 
+          {/* Filtro CLJ */}
+          <div>
+            <select
+              value={filtroClj}
+              onChange={(e) => setFiltroClj(e.target.value)}
+              className="py-2 px-3 rounded-xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+            >
+              <option value="TODOS">Todos (CLJ)</option>
+              <option value="SIM">🌹 Fez o CLJ</option>
+              <option value="NAO">Não fez o CLJ</option>
+            </select>
+          </div>
+
           {/* Filtro Sacramentos */}
           <div>
             <select
@@ -175,6 +223,91 @@ export default function IntegrantesPage() {
               <option value="crisma">Com Crisma</option>
             </select>
           </div>
+        </div>
+
+        {/* Linha de Filtro de Idade (Data Atual ou Manual) */}
+        <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800/80 flex flex-wrap items-center gap-3 text-xs">
+          <div className="flex items-center gap-1.5 font-bold text-neutral-700 dark:text-neutral-300">
+            <Calendar className="w-3.5 h-3.5 text-[#FFC72C]" />
+            <span>Calcular Idade:</span>
+          </div>
+
+          <div className="inline-flex rounded-xl bg-neutral-100 dark:bg-neutral-800 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setTipoDataIdade("ATUAL");
+                setDataManualIdade("");
+              }}
+              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
+                tipoDataIdade === "ATUAL"
+                  ? "bg-[#FFC72C] text-black shadow-xs"
+                  : "text-neutral-600 dark:text-neutral-400"
+              }`}
+            >
+              Até Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() => setTipoDataIdade("MANUAL")}
+              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
+                tipoDataIdade === "MANUAL"
+                  ? "bg-[#FFC72C] text-black shadow-xs"
+                  : "text-neutral-600 dark:text-neutral-400"
+              }`}
+            >
+              Data Manual
+            </button>
+          </div>
+
+          {tipoDataIdade === "MANUAL" && (
+            <div className="w-36">
+              <InputDataBr
+                value={dataManualIdade}
+                onChange={(br, iso) => setDataManualIdade(iso || "")}
+                placeholder="DD/MM/AAAA"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <span className="text-neutral-500">Faixa:</span>
+            <input
+              type="number"
+              min={0}
+              max={120}
+              placeholder="Min"
+              value={idadeMin}
+              onChange={(e) => setIdadeMin(e.target.value)}
+              className="w-16 px-2 py-1 rounded-xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-300 dark:border-neutral-700 text-xs text-center"
+            />
+            <span className="text-neutral-500">a</span>
+            <input
+              type="number"
+              min={0}
+              max={120}
+              placeholder="Max"
+              value={idadeMax}
+              onChange={(e) => setIdadeMax(e.target.value)}
+              className="w-16 px-2 py-1 rounded-xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-300 dark:border-neutral-700 text-xs text-center"
+            />
+            <span className="text-neutral-500">anos</span>
+          </div>
+
+          {(idadeMin || idadeMax || dataManualIdade) && (
+            <button
+              type="button"
+              onClick={() => {
+                setIdadeMin("");
+                setIdadeMax("");
+                setDataManualIdade("");
+                setTipoDataIdade("ATUAL");
+              }}
+              className="text-[11px] text-amber-600 hover:underline font-bold"
+            >
+              Limpar Idade
+            </button>
+          )}
         </div>
 
         {/* Contador */}
@@ -203,15 +336,17 @@ export default function IntegrantesPage() {
         <div className="text-center bg-white dark:bg-[#15171e] rounded-3xl p-10 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
           <div className="relative w-32 h-32 mx-auto">
             <Image
-              src="/assets/abelhudo.png"
-              alt="Mascote Abelhudo"
+              src={mascoteUrl || "/assets/abelhudo.png"}
+              alt="Mascote"
               fill
+              unoptimized
               className="object-contain"
             />
           </div>
           <h3 className="font-extrabold text-lg text-neutral-900 dark:text-white">
             Nenhum integrante encontrado
           </h3>
+
           <p className="text-xs sm:text-sm text-neutral-500 max-w-sm mx-auto">
             Não encontramos nenhum jovem com os filtros selecionados. Tente ajustar os termos da busca ou cadastre um novo integrante!
           </p>
@@ -267,6 +402,11 @@ export default function IntegrantesPage() {
                         >
                           {int.sexo === "FEMININO" ? "Feminino" : "Masculino"}
                         </span>
+                        {int.idadeCalculada !== undefined && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
+                            {int.idadeCalculada} anos
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -307,7 +447,7 @@ export default function IntegrantesPage() {
 
               {/* Badges de Sacramentos e Ação */}
               <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <span
                     title="Batismo"
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
@@ -338,6 +478,14 @@ export default function IntegrantesPage() {
                   >
                     Crisma
                   </span>
+                  {int.fezClj && (
+                    <span
+                      title={int.qualClj ? `Fez o CLJ: ${int.qualClj}` : "Fez o CLJ (Curso de Liderança Juvenil)"}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1"
+                    >
+                      <span>🌹</span> CLJ
+                    </span>
+                  )}
 
                   {int.possuiAlergia && (
                     <span

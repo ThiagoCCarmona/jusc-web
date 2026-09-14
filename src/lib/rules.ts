@@ -14,9 +14,29 @@ export interface IntegranteStatusInfo {
   mesesSemPresenca: number;
 }
 
+export interface PausaItem {
+  dataInicio: Date | string;
+  dataFim?: Date | string | null;
+}
+
+export function calcularIdade(
+  dataNascimento: Date | string,
+  dataReferencia: Date | string = new Date()
+): number {
+  const nasc = new Date(dataNascimento);
+  const ref = new Date(dataReferencia);
+  let idade = ref.getUTCFullYear() - nasc.getUTCFullYear();
+  const mesDiff = ref.getUTCMonth() - nasc.getUTCMonth();
+  if (mesDiff < 0 || (mesDiff === 0 && ref.getUTCDate() < nasc.getUTCDate())) {
+    idade--;
+  }
+  return Math.max(0, idade);
+}
+
 /**
  * Regra 9.1: Cálculo de status por ausência
  * - Data do último encontro em que esteve presente
+ * - Desconta períodos de encontros pausados (férias/recesso)
  * - > 12 meses sem presença -> Inativo automático
  * - > 3 meses sem presença (e < 12 meses) -> Alerta de ausência prolongada
  * - Se voltou a comparecer -> Reativa e encerra alerta
@@ -27,7 +47,8 @@ export function calcularStatusPorAusencia(
   presencas: PresencaItem[],
   limiteMesesAlerta = 3,
   limiteMesesInativo = 12,
-  dataReferencia: Date = new Date()
+  dataReferencia: Date = new Date(),
+  pausas: PausaItem[] = []
 ): IntegranteStatusInfo {
   // Se foi inativado manualmente, respeita a decisão manual
   if (statusManual === "INATIVO") {
@@ -49,7 +70,26 @@ export function calcularStatusPorAusencia(
     ? presencasConfirmadas[0] 
     : new Date(dataCadastro);
 
-  const meses = differenceInMonths(dataReferencia, ultimaData);
+  // Calcular total de dias transcorridos
+  const diffTotalMs = Math.max(0, dataReferencia.getTime() - ultimaData.getTime());
+  const totalDiasTranscorridos = Math.floor(diffTotalMs / (1000 * 60 * 60 * 24));
+
+  // Descontar dias de pausas/recessos que ocorreram entre a última presença e a data de referência
+  let diasPausados = 0;
+  for (const p of pausas) {
+    const pInicio = new Date(p.dataInicio);
+    const pFim = p.dataFim ? new Date(p.dataFim) : dataReferencia;
+
+    const start = pInicio > ultimaData ? pInicio : ultimaData;
+    const end = pFim < dataReferencia ? pFim : dataReferencia;
+
+    if (end > start) {
+      diasPausados += Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  const diasAtivosSemPresenca = Math.max(0, totalDiasTranscorridos - diasPausados);
+  const meses = Math.floor(diasAtivosSemPresenca / 30.4375);
 
   if (meses >= limiteMesesInativo) {
     return {
@@ -165,7 +205,8 @@ export function processarAniversariantesGrupo(
     fotoUrl: string | null;
     status: string;
   }>,
-  dataReferencia: Date = new Date()
+  dataReferencia: Date = new Date(),
+  nomeGrupo: string = "caminhada"
 ): AniversarianteGrupo[] {
   const mesAtual = dataReferencia.getMonth() + 1; // 1-12
   const anoAtual = dataReferencia.getFullYear();
@@ -194,7 +235,7 @@ export function processarAniversariantesGrupo(
             precisao: "COMPLETA",
             dia,
             anos,
-            tempoTexto: `${anos} ${anos === 1 ? "ano" : "anos"} de JUSC`,
+            tempoTexto: `${anos} ${anos === 1 ? "ano" : "anos"} de ${nomeGrupo}`,
             fazHoje,
             fotoUrl: int.fotoUrl,
           });
@@ -212,7 +253,7 @@ export function processarAniversariantesGrupo(
             precisao: "MES_ANO",
             dia: null,
             anos,
-            tempoTexto: `${anos} ${anos === 1 ? "ano" : "anos"} de JUSC (mês comemorativo)`,
+            tempoTexto: `${anos} ${anos === 1 ? "ano" : "anos"} de ${nomeGrupo} (mês comemorativo)`,
             fazHoje: false,
             fotoUrl: int.fotoUrl,
           });

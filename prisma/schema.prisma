@@ -48,6 +48,10 @@ model Integrante {
   primeiraEucaristia     Boolean   @default(false)
   crisma                 Boolean   @default(false)
 
+  // Curso de Liderança Juvenil (CLJ)
+  fezClj                 Boolean   @default(false)
+  qualClj                String?
+
   // Grupo WhatsApp
   noGrupoWhatsapp        Boolean   @default(false)
 
@@ -110,8 +114,71 @@ model Banner {
   criadoEm          DateTime @default(now())
 }
 
+model PausaEncontro {
+  id           String    @id @default(cuid())
+  dataInicio   DateTime  @default(now())
+  dataFim      DateTime?
+  motivo       String
+  criadoPorId  String?
+  criadoEm     DateTime  @default(now())
+}
+
+model CampanhaCamiseta {
+  id                  String           @id @default(cuid())
+  titulo              String
+  descricao           String?
+  fotos               String           // JSON array de URLs das fotos
+  modelos             String           // JSON array de modelos (ex: ["Branca", "Preta"])
+  tamanhosDisponiveis String           // JSON array de tamanhos (ex: ["PP", "P", "M", "G", "GG", "XGG"])
+  precoUnitario       Float
+  permiteNome         Boolean          @default(false)
+  permiteNumero       Boolean          @default(false)
+  dataFim             DateTime
+  ativa               Boolean          @default(true)
+  criadoEm            DateTime         @default(now())
+  atualizadoEm        DateTime         @updatedAt
+
+  pedidos             PedidoCamiseta[]
+}
+
+model PedidoCamiseta {
+  id                 String           @id @default(cuid())
+  campanhaId         String
+  campanha           CampanhaCamiseta @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+  codigoPedido       String           @unique
+  nomeComprador      String
+  telefoneComprador  String
+  modelo             String
+  tamanho            String
+  quantidade         Int              @default(1)
+  personalizacaoNome String?
+  personalizacaoNum  String?
+  formaPagamento     String           // "PIX" | "DINHEIRO"
+  tipoQuitacao       String           // "INTEGRAL" | "PARCELADO_50_50"
+  valorTotal         Float
+  valorPago          Float            @default(0)
+  statusPagamento    String           @default("PENDENTE") // "PENDENTE" | "PAGO_PARCIAL" | "PAGO_TOTAL"
+  entregue           Boolean          @default(false)
+  observacao         String?
+  criadoEm           DateTime         @default(now())
+  atualizadoEm       DateTime         @updatedAt
+}
+
 model ConfiguracaoGeral {
   id                         Int      @id @default(1)
+
+  // Identidade Visual e Replicação do Grupo
+  nomeGrupo                  String   @default("JUSC")
+  subtituloGrupo             String   @default("Jovens Unidos Seguindo Cristo")
+  paroquiaNome               String   @default("Paróquia Menino Jesus")
+  logoUrl                    String?  @default("/assets/logo-jusc.jpeg")
+  mascoteUrl                 String?  @default("/assets/abelhudo.png")
+  corBase                    String   @default("#FFC72C")
+  corSecundaria              String?  @default("#d97706")
+  corDestaque                String?  @default("#f59e0b")
+  descricaoGrupo             String?  @default("Venha fazer parte da nossa colmeia! Um grupo jovem de oração, amizade verdadeira, música e missão.")
+
+  // Liderança
   coordenadorNome            String   @default("Brunão")
   coordenadorFotoUrl         String?  @default("/assets/coordenador.jpg")
   coordenadorWhatsapp        String   @default("5545999068852")
@@ -122,10 +189,23 @@ model ConfiguracaoGeral {
   secretarioWhatsapp         String   @default("5545991179727")
   secretarioMensagem         String   @default("Oii, vim pelo site e queria marcar um encontro no JUSC")
 
+  // Tesouraria e Checkout Pix (Confidencial)
+  tesoureiroNome             String?  @default("Tesoureiro")
+  tesoureiroWhatsapp         String?  @default("5545991179727")
+  tesoureiroChavePix         String?  @default("")
+  tesoureiroTipoChave        String?  @default("ALEATORIA")
+  tesoureiroCidadePix        String?  @default("Foz do Iguacu")
+
+  // Endereço, Horário e Redes
   enderecoPadrao             String   @default("Salinha do JUSC — Paróquia Menino Jesus (Av. Pôr do Sol, 2200, Conjunto Libra)")
   horarioPadrao              String   @default("Domingos às 17h")
   linkGoogleMaps             String   @default("https://maps.google.com/?q=Avenida+P%C3%B4r+do+Sol,+2200,+Conjunto+Libra,+Foz+do+Igua%C3%A7u+-+PR")
   instagramUrl               String?  @default("https://www.instagram.com/juscpmj?stkn=MWJhbGsyd2ZidHY1Mw==")
+
+  // Pausa de Encontros / Recesso Pastoral
+  encontrosPausados          Boolean  @default(false)
+  pausadoEm                  DateTime?
+  motivoPausa                String?
 
   // Regras de negócio configuráveis
   limiteMesesAlertaAusencia  Int      @default(2)

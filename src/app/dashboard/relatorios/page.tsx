@@ -27,24 +27,43 @@ import {
   Sparkles,
   Check,
   X,
+  Shirt,
 } from "lucide-react";
 import { formatarData, formatarTelefone } from "@/lib/utils";
+import { calcularIdade } from "@/lib/rules";
+import { InputDataBr } from "@/components/ui/input-data-br";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+
 export default function RelatoriosPage() {
   const [aba, setAba] = useState<
-    "MATRIZ" | "SAUDE" | "SACRAMENTOS" | "RESPONSAVEIS" | "INDIVIDUAL" | "AUSENCIA"
+    "MATRIZ" | "SAUDE" | "SACRAMENTOS" | "RESPONSAVEIS" | "INDIVIDUAL" | "AUSENCIA" | "CAMISETAS"
   >("MATRIZ");
   const [encontros, setEncontros] = useState<any[]>([]);
   const [integrantes, setIntegrantes] = useState<any[]>([]);
   const [relatorioResponsaveis, setRelatorioResponsaveis] = useState<any[]>([]);
+  const [pedidosCamisetas, setPedidosCamisetas] = useState<any[]>([]);
   const [limiteAlerta, setLimiteAlerta] = useState<number>(2);
   const [limiteInativo, setLimiteInativo] = useState<number>(12);
+  const [nomeGrupo, setNomeGrupo] = useState<string>("JUSC");
+  const [paroquiaNome, setParoquiaNome] = useState<string>("Paróquia Menino Jesus");
   const [carregando, setCarregando] = useState(true);
 
   // Filtro de Sexo geral para relatórios
   const [filtroSexo, setFiltroSexo] = useState<string>("TODOS");
+
+  // Filtro de CLJ 🌹
+  const [filtroClj, setFiltroClj] = useState<string>("TODOS");
+
+  // Filtro de Idade Completa (Atual vs Manual)
+  const [tipoDataRefIdade, setTipoDataRefIdade] = useState<"HOJE" | "MANUAL">("HOJE");
+  const [dataRefManual, setDataRefManual] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [idadeMin, setIdadeMin] = useState<string>("");
+  const [idadeMax, setIdadeMax] = useState<string>("");
+
+  // Filtros de Camisetas
+  const [filtroStatusPedido, setFiltroStatusPedido] = useState<string>("TODOS");
 
   // Filtros de Encontros (Período)
   // "GERAL" = Todos os encontros registrados
@@ -83,17 +102,28 @@ export default function RelatoriosPage() {
   async function carregar() {
     setCarregando(true);
     try {
-      const res = await fetch("/api/relatorios");
-      if (res.ok) {
-        const data = await res.json();
+      const [resRel, resPed] = await Promise.all([
+        fetch("/api/relatorios"),
+        fetch("/api/pedidos"),
+      ]);
+
+      if (resRel.ok) {
+        const data = await resRel.json();
         setEncontros(data.encontros || []);
         setIntegrantes(data.integrantes || []);
         setRelatorioResponsaveis(data.relatorioResponsaveis || []);
         if (data.limiteAlerta) setLimiteAlerta(data.limiteAlerta);
         if (data.limiteInativo) setLimiteInativo(data.limiteInativo);
+        if (data.nomeGrupo) setNomeGrupo(data.nomeGrupo);
+        if (data.paroquiaNome) setParoquiaNome(data.paroquiaNome);
         if (data.integrantes?.length > 0) {
           setIntegranteSelecionadoId(data.integrantes[0].id);
         }
+      }
+
+      if (resPed.ok) {
+        const dataPed = await resPed.json();
+        setPedidosCamisetas(dataPed.pedidos || []);
       }
     } catch (e) {
       console.error(e);
@@ -105,6 +135,14 @@ export default function RelatoriosPage() {
   useEffect(() => {
     carregar();
   }, []);
+
+  // Data de referência efetiva para cálculo de idade
+  const dataReferenciaIdade = useMemo(() => {
+    if (tipoDataRefIdade === "MANUAL" && dataRefManual) {
+      return new Date(dataRefManual);
+    }
+    return new Date();
+  }, [tipoDataRefIdade, dataRefManual]);
 
   // 1. Filtragem dos Encontros selecionados pelo usuário
   const encontrosFiltrados = useMemo(() => {
@@ -119,7 +157,7 @@ export default function RelatoriosPage() {
     return encontros.slice(0, limiteQtd);
   }, [encontros, filtroPeriodoEncontros]);
 
-  // 2. Filtragem dos Integrantes de acordo com os filtros de membros, sexo e busca
+  // 2. Filtragem dos Integrantes de acordo com os filtros de membros, sexo, CLJ, idade e busca
   const integrantesFiltrados = useMemo(() => {
     return integrantes.filter((int) => {
       // Filtro de sexo
@@ -127,14 +165,29 @@ export default function RelatoriosPage() {
         return false;
       }
 
-      // Busca textual por nome, apelido ou telefone
+      // Filtro CLJ 🌹
+      if (filtroClj === "SIM" && !int.fezClj) return false;
+      if (filtroClj === "NAO" && int.fezClj) return false;
+
+      // Filtro de Idade Completa
+      if (int.dataNascimento) {
+        const idadeCalculada = calcularIdade(int.dataNascimento, dataReferenciaIdade);
+        if (idadeMin !== "" && idadeCalculada < Number(idadeMin)) return false;
+        if (idadeMax !== "" && idadeCalculada > Number(idadeMax)) return false;
+      } else if (idadeMin !== "" || idadeMax !== "") {
+        // Se tem filtro de idade mas não tem data de nascimento cadastrada
+        return false;
+      }
+
+      // Busca textual por nome, apelido, telefone ou CLJ
       if (busca.trim()) {
         const termo = busca.toLowerCase();
         const nomeMatch = int.nomeCompleto.toLowerCase().includes(termo);
         const apelidoMatch = int.apelido?.toLowerCase().includes(termo);
         const telMatch = int.telefone.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
         const respMatch = int.nomeResponsavel?.toLowerCase().includes(termo);
-        if (!nomeMatch && !apelidoMatch && !telMatch && !respMatch) return false;
+        const cljMatch = int.qualClj?.toLowerCase().includes(termo);
+        if (!nomeMatch && !apelidoMatch && !telMatch && !respMatch && !cljMatch) return false;
       }
 
       // Filtro de membros
@@ -513,7 +566,7 @@ export default function RelatoriosPage() {
     const dataHoraEmissao = new Date().toLocaleString("pt-BR");
 
     doc.setFontSize(14);
-    doc.text("JUSC — Matriz de Presenças Pastoral", 14, 15);
+    doc.text(`${nomeGrupo} — Matriz de Presenças Pastoral`, 14, 15);
     doc.setFontSize(8);
     doc.setTextColor(100);
     doc.text(
@@ -566,7 +619,7 @@ export default function RelatoriosPage() {
       alternateRowStyles: { fillColor: [248, 248, 248] },
     });
 
-    doc.save(`matriz-presencas-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`matriz-presencas-${nomeGrupo.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   // PDF 2: Saúde e Restrições Alimentares
@@ -575,7 +628,7 @@ export default function RelatoriosPage() {
     const dataHoraEmissao = new Date().toLocaleString("pt-BR");
 
     doc.setFontSize(14);
-    doc.text("JUSC — Relatório de Saúde e Restrições Alimentares", 14, 15);
+    doc.text(`${nomeGrupo} — Relatório de Saúde e Restrições Alimentares`, 14, 15);
     doc.setFontSize(8);
     doc.setTextColor(100);
     doc.text(
@@ -608,7 +661,7 @@ export default function RelatoriosPage() {
       alternateRowStyles: { fillColor: [254, 242, 242] },
     });
 
-    doc.save(`relatorio-saude-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`relatorio-saude-${nomeGrupo.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   // PDF 3: Sacramentos
@@ -617,7 +670,7 @@ export default function RelatoriosPage() {
     const dataHoraEmissao = new Date().toLocaleString("pt-BR");
 
     doc.setFontSize(14);
-    doc.text("JUSC — Relatório Pastoral de Sacramentos", 14, 15);
+    doc.text(`${nomeGrupo} — Relatório Pastoral de Sacramentos`, 14, 15);
     doc.setFontSize(8);
     doc.setTextColor(100);
     doc.text(
@@ -653,7 +706,7 @@ export default function RelatoriosPage() {
       alternateRowStyles: { fillColor: [255, 251, 235] },
     });
 
-    doc.save(`relatorio-sacramentos-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`relatorio-sacramentos-${nomeGrupo.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   // PDF 4: Responsáveis Legais
@@ -662,7 +715,7 @@ export default function RelatoriosPage() {
     const dataHoraEmissao = new Date().toLocaleString("pt-BR");
 
     doc.setFontSize(14);
-    doc.text("JUSC — Relatório de Responsáveis Legais", 14, 15);
+    doc.text(`${nomeGrupo} — Relatório de Responsáveis Legais`, 14, 15);
     doc.setFontSize(8);
     doc.setTextColor(100);
     doc.text(
@@ -693,7 +746,7 @@ export default function RelatoriosPage() {
       alternateRowStyles: { fillColor: [250, 250, 250] },
     });
 
-    doc.save(`relatorio-responsaveis-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`relatorio-responsaveis-${nomeGrupo.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   // PDF 5: Ausências Prolongadas
@@ -708,7 +761,7 @@ export default function RelatoriosPage() {
     const dataHoraEmissao = new Date().toLocaleString("pt-BR");
 
     doc.setFontSize(14);
-    doc.text("JUSC — Relatório de Ausências Prolongadas", 14, 15);
+    doc.text(`${nomeGrupo} — Relatório de Ausências Prolongadas`, 14, 15);
     doc.setFontSize(8);
     doc.setTextColor(100);
     doc.text(
@@ -741,7 +794,7 @@ export default function RelatoriosPage() {
       alternateRowStyles: { fillColor: [254, 243, 199] },
     });
 
-    doc.save(`relatorio-ausencias-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`relatorio-ausencias-${nomeGrupo.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   // PDF 6: Frequência Individual
@@ -752,7 +805,7 @@ export default function RelatoriosPage() {
     const dataHoraEmissao = new Date().toLocaleString("pt-BR");
 
     doc.setFontSize(14);
-    doc.text(`JUSC — Ficha de Frequência: ${integranteSel.nomeCompleto}`, 14, 15);
+    doc.text(`${nomeGrupo} — Ficha de Frequência: ${integranteSel.nomeCompleto}`, 14, 15);
     doc.setFontSize(8);
     doc.setTextColor(100);
     doc.text(
@@ -778,6 +831,126 @@ export default function RelatoriosPage() {
     });
 
     doc.save(`frequencia-${integranteSel.nomeCompleto.replace(/\s+/g, "_")}.pdf`);
+  }
+
+  // Filtragem de Pedidos de Camisetas para a Aba Camisetas
+  const pedidosCamisetasFiltrados = useMemo(() => {
+    return pedidosCamisetas.filter((p) => {
+      if (filtroStatusPedido !== "TODOS" && p.statusPagamento !== filtroStatusPedido) {
+        return false;
+      }
+      if (busca.trim()) {
+        const termo = busca.toLowerCase();
+        const codMatch = p.codigoPedido.toLowerCase().includes(termo);
+        const nomeMatch = p.nomeComprador.toLowerCase().includes(termo);
+        const telMatch = p.telefoneComprador.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const modMatch = p.modelo.toLowerCase().includes(termo);
+        if (!codMatch && !nomeMatch && !telMatch && !modMatch) return false;
+      }
+      return true;
+    });
+  }, [pedidosCamisetas, filtroStatusPedido, busca]);
+
+  // Exportar Pedidos de Camisetas para CSV
+  function exportarCamisetasCSV() {
+    const cabecalho = [
+      "Código Pedido",
+      "Data Pedido",
+      "Comprador",
+      "Telefone",
+      "Campanha",
+      "Modelo",
+      "Tamanho",
+      "Qtd",
+      "Personalização Nome",
+      "Personalização Número",
+      "Forma Pagamento",
+      "Condição",
+      "Valor Total",
+      "Valor Pago",
+      "Saldo Restante",
+      "Status Pagamento",
+      "Entregue",
+    ];
+
+    const linhas = pedidosCamisetasFiltrados.map((p) => [
+      `"${p.codigoPedido}"`,
+      formatarData(p.criadoEm),
+      `"${p.nomeComprador}"`,
+      `"${p.telefoneComprador}"`,
+      `"${p.campanha?.titulo || ""}"`,
+      `"${p.modelo}"`,
+      `"${p.tamanho}"`,
+      p.quantidade,
+      `"${p.personalizacaoNome || ""}"`,
+      `"${p.personalizacaoNum || ""}"`,
+      p.formaPagamento,
+      p.tipoQuitacao,
+      p.valorTotal.toFixed(2),
+      p.valorPago.toFixed(2),
+      Math.max(0, p.valorTotal - p.valorPago).toFixed(2),
+      p.statusPagamento,
+      p.entregue ? "Sim" : "Não",
+    ]);
+
+    const csvContent =
+      "data:text/csv;charset=utf-8,\uFEFF" +
+      [cabecalho.join(";"), ...linhas.map((e) => e.join(";"))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `pedidos-camisetas-${nomeGrupo.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Exportar Pedidos de Camisetas para PDF
+  function exportarCamisetasPDF() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text(`${nomeGrupo} — Relatório de Pedidos de Camisetas`, 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Total Pedidos: ${pedidosCamisetasFiltrados.length}`,
+      14,
+      21
+    );
+
+    const tableHead = [
+      ["Cód.", "Data", "Comprador", "Telefone", "Item/Tam.", "Personaliz.", "Total", "Pago", "Status", "Entr."],
+    ];
+
+    const tableBody = pedidosCamisetasFiltrados.map((p) => {
+      const pers = [p.personalizacaoNome, p.personalizacaoNum ? `Nº ${p.personalizacaoNum}` : ""].filter(Boolean).join(" - ") || "-";
+      return [
+        p.codigoPedido,
+        new Date(p.criadoEm).toLocaleDateString("pt-BR"),
+        p.nomeComprador,
+        p.telefoneComprador,
+        `${p.quantidade}x ${p.modelo} (${p.tamanho})`,
+        pers,
+        `R$ ${p.valorTotal.toFixed(2)}`,
+        `R$ ${p.valorPago.toFixed(2)}`,
+        p.statusPagamento === "PAGO_TOTAL" ? "Quitado" : p.statusPagamento === "PAGO_PARCIAL" ? "Sinal 50%" : "Pendente",
+        p.entregue ? "Sim" : "Não",
+      ];
+    });
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 25,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [255, 199, 44], textColor: [20, 20, 20], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+    });
+
+    doc.save(`pedidos-camisetas-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
   const integranteSel = integrantes.find((i) => i.id === integranteSelecionadoId);
   const encontrosParaFrequencia = encontros.slice(0, qtdEncontrosFrequencia);
@@ -878,6 +1051,17 @@ export default function RelatoriosPage() {
             <AlertTriangle className="w-3.5 h-3.5" />
             Alertas de Ausência
           </button>
+          <button
+            onClick={() => setAba("CAMISETAS")}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              aba === "CAMISETAS"
+                ? "bg-[#FFC72C] text-neutral-950 shadow-sm"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+            }`}
+          >
+            <Shirt className="w-3.5 h-3.5 text-amber-500" />
+            Camisetas
+          </button>
         </div>
       </div>
 
@@ -942,6 +1126,22 @@ export default function RelatoriosPage() {
                 </select>
               </div>
 
+              {/* Filtro CLJ 🌹 */}
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                  Fez CLJ? 🌹
+                </label>
+                <select
+                  value={filtroClj}
+                  onChange={(e) => setFiltroClj(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                >
+                  <option value="TODOS">Todos (Com e Sem CLJ)</option>
+                  <option value="SIM">🌹 Fez CLJ</option>
+                  <option value="NAO">Não fez CLJ</option>
+                </select>
+              </div>
+
               {/* Filtro Sexo */}
               <div>
                 <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
@@ -957,9 +1157,119 @@ export default function RelatoriosPage() {
                   <option value="FEMININO">Feminino</option>
                 </select>
               </div>
+            </div>
 
-              {/* Filtro 3: Busca Textual */}
+            {/* Linha 2 de Filtros: Idade Completa e Busca */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-1 border-t border-neutral-100 dark:border-neutral-800">
               <div>
+                <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                  Cálculo de Idade
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setTipoDataRefIdade("HOJE")}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-bold border text-center transition-all ${
+                      tipoDataRefIdade === "HOJE"
+                        ? "bg-[#FFC72C] text-neutral-950 border-amber-400"
+                        : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"
+                    }`}
+                  >
+                    Hoje
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoDataRefIdade("MANUAL")}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-bold border text-center transition-all ${
+                      tipoDataRefIdade === "MANUAL"
+                        ? "bg-[#FFC72C] text-neutral-950 border-amber-400"
+                        : "border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"
+                    }`}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+
+              {tipoDataRefIdade === "MANUAL" ? (
+                <div>
+                  <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                    Data Referência Idade (DD/MM/AAAA)
+                  </label>
+                  <InputDataBr
+                    value={dataRefManual}
+                    onChange={(br, iso) => setDataRefManual(iso || "")}
+                    placeholder="DD/MM/AAAA"
+                  />
+                </div>
+              ) : (
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                      Idade Mín.
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      placeholder="Ex: 14"
+                      value={idadeMin}
+                      onChange={(e) => setIdadeMin(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                      Idade Máx.
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      placeholder="Ex: 18"
+                      value={idadeMax}
+                      onChange={(e) => setIdadeMax(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {tipoDataRefIdade === "MANUAL" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                      Idade Mín.
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      placeholder="Ex: 14"
+                      value={idadeMin}
+                      onChange={(e) => setIdadeMin(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                      Idade Máx.
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      placeholder="Ex: 18"
+                      value={idadeMax}
+                      onChange={(e) => setIdadeMax(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className={tipoDataRefIdade === "MANUAL" ? "sm:col-span-1" : "sm:col-span-2"}>
                 <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
                   Buscar Integrante ou Telefone
                 </label>
@@ -969,7 +1279,7 @@ export default function RelatoriosPage() {
                     type="text"
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
-                    placeholder="Nome, apelido, telefone..."
+                    placeholder="Nome, telefone, CLJ..."
                     className="w-full pl-9 pr-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
                   />
                 </div>
@@ -1010,7 +1320,7 @@ export default function RelatoriosPage() {
           {/* Tabela da Matriz */}
           <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4 print:p-0 print:border-none print:shadow-none">
             <div className="hidden print:block mb-3">
-              <h2 className="text-base font-black text-black">JUSC — Matriz de Presenças Pastoral</h2>
+              <h2 className="text-base font-black text-black">{nomeGrupo} — Matriz de Presenças Pastoral</h2>
               <p className="text-[10px] text-neutral-600">
                 Data de Emissão: {new Date().toLocaleDateString("pt-BR")} | Período: {filtroPeriodoEncontros} encontros | Integrantes listados: {integrantesFiltrados.length}
               </p>
@@ -1807,7 +2117,7 @@ export default function RelatoriosPage() {
                       /\D/g,
                       ""
                     )}&text=${encodeURIComponent(
-                      `Olá ${r.nomeResponsavel}! Somos da coordenação do grupo de jovens JUSC — Paróquia Menino Jesus.`
+                      `Olá ${r.nomeResponsavel}! Somos da coordenação do grupo de jovens ${nomeGrupo} — ${paroquiaNome}.`
                     )}`;
 
                     return (
@@ -2005,7 +2315,7 @@ export default function RelatoriosPage() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : aba === "AUSENCIA" ? (
         /* Aba 4: Alertas de Ausência Prolongada */
         <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-neutral-100 dark:border-neutral-800">
@@ -2067,7 +2377,7 @@ export default function RelatoriosPage() {
                     /\D/g,
                     ""
                   )}&text=${encodeURIComponent(
-                    `Olá ${int.apelido || int.nomeCompleto}! 💛 Sentimos sua falta nos encontros do JUSC! Está tudo bem com você? O grupo está de portas abertas!`
+                    `Olá ${int.apelido || int.nomeCompleto}! 💛 Sentimos sua falta nos encontros do ${nomeGrupo}! Está tudo bem com você? O grupo está de portas abertas!`
                   )}`;
 
                   return (
@@ -2122,6 +2432,152 @@ export default function RelatoriosPage() {
                 })}
             </div>
           )}
+        </div>
+      ) : (
+        /* Aba 7: Relatório de Pedidos de Camisetas */
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3 print:hidden">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[#FFC72C]">
+              <Filter className="w-4 h-4" />
+              <span>Filtros do Relatório de Camisetas</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                  Status de Pagamento
+                </label>
+                <select
+                  value={filtroStatusPedido}
+                  onChange={(e) => setFiltroStatusPedido(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                >
+                  <option value="TODOS">Todos os Status</option>
+                  <option value="PENDENTE">Pendentes</option>
+                  <option value="PAGO_PARCIAL">Pago 50% (Sinal)</option>
+                  <option value="PAGO_TOTAL">Quitado 100%</option>
+                  <option value="CANCELADO">Cancelados</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-400 mb-1">
+                  Buscar Pedido, Comprador ou Modelo
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <input
+                    type="text"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Código (ex: PED-1234), nome do comprador ou modelo..."
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-neutral-500">
+              <span>
+                Total de <strong>{pedidosCamisetasFiltrados.length}</strong> pedidos listados.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarCamisetasPDF}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 text-xs font-bold shadow-sm transition-all"
+                >
+                  <Download className="w-4 h-4 text-neutral-950" />
+                  Exportar PDF
+                </button>
+                <button
+                  onClick={exportarCamisetasCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  Exportar Planilha (CSV)
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 text-xs font-bold transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  Imprimir
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+            {pedidosCamisetasFiltrados.length === 0 ? (
+              <div className="p-12 text-center text-xs text-neutral-500">
+                Nenhum pedido de camiseta encontrado para os filtros selecionados.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-neutral-50 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Pedido</th>
+                      <th className="py-3 px-4">Comprador</th>
+                      <th className="py-3 px-4">Item & Tamanho</th>
+                      <th className="py-3 px-4">Personalização</th>
+                      <th className="py-3 px-4">Total</th>
+                      <th className="py-3 px-4">Pago</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Entrega</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
+                    {pedidosCamisetasFiltrados.map((p) => {
+                      const telLimpo = p.telefoneComprador.replace(/\D/g, "");
+                      return (
+                        <tr key={p.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                          <td className="py-3 px-4 whitespace-nowrap font-mono font-bold text-neutral-900 dark:text-white">
+                            {p.codigoPedido}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-bold text-neutral-900 dark:text-white block">
+                              {p.nomeComprador}
+                            </span>
+                            <a
+                              href={`https://api.whatsapp.com/send?phone=${telLimpo}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] text-emerald-600 hover:underline"
+                            >
+                              {p.telefoneComprador}
+                            </a>
+                          </td>
+                          <td className="py-3 px-4">
+                            {p.quantidade}x Modelo {p.modelo} ({p.tamanho})
+                          </td>
+                          <td className="py-3 px-4 text-neutral-500">
+                            {[p.personalizacaoNome ? `Nome: ${p.personalizacaoNome}` : "", p.personalizacaoNum ? `Nº ${p.personalizacaoNum}` : ""].filter(Boolean).join(" | ") || "-"}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-neutral-900 dark:text-white whitespace-nowrap">
+                            R$ {p.valorTotal.toFixed(2).replace(".", ",")}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-emerald-600 whitespace-nowrap">
+                            R$ {p.valorPago.toFixed(2).replace(".", ",")}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
+                              {p.statusPagamento}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${p.entregue ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" : "text-neutral-400"}`}>
+                              {p.entregue ? "Entregue" : "Pendente"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

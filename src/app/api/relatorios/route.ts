@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
     const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
     const limiteAlerta = config?.limiteMesesAlertaAusencia || 2;
     const limiteInativo = config?.limiteMesesInativacao || 12;
+    const pausas = await prisma.pausaEncontro.findMany();
 
     // Buscar todos os encontros ordenados cronologicamente decrescente
     const todosEncontros = await prisma.encontro.findMany({
@@ -41,7 +42,9 @@ export async function GET(req: NextRequest) {
         int.dataCadastro,
         int.presencas,
         limiteAlerta,
-        limiteInativo
+        limiteInativo,
+        hoje,
+        pausas
       );
 
       // Determinar data de entrada (se completa ou dataCadastro)
@@ -87,6 +90,8 @@ export async function GET(req: NextRequest) {
         batismo: int.batismo,
         primeiraEucaristia: int.primeiraEucaristia,
         crisma: int.crisma,
+        fezClj: int.fezClj,
+        qualClj: int.qualClj,
         possuiAlergia: int.possuiAlergia,
         descricaoAlergia: int.descricaoAlergia,
         intoleranciaGluten: int.intoleranciaGluten,
@@ -130,6 +135,8 @@ export async function GET(req: NextRequest) {
       relatorioResponsaveis,
       limiteAlerta,
       limiteInativo,
+      nomeGrupo: config?.nomeGrupo || "JUSC",
+      paroquiaNome: config?.paroquiaNome || "Paróquia Menino Jesus",
     });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {

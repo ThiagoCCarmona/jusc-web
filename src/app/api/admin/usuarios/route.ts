@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         login: loginFormatado,
         email: emailFormatado,
         senhaHash,
-        perfil: perfil === "ADMIN" ? "ADMIN" : "COLABORADOR",
+        perfil: perfil === "ADMIN" ? "ADMIN" : perfil === "TESOUREIRO" ? "TESOUREIRO" : "COLABORADOR",
         status: "ATIVO",
         primeiroAcesso: true,
       },

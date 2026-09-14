@@ -86,3 +86,107 @@ export function brasileiroParaIso(br: string): string | null {
 
   return `${aStr}-${mStr}-${dStr}`;
 }
+
+/**
+ * Formata o número da edição do CLJ permitindo apenas dígitos e adicionando o sufixo ordinal ° (Ex.: 48°)
+ */
+export function formatarNumeroClj(valor: string): string {
+  if (!valor) return "";
+  const digits = valor.replace(/\D/g, "");
+  if (!digits) return "";
+  return `${digits}°`;
+}
+
+export interface ModeloPrecoItem {
+  nome: string;
+  preco?: number;
+}
+
+/**
+ * Normaliza qualquer formato de modelos:
+ * Array de strings ["Branca", "Preta"]
+ * Ou array de objetos [{ nome: "Tradicional", preco: 40 }, { nome: "Moletom", preco: 80 }]
+ */
+export function normalizarModelos(
+  modelos: any,
+  precoPadrao: number = 0
+): ModeloPrecoItem[] {
+  if (!modelos) return [{ nome: "Padrão", preco: precoPadrao }];
+
+  let parsed = modelos;
+  if (typeof modelos === "string") {
+    try {
+      parsed = JSON.parse(modelos);
+    } catch {
+      parsed = modelos.split(",").map((m) => m.trim()).filter(Boolean);
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [{ nome: "Padrão", preco: precoPadrao }];
+  }
+
+  if (parsed.length === 0) {
+    return [{ nome: "Padrão", preco: precoPadrao }];
+  }
+
+  return parsed.map((item) => {
+    if (typeof item === "string") {
+      return {
+        nome: item.trim(),
+        preco: precoPadrao,
+      };
+    }
+    if (typeof item === "object" && item !== null) {
+      const nome = String(item.nome || item.titulo || "Padrão").trim();
+      const preco =
+        item.preco !== undefined && !isNaN(parseFloat(item.preco))
+          ? parseFloat(item.preco)
+          : precoPadrao;
+      return { nome, preco };
+    }
+    return { nome: "Padrão", preco: precoPadrao };
+  });
+}
+
+/**
+ * Retorna o preço de um modelo específico
+ */
+export function obterPrecoModelo(
+  modeloNome: string,
+  modelos: any,
+  precoPadrao: number = 0
+): number {
+  const norm = normalizarModelos(modelos, precoPadrao);
+  const encontrado = norm.find(
+    (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
+  );
+  return encontrado?.preco !== undefined ? encontrado.preco : precoPadrao;
+}
+
+/**
+ * Formata um resumo textual ou faixa de preços dos modelos de uma campanha
+ * Ex: "R$ 45,00" ou "R$ 40,00 a R$ 80,00"
+ */
+export function formatarFaixaPrecos(
+  modelos: any,
+  precoPadrao: number = 0
+): string {
+  const norm = normalizarModelos(modelos, precoPadrao);
+  const precos = norm.map((m) => m.preco ?? precoPadrao).filter((p) => p > 0);
+
+  if (precos.length === 0) {
+    return `R$ ${precoPadrao.toFixed(2).replace(".", ",")}`;
+  }
+
+  const min = Math.min(...precos);
+  const max = Math.max(...precos);
+
+  if (min === max) {
+    return `R$ ${min.toFixed(2).replace(".", ",")}`;
+  }
+
+  return `R$ ${min.toFixed(2).replace(".", ",")} até R$ ${max.toFixed(2).replace(".", ",")}`;
+}
+
+

@@ -18,8 +18,10 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
+import { InputDataBr } from "@/components/ui/input-data-br";
 
 interface IntegranteItem {
+
   id: string;
   nomeCompleto: string;
   apelido: string | null;
@@ -208,18 +210,30 @@ export default function NovoEncontroPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                Data e Horário *
+                Data do Encontro * (DD/MM/AAAA) e Horário
               </label>
-              <div className="relative">
-                <input
-                  type="datetime-local"
+              <div className="flex items-center gap-2">
+                <InputDataBr
+                  value={dataHora ? dataHora.slice(0, 10) : ""}
+                  onChange={(br, iso) => {
+                    const hora = dataHora.includes("T") ? dataHora.split("T")[1] : "17:00";
+                    setDataHora(iso ? `${iso}T${hora}` : "");
+                  }}
+                  placeholder="DD/MM/AAAA"
                   required
-                  value={dataHora}
-                  onChange={(e) => setDataHora(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+                <input
+                  type="time"
+                  value={dataHora.includes("T") ? dataHora.split("T")[1].slice(0, 5) : "17:00"}
+                  onChange={(e) => {
+                    const dataBase = dataHora.includes("T") ? dataHora.split("T")[0] : new Date().toISOString().slice(0, 10);
+                    setDataHora(`${dataBase}T${e.target.value}`);
+                  }}
+                  className="w-28 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-900 dark:text-white"
                 />
               </div>
             </div>
+
 
             <div>
               <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">

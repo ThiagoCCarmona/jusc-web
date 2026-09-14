@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { calcularStatusPorAusencia } from "@/lib/rules";
+import { calcularStatusPorAusencia, calcularIdade } from "@/lib/rules";
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,10 +12,16 @@ export async function GET(req: NextRequest) {
     const filtroStatus = searchParams.get("status"); // "ATIVO", "INATIVO", "ALERTA"
     const filtroSacramento = searchParams.get("sacramento"); // "batismo", "eucaristia", "crisma"
     const filtroSexo = searchParams.get("sexo"); // "MASCULINO", "FEMININO"
+    const filtroClj = searchParams.get("clj"); // "TODOS", "SIM", "NAO"
+    const dataRefStr = searchParams.get("dataRefIdade");
+    const dataReferencia = dataRefStr ? new Date(dataRefStr) : new Date();
+    const idadeMin = searchParams.get("idadeMin") ? parseInt(searchParams.get("idadeMin")!, 10) : null;
+    const idadeMax = searchParams.get("idadeMax") ? parseInt(searchParams.get("idadeMax")!, 10) : null;
 
     const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
     const limiteAlerta = config?.limiteMesesAlertaAusencia || 3;
     const limiteInativo = config?.limiteMesesInativacao || 12;
+    const pausas = await prisma.pausaEncontro.findMany();
 
     const integrantes = await prisma.integrante.findMany({
       orderBy: { nomeCompleto: "asc" },
@@ -37,8 +43,12 @@ export async function GET(req: NextRequest) {
           int.dataCadastro,
           int.presencas,
           limiteAlerta,
-          limiteInativo
+          limiteInativo,
+          new Date(),
+          pausas
         );
+
+        const idadeCalculada = calcularIdade(int.dataNascimento, dataReferencia);
 
         return {
           ...int,
@@ -46,6 +56,7 @@ export async function GET(req: NextRequest) {
           temAlertaAusencia: statusInfo.temAlertaAusencia,
           ultimaPresencaData: statusInfo.ultimaPresencaData,
           mesesSemPresenca: statusInfo.mesesSemPresenca,
+          idadeCalculada,
         };
       })
       .filter((int) => {
@@ -58,11 +69,11 @@ export async function GET(req: NextRequest) {
 
         // Filtro de status
         if (filtroStatus === "ALERTA") {
-          return int.temAlertaAusencia;
+          if (!int.temAlertaAusencia) return false;
         } else if (filtroStatus === "ATIVO") {
-          return int.statusCalculado === "ATIVO" && !int.temAlertaAusencia;
+          if (int.statusCalculado !== "ATIVO" || int.temAlertaAusencia) return false;
         } else if (filtroStatus === "INATIVO") {
-          return int.statusCalculado === "INATIVO";
+          if (int.statusCalculado !== "INATIVO") return false;
         }
 
         // Filtro de sacramentos
@@ -76,6 +87,14 @@ export async function GET(req: NextRequest) {
           if (sexoInt !== filtroSexo) return false;
         }
 
+        // Filtro CLJ
+        if (filtroClj === "SIM" && !int.fezClj) return false;
+        if (filtroClj === "NAO" && int.fezClj) return false;
+
+        // Filtro por idade
+        if (idadeMin !== null && !isNaN(idadeMin) && int.idadeCalculada < idadeMin) return false;
+        if (idadeMax !== null && !isNaN(idadeMax) && int.idadeCalculada > idadeMax) return false;
+
         return true;
       });
 
@@ -83,7 +102,11 @@ export async function GET(req: NextRequest) {
       integrantes: resultadoProcessado,
       limiteAlerta,
       limiteInativo,
+      encontrosPausados: Boolean(config?.encontrosPausados),
+      nomeGrupo: config?.nomeGrupo || "JUSC",
+      mascoteUrl: config?.mascoteUrl || "/assets/abelhudo.png",
     });
+
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
@@ -112,6 +135,8 @@ export async function POST(req: NextRequest) {
       batismo,
       primeiraEucaristia,
       crisma,
+      fezClj,
+      qualClj,
       possuiAlergia,
       descricaoAlergia,
       intoleranciaGluten,
@@ -152,6 +177,8 @@ export async function POST(req: NextRequest) {
         batismo: Boolean(batismo),
         primeiraEucaristia: Boolean(primeiraEucaristia),
         crisma: Boolean(crisma),
+        fezClj: Boolean(fezClj),
+        qualClj: fezClj ? (qualClj?.trim() || null) : null,
         noGrupoWhatsapp: Boolean(body.noGrupoWhatsapp),
         possuiAlergia: Boolean(possuiAlergia),
         descricaoAlergia: possuiAlergia ? (descricaoAlergia?.trim() || null) : null,

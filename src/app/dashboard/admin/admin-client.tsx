@@ -19,28 +19,68 @@ import {
   MessageCircle,
   KeyRound,
   Edit3,
+  Palette,
+  Shirt,
+  PauseCircle,
+  PlayCircle,
+  DollarSign,
+  Calendar,
+  Layers,
+  MapPin,
+  ExternalLink,
+  Tag,
+  X,
 } from "lucide-react";
 import { formatarDataHora } from "@/lib/utils";
+import { InputDataBr } from "@/components/ui/input-data-br";
+
+export interface FotoComLabel {
+  url: string;
+  label?: string;
+}
 
 export function AdminPanelClient() {
-  const [aba, setAba] = useState<"LIDERANCA" | "BANNERS" | "USUARIOS" | "CONFIG" | "AUDITORIA">(
-    "LIDERANCA"
-  );
 
-  // Estados de Configurações e Liderança
+
+  const [aba, setAba] = useState<
+    "IDENTIDADE" | "LIDERANCA" | "CAMISETAS" | "PAUSAS" | "BANNERS" | "USUARIOS" | "CONFIG" | "AUDITORIA"
+  >("IDENTIDADE");
+
+  // Estados de Configurações, Branding e Liderança
   const [config, setConfig] = useState<any>({
+    nomeGrupo: "JUSC",
+    subtituloGrupo: "Jovens Unidos Seguindo Cristo",
+    paroquiaNome: "Paróquia Menino Jesus",
+    logoUrl: "/assets/logo-jusc.jpeg",
+    mascoteUrl: "/assets/abelhudo.png",
+    corBase: "#FFC72C",
+    descricaoGrupo: "Venha fazer parte da nossa colmeia! Um grupo jovem de oração, amizade verdadeira, música e missão.",
+
     coordenadorNome: "Brunão",
     coordenadorFotoUrl: "/assets/coordenador.jpg",
     coordenadorWhatsapp: "5545999068852",
     coordenadorMensagem: "Oii, vim pelo site e queria saber mais sobre o JUSCÃO",
+
     secretarioNome: "Foletto",
     secretarioFotoUrl: "/assets/secretario.jpg",
     secretarioWhatsapp: "5545991179727",
     secretarioMensagem: "Oii, vim pelo site e queria marcar um encontro no JUSC",
+
+    tesoureiroNome: "Tesoureiro",
+    tesoureiroWhatsapp: "5545991179727",
+    tesoureiroChavePix: "",
+    tesoureiroTipoChave: "ALEATORIA",
+    tesoureiroCidadePix: "Foz do Iguacu",
+
     enderecoPadrao: "Salinha do JUSC — Paróquia Menino Jesus (Av. Pôr do Sol, 2200, Conjunto Libra)",
     horarioPadrao: "Domingos às 17h",
     linkGoogleMaps: "https://maps.google.com/?q=Avenida+P%C3%B4r+do+Sol,+2200,+Conjunto+Libra,+Foz+do+Igua%C3%A7u+-+PR",
     instagramUrl: "https://www.instagram.com/juscpmj?stkn=MWJhbGsyd2ZidHY1Mw==",
+
+    encontrosPausados: false,
+    pausadoEm: null,
+    motivoPausa: null,
+
     limiteMesesAlertaAusencia: 2,
     limiteMesesInativacao: 12,
   });
@@ -52,7 +92,7 @@ export function AdminPanelClient() {
   const [novoLogin, setNovoLogin] = useState("");
   const [novoEmail, setNovoEmail] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
-  const [novoPerfil, setNovoPerfil] = useState<"ADMIN" | "COLABORADOR">("COLABORADOR");
+  const [novoPerfil, setNovoPerfil] = useState<"ADMIN" | "COLABORADOR" | "TESOUREIRO">("COLABORADOR");
   const [criandoUsuario, setCriandoUsuario] = useState(false);
 
   // Estados de Redefinição de Senha
@@ -60,7 +100,7 @@ export function AdminPanelClient() {
   const [novaSenhaAdmin, setNovaSenhaAdmin] = useState("");
   const [salvandoReset, setSalvandoReset] = useState(false);
 
-  // Estados de Banners
+  // Estados de Banners de Avisos da Home
   const [banners, setBanners] = useState<any[]>([]);
   const [tipoBanner, setTipoBanner] = useState<"ALERTA" | "EVENTO">("ALERTA");
   const [tituloBanner, setTituloBanner] = useState("");
@@ -76,19 +116,49 @@ export function AdminPanelClient() {
   const [salvandoEditBanner, setSalvandoEditBanner] = useState(false);
   const [uploadingEditBannerImg, setUploadingEditBannerImg] = useState(false);
 
+  // Estados de Campanhas de Camisetas
+  const [campanhas, setCampanhas] = useState<any[]>([]);
+  const [tituloCampanha, setTituloCampanha] = useState("");
+  const [descCampanha, setDescCampanha] = useState("");
+  const [precoCampanha, setPrecoCampanha] = useState("");
+  const [fotosCampanha, setFotosCampanha] = useState<FotoComLabel[]>([]);
+  const [modelosCampanha, setModelosCampanha] = useState("Branca Tradicional, Preta Baby Look");
+  const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>([
+    "PP", "P", "M", "G", "GG", "XGG"
+  ]);
+  const [permiteNomeCampanha, setPermiteNomeCampanha] = useState(true);
+  const [permiteNumeroCampanha, setPermiteNumeroCampanha] = useState(true);
+  const [dataFimCampanha, setDataFimCampanha] = useState("");
+  const [criandoCampanha, setCriandoCampanha] = useState(false);
+  const [uploadingFotoCamiseta, setUploadingFotoCamiseta] = useState(false);
+
+  // Modal de Edição de Campanha
+  const [campanhaEditando, setCampanhaEditando] = useState<any | null>(null);
+  const [salvandoEditCampanha, setSalvandoEditCampanha] = useState(false);
+
+  // Estados de Pausas / Férias
+  const [pausas, setPausas] = useState<any[]>([]);
+  const [motivoPausaInput, setMotivoPausaInput] = useState("");
+  const [processandoPausa, setProcessandoPausa] = useState(false);
+
   // Estados de Auditoria
   const [logs, setLogs] = useState<any[]>([]);
 
-  // Estados de feedback e upload
+  // Feedbacks e uploads
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
   const [mensagemErro, setMensagemErro] = useState<string | null>(null);
   const [uploadingCoord, setUploadingCoord] = useState(false);
   const [uploadingSec, setUploadingSec] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingMascote, setUploadingMascote] = useState(false);
 
   const fileInputCoordRef = useRef<HTMLInputElement>(null);
   const fileInputSecRef = useRef<HTMLInputElement>(null);
+  const fileInputLogoRef = useRef<HTMLInputElement>(null);
+  const fileInputMascoteRef = useRef<HTMLInputElement>(null);
   const fileInputBannerRef = useRef<HTMLInputElement>(null);
   const fileInputEditBannerRef = useRef<HTMLInputElement>(null);
+  const fileInputCamisetaRef = useRef<HTMLInputElement>(null);
 
   // Carregar dados conforme aba
   async function carregarDados() {
@@ -110,6 +180,26 @@ export function AdminPanelClient() {
         if (res.ok) {
           const d = await res.json();
           setBanners(d.banners || []);
+        }
+      } else if (aba === "CAMISETAS") {
+        const res = await fetch("/api/campanhas?todas=true");
+        if (res.ok) {
+          const d = await res.json();
+          setCampanhas(d.campanhas || []);
+        }
+      } else if (aba === "PAUSAS") {
+        const res = await fetch("/api/admin/pausas");
+        if (res.ok) {
+          const d = await res.json();
+          setPausas(d.pausas || []);
+          if (d.encontrosPausados !== undefined) {
+            setConfig((prev: any) => ({
+              ...prev,
+              encontrosPausados: d.encontrosPausados,
+              pausadoEm: d.pausadoEm,
+              motivoPausa: d.motivoPausa,
+            }));
+          }
         }
       } else if (aba === "AUDITORIA") {
         const res = await fetch("/api/admin/auditoria");
@@ -137,16 +227,18 @@ export function AdminPanelClient() {
     setTimeout(() => setMensagemErro(null), 5000);
   }
 
-  // Upload de fotos da liderança
-  async function handleUploadFoto(file: File, tipo: "coord" | "sec") {
+  // Upload genérico de imagens
+  async function handleUploadImagem(file: File, tipo: "coord" | "sec" | "logo" | "mascote") {
     const formData = new FormData();
     formData.append("file", file);
 
     if (tipo === "coord") setUploadingCoord(true);
-    else setUploadingSec(true);
+    else if (tipo === "sec") setUploadingSec(true);
+    else if (tipo === "logo") setUploadingLogo(true);
+    else if (tipo === "mascote") setUploadingMascote(true);
 
     try {
-      const res = await fetch("/api/admin/upload", {
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -155,22 +247,122 @@ export function AdminPanelClient() {
       if (res.ok && data.url) {
         if (tipo === "coord") {
           setConfig((prev: any) => ({ ...prev, coordenadorFotoUrl: data.url }));
-        } else {
+        } else if (tipo === "sec") {
           setConfig((prev: any) => ({ ...prev, secretarioFotoUrl: data.url }));
+        } else if (tipo === "logo") {
+          setConfig((prev: any) => ({ ...prev, logoUrl: data.url }));
+        } else if (tipo === "mascote") {
+          setConfig((prev: any) => ({ ...prev, mascoteUrl: data.url }));
         }
-        dispararSucesso("Foto carregada com sucesso! Clique em salvar.");
+        dispararSucesso("Imagem carregada com sucesso! Clique em salvar.");
       } else {
-        dispararErro(data.error || "Erro ao carregar foto.");
+        dispararErro(data.error || "Erro ao carregar imagem.");
       }
     } catch {
-      dispararErro("Erro de conexão no upload da foto.");
+      dispararErro("Erro de conexão no upload da imagem.");
     } finally {
-      if (tipo === "coord") setUploadingCoord(false);
-      else setUploadingSec(false);
+      setUploadingCoord(false);
+      setUploadingSec(false);
+      setUploadingLogo(false);
+      setUploadingMascote(false);
     }
   }
 
-  // Salvar Configurações / Liderança
+  // Upload de Foto de Camiseta
+  async function handleUploadCamisetaFoto(file: File, isEdit: boolean = false) {
+    const formData = new FormData();
+    formData.append("file", file);
+    setUploadingFotoCamiseta(true);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        if (isEdit) {
+          setCampanhaEditando((prev: any) => ({
+            ...prev,
+            fotos: [...(prev.fotos || []), { url: data.url, label: "" }],
+          }));
+        } else {
+          setFotosCampanha((prev) => [...prev, { url: data.url, label: "" }]);
+        }
+        dispararSucesso("Foto da camiseta adicionada com sucesso!");
+      } else {
+        dispararErro(data.error || "Erro ao enviar foto da camiseta.");
+      }
+    } catch {
+      dispararErro("Falha no upload da foto da camiseta.");
+    } finally {
+      setUploadingFotoCamiseta(false);
+    }
+  }
+
+  function abrirEdicaoCampanha(camp: any) {
+    const fotosFormatadas: FotoComLabel[] = (camp.fotos || []).map((f: any) =>
+      typeof f === "string" ? { url: f, label: "" } : f
+    );
+
+    setCampanhaEditando({
+      ...camp,
+      precoUnitarioInput: camp.precoUnitario?.toString() || "",
+      modelosInput: Array.isArray(camp.modelos) ? camp.modelos.join(", ") : "",
+      tamanhosInput: Array.isArray(camp.tamanhosDisponiveis) ? [...camp.tamanhosDisponiveis] : ["P", "M", "G"],
+      dataFimInput: camp.dataFim ? new Date(camp.dataFim).toISOString() : "",
+      fotos: fotosFormatadas,
+    });
+  }
+
+  async function handleSalvarEdicaoCampanha(e: React.FormEvent) {
+    e.preventDefault();
+    if (!campanhaEditando) return;
+
+    if (!campanhaEditando.fotos || campanhaEditando.fotos.length < 2) {
+      dispararErro("A campanha deve conter pelo menos 2 fotos.");
+      return;
+    }
+
+    setSalvandoEditCampanha(true);
+    try {
+      const modelosArr = (campanhaEditando.modelosInput || "")
+        .split(",")
+        .map((m: string) => m.trim())
+        .filter(Boolean);
+
+      const res = await fetch(`/api/campanhas/${campanhaEditando.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: campanhaEditando.titulo,
+          descricao: campanhaEditando.descricao,
+          precoUnitario: parseFloat(campanhaEditando.precoUnitarioInput || "0"),
+          fotos: campanhaEditando.fotos,
+          modelos: modelosArr.length > 0 ? modelosArr : ["Padrão"],
+          tamanhosDisponiveis: campanhaEditando.tamanhosInput || [],
+          permiteNome: campanhaEditando.permiteNome,
+          permiteNumero: campanhaEditando.permiteNumero,
+          dataFim: campanhaEditando.dataFimInput,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        dispararSucesso("Campanha atualizada com sucesso!");
+        setCampanhaEditando(null);
+        carregarDados();
+      } else {
+        dispararErro(data.error || "Erro ao salvar edição da campanha.");
+      }
+    } catch {
+      dispararErro("Erro de conexão ao atualizar campanha.");
+    } finally {
+      setSalvandoEditCampanha(false);
+    }
+  }
+
+  // Salvar Configurações Gerais
   async function handleSalvarConfig(e: React.FormEvent) {
     e.preventDefault();
     setSalvandoConfig(true);
@@ -181,7 +373,7 @@ export function AdminPanelClient() {
         body: JSON.stringify(config),
       });
       if (res.ok) {
-        dispararSucesso("Dados da coordenação e tela inicial atualizados com sucesso!");
+        dispararSucesso("Configurações atualizadas com sucesso!");
       } else {
         dispararErro("Erro ao salvar configurações.");
       }
@@ -189,6 +381,116 @@ export function AdminPanelClient() {
       dispararErro("Falha de conexão ao salvar.");
     } finally {
       setSalvandoConfig(false);
+    }
+  }
+
+  // Pausar / Retomar Encontros
+  async function handleAcaoPausa(acao: "PAUSAR" | "RETOMAR") {
+    setProcessandoPausa(true);
+    try {
+      const res = await fetch("/api/admin/pausas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acao,
+          motivo: motivoPausaInput,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        dispararSucesso(
+          acao === "PAUSAR"
+            ? "Encontros pausados com sucesso! As ausências foram congeladas."
+            : "Encontros retomados com sucesso!"
+        );
+        setMotivoPausaInput("");
+        carregarDados();
+      } else {
+        dispararErro(data.error || "Erro ao atualizar pausa dos encontros.");
+      }
+    } catch {
+      dispararErro("Erro de conexão ao processar pausa.");
+    } finally {
+      setProcessandoPausa(false);
+    }
+  }
+
+  // Criar Campanha de Camisetas
+  async function handleCriarCampanha(e: React.FormEvent) {
+    e.preventDefault();
+    if (fotosCampanha.length < 2) {
+      dispararErro("É obrigatório anexar pelo menos 2 fotos da camiseta.");
+      return;
+    }
+
+    setCriandoCampanha(true);
+    try {
+      const modelosArr = modelosCampanha
+        .split(",")
+        .map((m) => m.trim())
+        .filter(Boolean);
+
+      const res = await fetch("/api/campanhas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: tituloCampanha,
+          descricao: descCampanha,
+          precoUnitario: precoCampanha,
+          fotos: fotosCampanha,
+          modelos: modelosArr.length > 0 ? modelosArr : ["Padrão"],
+          tamanhosDisponiveis: tamanhosSelecionados,
+          permiteNome: permiteNomeCampanha,
+          permiteNumero: permiteNumeroCampanha,
+          dataFim: dataFimCampanha,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        dispararSucesso("Campanha de camisetas publicada com sucesso!");
+        setTituloCampanha("");
+        setDescCampanha("");
+        setPrecoCampanha("");
+        setFotosCampanha([]);
+        setDataFimCampanha("");
+        carregarDados();
+      } else {
+        dispararErro(data.error || "Erro ao publicar campanha.");
+      }
+    } catch {
+      dispararErro("Erro de conexão ao criar campanha.");
+    } finally {
+      setCriandoCampanha(false);
+    }
+  }
+
+  async function alternarStatusCampanha(id: string, ativaAtual: boolean) {
+    try {
+      const res = await fetch(`/api/campanhas/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ativa: !ativaAtual }),
+      });
+      if (res.ok) {
+        dispararSucesso("Status da campanha atualizado.");
+        carregarDados();
+      }
+    } catch {
+      dispararErro("Erro ao alterar campanha.");
+    }
+  }
+
+  async function excluirCampanha(id: string) {
+    if (!confirm("Tem certeza que deseja excluir esta campanha e seus pedidos?")) return;
+    try {
+      const res = await fetch(`/api/campanhas/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        dispararSucesso("Campanha excluída com sucesso.");
+        carregarDados();
+      }
+    } catch {
+      dispararErro("Erro ao excluir campanha.");
     }
   }
 
@@ -259,7 +561,7 @@ export function AdminPanelClient() {
       });
       const data = await res.json();
       if (res.ok) {
-        dispararSucesso(`Senha de @${usuarioResetSenha.login} redefinida! O usuário deverá trocá-la no próximo acesso.`);
+        dispararSucesso(`Senha de @${usuarioResetSenha.login} redefinida!`);
         setUsuarioResetSenha(null);
         setNovaSenhaAdmin("");
         carregarDados();
@@ -426,7 +728,7 @@ export function AdminPanelClient() {
           </h1>
         </div>
         <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-          Gestão da coordenação anual, banners da Home, usuários e configurações pastorais
+          Identidade visual do grupo, coordenação, campanhas de camisetas, pausas de encontros e usuários
         </p>
       </div>
 
@@ -447,6 +749,18 @@ export function AdminPanelClient() {
       {/* Navegação por Abas */}
       <div className="flex flex-wrap items-center gap-1.5 bg-neutral-200/70 dark:bg-[#15171e] p-1.5 rounded-2xl border border-neutral-300/60 dark:border-neutral-800">
         <button
+          onClick={() => setAba("IDENTIDADE")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+            aba === "IDENTIDADE"
+              ? "bg-[#FFC72C] text-neutral-950 shadow-sm"
+              : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+          }`}
+        >
+          <Palette className="w-4 h-4" />
+          Identidade & Replicação
+        </button>
+
+        <button
           onClick={() => setAba("LIDERANCA")}
           className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
             aba === "LIDERANCA"
@@ -455,7 +769,31 @@ export function AdminPanelClient() {
           }`}
         >
           <Sparkles className="w-4 h-4" />
-          Coordenação Anual (Tela Inicial)
+          Coordenação & Tesouraria
+        </button>
+
+        <button
+          onClick={() => setAba("CAMISETAS")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            aba === "CAMISETAS"
+              ? "bg-[#FFC72C] text-neutral-950 shadow-sm"
+              : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+          }`}
+        >
+          <Shirt className="w-4 h-4" />
+          Camisetas & Pedidos
+        </button>
+
+        <button
+          onClick={() => setAba("PAUSAS")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            aba === "PAUSAS"
+              ? "bg-[#FFC72C] text-neutral-950 shadow-sm"
+              : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+          }`}
+        >
+          <PauseCircle className="w-4 h-4" />
+          Pausar Encontros (Férias)
         </button>
 
         <button
@@ -467,7 +805,7 @@ export function AdminPanelClient() {
           }`}
         >
           <ImageIcon className="w-4 h-4" />
-          Banners & Avisos da Home
+          Banners da Home
         </button>
 
         <button
@@ -479,7 +817,7 @@ export function AdminPanelClient() {
           }`}
         >
           <Users className="w-4 h-4" />
-          Usuários do Sistema
+          Usuários
         </button>
 
         <button
@@ -491,7 +829,7 @@ export function AdminPanelClient() {
           }`}
         >
           <Settings className="w-4 h-4" />
-          Local & Regras Pastorais
+          Regras de Ausência
         </button>
 
         <button
@@ -507,11 +845,364 @@ export function AdminPanelClient() {
         </button>
       </div>
 
-      {/* ABA 1: COORDENAÇÃO ANUAL (TELA INICIAL) */}
-      {aba === "LIDERANCA" && (
-        <form onSubmit={handleSalvarConfig} className="space-y-6">
+      {/* ABA 1: IDENTIDADE VISUAL & REPLICAÇÃO DO PROJETO */}
+      {aba === "IDENTIDADE" && (
+        <form onSubmit={handleSalvarConfig} className="space-y-6 animate-fadeIn">
           <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-neutral-700 dark:text-neutral-300">
-            <strong>Renovação Anual da Liderança:</strong> A cada ano a equipe pastoral muda. Atualize aqui os nomes, fotos e WhatsApp do Coordenador e Secretário. Essas informações alteram instantaneamente os banners amarelos da página pública do JUSC.
+            <strong>Replicação por outros grupos e paróquias:</strong> Configure aqui o logotipo, o mascote, a cor base e os textos institucionais. O sistema se adaptará automaticamente a qualquer grupo jovem ou pastoral!
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Logo do Grupo */}
+            <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+              <h3 className="font-black text-sm text-neutral-900 dark:text-white flex items-center gap-2">
+                <Palette className="w-4 h-4 text-[#FFC72C]" />
+                Logotipo do Grupo
+              </h3>
+
+              <div className="flex items-center gap-4">
+                <div className="relative w-20 h-20 rounded-full overflow-hidden bg-neutral-100 border-2 border-[#FFC72C] flex-shrink-0 shadow-sm">
+                  {config.logoUrl ? (
+                    <Image src={config.logoUrl} alt="Logo" fill className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-neutral-400">
+                      Sem logo
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputLogoRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        handleUploadImagem(e.target.files[0], "logo");
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputLogoRef.current?.click()}
+                    disabled={uploadingLogo}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold text-neutral-900 dark:text-white transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    {uploadingLogo ? "Enviando..." : "Trocar Logotipo"}
+                  </button>
+                  <p className="text-[11px] text-neutral-500">
+                    Aparece no cabeçalho e rodapé do site.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Mascote do Grupo */}
+            <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+              <h3 className="font-black text-sm text-neutral-900 dark:text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#FFC72C]" />
+                Mascote do Grupo (Fundo transparente)
+              </h3>
+
+              <div className="flex items-center gap-4">
+                <div className="relative w-20 h-20 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-dashed border-[#FFC72C]/40 flex items-center justify-center flex-shrink-0">
+                  {config.mascoteUrl ? (
+                    <Image src={config.mascoteUrl} alt="Mascote" fill className="object-contain p-1" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-neutral-400">
+                      Sem mascote
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputMascoteRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        handleUploadImagem(e.target.files[0], "mascote");
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputMascoteRef.current?.click()}
+                    disabled={uploadingMascote}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold text-neutral-900 dark:text-white transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    {uploadingMascote ? "Enviando..." : "Trocar Mascote"}
+                  </button>
+                  <p className="text-[11px] text-neutral-500">
+                    Aparece no topo da página inicial e estados vazios (PNG transparente recomendado).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Paleta Dinâmica do Grupo (1 a 3 cores de base) */}
+            <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4 lg:col-span-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-100 dark:border-neutral-800 pb-3">
+                <div>
+                  <h3 className="font-black text-sm text-neutral-900 dark:text-white flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-[#FFC72C]" />
+                    Paleta de Cores do Grupo (1 a 3 Cores Base)
+                  </h3>
+                  <p className="text-[11px] text-neutral-500 mt-0.5">
+                    Defina as cores características da sua pastoral ou grupo para aplicar em todo o sistema.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig({
+                      ...config,
+                      corBase: "#FFC72C",
+                      corSecundaria: "#d97706",
+                      corDestaque: "#f59e0b",
+                    })
+                  }
+                  className="px-3 py-1 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold text-neutral-700 dark:text-neutral-300 transition-colors self-start sm:self-auto"
+                >
+                  Restaurar Amarelo JUSC
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Cor 1: Primária */}
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-neutral-800 dark:text-neutral-200">
+                      1. Cor Principal (Botões e Destaques)
+                    </span>
+                    <div
+                      className="w-4 h-4 rounded-full border border-black/20"
+                      style={{ backgroundColor: config.corBase || "#FFC72C" }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={config.corBase || "#FFC72C"}
+                      onChange={(e) => setConfig({ ...config, corBase: e.target.value })}
+                      className="w-12 h-12 rounded-xl cursor-pointer border-2 border-neutral-300 dark:border-neutral-700 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={config.corBase || "#FFC72C"}
+                      onChange={(e) => setConfig({ ...config, corBase: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* Cor 2: Secundária */}
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-neutral-800 dark:text-neutral-200">
+                      2. Cor Secundária (Bordas e Tons Escuros)
+                    </span>
+                    <div
+                      className="w-4 h-4 rounded-full border border-black/20"
+                      style={{ backgroundColor: config.corSecundaria || "#d97706" }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={config.corSecundaria || "#d97706"}
+                      onChange={(e) => setConfig({ ...config, corSecundaria: e.target.value })}
+                      className="w-12 h-12 rounded-xl cursor-pointer border-2 border-neutral-300 dark:border-neutral-700 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={config.corSecundaria || "#d97706"}
+                      onChange={(e) => setConfig({ ...config, corSecundaria: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                {/* Cor 3: Destaque / Apoio */}
+                <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-neutral-800 dark:text-neutral-200">
+                      3. Cor de Destaque (Gradientes e Badges)
+                    </span>
+                    <div
+                      className="w-4 h-4 rounded-full border border-black/20"
+                      style={{ backgroundColor: config.corDestaque || "#f59e0b" }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={config.corDestaque || "#f59e0b"}
+                      onChange={(e) => setConfig({ ...config, corDestaque: e.target.value })}
+                      className="w-12 h-12 rounded-xl cursor-pointer border-2 border-neutral-300 dark:border-neutral-700 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={config.corDestaque || "#f59e0b"}
+                      onChange={(e) => setConfig({ ...config, corDestaque: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-mono font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Nome do Grupo e Paróquia */}
+            <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+              <h3 className="font-black text-sm text-neutral-900 dark:text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#FFC72C]" />
+                Nomes & Identificação
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Sigla / Nome do Grupo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.nomeGrupo || ""}
+                    onChange={(e) => setConfig({ ...config, nomeGrupo: e.target.value })}
+                    placeholder="Ex.: JUSC"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Paróquia / Comunidade *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.paroquiaNome || ""}
+                    onChange={(e) => setConfig({ ...config, paroquiaNome: e.target.value })}
+                    placeholder="Ex.: Paróquia Menino Jesus"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Significado da Sigla / Subtítulo
+                  </label>
+                  <input
+                    type="text"
+                    value={config.subtituloGrupo || ""}
+                    onChange={(e) => setConfig({ ...config, subtituloGrupo: e.target.value })}
+                    placeholder="Ex.: Jovens Unidos Seguindo Cristo"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Mensagem de Boas-Vindas da Home
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={config.descricaoGrupo || ""}
+                    onChange={(e) => setConfig({ ...config, descricaoGrupo: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Endereço, Horário e Redes Sociais */}
+            <div className="lg:col-span-2 bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+              <h3 className="font-black text-sm text-neutral-900 dark:text-white flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#FFC72C]" />
+                Encontros, Endereço e Redes Sociais
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Horário Padrão dos Encontros *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.horarioPadrao || ""}
+                    onChange={(e) => setConfig({ ...config, horarioPadrao: e.target.value })}
+                    placeholder="Ex.: Domingos às 17h"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Endereço Completo / Local *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.enderecoPadrao || ""}
+                    onChange={(e) => setConfig({ ...config, enderecoPadrao: e.target.value })}
+                    placeholder="Ex.: Salinha do JUSC — Paróquia Menino Jesus"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Link do Google Maps
+                  </label>
+                  <input
+                    type="text"
+                    value={config.linkGoogleMaps || ""}
+                    onChange={(e) => setConfig({ ...config, linkGoogleMaps: e.target.value })}
+                    placeholder="https://maps.google.com/..."
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Link do Instagram do Grupo
+                  </label>
+                  <input
+                    type="text"
+                    value={config.instagramUrl || ""}
+                    onChange={(e) => setConfig({ ...config, instagramUrl: e.target.value })}
+                    placeholder="https://instagram.com/..."
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={salvandoConfig}
+              className="px-8 py-3 rounded-2xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-black text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              {salvandoConfig ? "Salvando..." : "Salvar Identidade & Replicação"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ABA 2: COORDENAÇÃO & TESOURARIA */}
+      {aba === "LIDERANCA" && (
+        <form onSubmit={handleSalvarConfig} className="space-y-6 animate-fadeIn">
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs text-neutral-700 dark:text-neutral-300">
+            <strong>Coordenação Anual & Dados da Tesouraria:</strong> Os dados do Coordenador e Secretário aparecem nos banners da página inicial pública. Já os dados do Tesoureiro são confidenciais e utilizados para receber pagamentos PIX e comprovantes.
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -526,16 +1217,11 @@ export function AdminPanelClient() {
                 </h3>
               </div>
 
-              {/* Preview e Upload da Foto do Coordenador */}
+              {/* Preview e Upload */}
               <div className="flex items-center gap-4">
                 <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-neutral-100 border-2 border-amber-300 flex-shrink-0 shadow-sm">
                   {config.coordenadorFotoUrl ? (
-                    <Image
-                      src={config.coordenadorFotoUrl}
-                      alt="Foto Coordenador"
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={config.coordenadorFotoUrl} alt="Coordenador" fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs text-neutral-400">
                       Sem foto
@@ -550,9 +1236,7 @@ export function AdminPanelClient() {
                     ref={fileInputCoordRef}
                     className="hidden"
                     onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        handleUploadFoto(e.target.files[0], "coord");
-                      }
+                      if (e.target.files?.[0]) handleUploadImagem(e.target.files[0], "coord");
                     }}
                   />
                   <button
@@ -564,9 +1248,7 @@ export function AdminPanelClient() {
                     <Upload className="w-3.5 h-3.5" />
                     {uploadingCoord ? "Enviando..." : "Trocar Foto"}
                   </button>
-                  <p className="text-[11px] text-neutral-500">
-                    Envie a foto do coordenador atual (JPEG ou PNG).
-                  </p>
+                  <p className="text-[11px] text-neutral-500">Foto do coordenador atual.</p>
                 </div>
               </div>
 
@@ -580,7 +1262,6 @@ export function AdminPanelClient() {
                     required
                     value={config.coordenadorNome}
                     onChange={(e) => setConfig({ ...config, coordenadorNome: e.target.value })}
-                    placeholder="Ex.: Brunão"
                     className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
                   />
                 </div>
@@ -593,10 +1274,7 @@ export function AdminPanelClient() {
                     type="text"
                     required
                     value={config.coordenadorWhatsapp}
-                    onChange={(e) =>
-                      setConfig({ ...config, coordenadorWhatsapp: e.target.value })
-                    }
-                    placeholder="5545999068852"
+                    onChange={(e) => setConfig({ ...config, coordenadorWhatsapp: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
                   />
                 </div>
@@ -608,9 +1286,7 @@ export function AdminPanelClient() {
                   <input
                     type="text"
                     value={config.coordenadorMensagem}
-                    onChange={(e) =>
-                      setConfig({ ...config, coordenadorMensagem: e.target.value })
-                    }
+                    onChange={(e) => setConfig({ ...config, coordenadorMensagem: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
                   />
                 </div>
@@ -628,16 +1304,11 @@ export function AdminPanelClient() {
                 </h3>
               </div>
 
-              {/* Preview e Upload da Foto do Secretário */}
+              {/* Preview e Upload */}
               <div className="flex items-center gap-4">
                 <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-neutral-100 border-2 border-amber-300 flex-shrink-0 shadow-sm">
                   {config.secretarioFotoUrl ? (
-                    <Image
-                      src={config.secretarioFotoUrl}
-                      alt="Foto Secretário"
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={config.secretarioFotoUrl} alt="Secretário" fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs text-neutral-400">
                       Sem foto
@@ -652,9 +1323,7 @@ export function AdminPanelClient() {
                     ref={fileInputSecRef}
                     className="hidden"
                     onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        handleUploadFoto(e.target.files[0], "sec");
-                      }
+                      if (e.target.files?.[0]) handleUploadImagem(e.target.files[0], "sec");
                     }}
                   />
                   <button
@@ -666,9 +1335,7 @@ export function AdminPanelClient() {
                     <Upload className="w-3.5 h-3.5" />
                     {uploadingSec ? "Enviando..." : "Trocar Foto"}
                   </button>
-                  <p className="text-[11px] text-neutral-500">
-                    Envie a foto do secretário atual (JPEG ou PNG).
-                  </p>
+                  <p className="text-[11px] text-neutral-500">Foto do secretário atual.</p>
                 </div>
               </div>
 
@@ -682,7 +1349,6 @@ export function AdminPanelClient() {
                     required
                     value={config.secretarioNome}
                     onChange={(e) => setConfig({ ...config, secretarioNome: e.target.value })}
-                    placeholder="Ex.: Foletto"
                     className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
                   />
                 </div>
@@ -695,10 +1361,7 @@ export function AdminPanelClient() {
                     type="text"
                     required
                     value={config.secretarioWhatsapp}
-                    onChange={(e) =>
-                      setConfig({ ...config, secretarioWhatsapp: e.target.value })
-                    }
-                    placeholder="5545991179727"
+                    onChange={(e) => setConfig({ ...config, secretarioWhatsapp: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
                   />
                 </div>
@@ -710,9 +1373,84 @@ export function AdminPanelClient() {
                   <input
                     type="text"
                     value={config.secretarioMensagem}
-                    onChange={(e) =>
-                      setConfig({ ...config, secretarioMensagem: e.target.value })
-                    }
+                    onChange={(e) => setConfig({ ...config, secretarioMensagem: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Card Tesouraria & Checkout Pix (Confidencial) */}
+            <div className="lg:col-span-2 bg-white dark:bg-[#15171e] rounded-3xl p-6 border-2 border-emerald-400 dark:border-emerald-800 shadow-md space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
+                <h3 className="font-black text-base text-neutral-900 dark:text-white flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-500 text-white text-xs font-black">
+                    TESOURARIA & PIX
+                  </span>
+                  Dados de Pagamento dos Pedidos
+                </h3>
+                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                  🔒 Confidencial (Não exibido na tela inicial)
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-xs text-neutral-700 dark:text-neutral-300">
+                Estes dados são utilizados exclusivamente para gerar o <strong>Pix Copia e Cola</strong> ao finalizar pedidos de camisetas e para gerar o link direto de envio do comprovante para o WhatsApp do tesoureiro.
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Nome do Tesoureiro *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.tesoureiroNome || ""}
+                    onChange={(e) => setConfig({ ...config, tesoureiroNome: e.target.value })}
+                    placeholder="Ex.: Foletto"
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    WhatsApp do Tesoureiro * (com DDD)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.tesoureiroWhatsapp || ""}
+                    onChange={(e) => setConfig({ ...config, tesoureiroWhatsapp: e.target.value })}
+                    placeholder="5545991179727"
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Chave PIX da Tesouraria *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.tesoureiroChavePix || ""}
+                    onChange={(e) => setConfig({ ...config, tesoureiroChavePix: e.target.value })}
+                    placeholder="Ex.: 45991179727 ou chave aleatória"
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Cidade do Titular Pix *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={config.tesoureiroCidadePix || ""}
+                    onChange={(e) => setConfig({ ...config, tesoureiroCidadePix: e.target.value })}
+                    placeholder="Ex.: Foz do Iguacu"
                     className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
                   />
                 </div>
@@ -720,26 +1458,795 @@ export function AdminPanelClient() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-3">
+          <div className="flex justify-end pt-2">
             <button
               type="submit"
               disabled={salvandoConfig}
               className="px-8 py-3 rounded-2xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-black text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
             >
               <CheckCircle2 className="w-5 h-5" />
-              {salvandoConfig ? "Salvando..." : "Salvar Coordenação da Tela Inicial"}
+              {salvandoConfig ? "Salvando..." : "Salvar Coordenação & Tesouraria"}
             </button>
           </div>
         </form>
       )}
 
-      {/* ABA BANNERS */}
-      {aba === "BANNERS" && (
-        <div className="space-y-6">
+      {/* ABA 3: CAMISETAS & PEDIDOS */}
+      {aba === "CAMISETAS" && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Formulário de Criação de Campanha */}
           <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-2">
               <PlusCircle className="w-4 h-4" />
-              Publicar Novo Banner / Aviso
+              Lançar Novo Pedido / Campanha de Camisetas
+            </h2>
+
+            <form onSubmit={handleCriarCampanha} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Título da Camiseta *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={tituloCampanha}
+                    onChange={(e) => setTituloCampanha(e.target.value)}
+                    placeholder="Ex.: Camiseta Oficial JUSC 2026"
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Valor Unitário (R$) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    required
+                    value={precoCampanha}
+                    onChange={(e) => setPrecoCampanha(e.target.value)}
+                    placeholder="Ex.: 45.00"
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-emerald-600"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Descrição / Detalhes do Tecido / Regras de Retirada
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={descCampanha}
+                    onChange={(e) => setDescCampanha(e.target.value)}
+                    placeholder="Ex.: Malha 100% algodão penteado fio 30.1. Entrega prevista para o próximo retiro..."
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Modelos Disponíveis (separados por vírgula) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={modelosCampanha}
+                    onChange={(e) => setModelosCampanha(e.target.value)}
+                    placeholder="Branca Tradicional, Preta Baby Look..."
+                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Data Limite de Pedidos * (DD/MM/AAAA)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <InputDataBr
+                      value={dataFimCampanha ? dataFimCampanha.slice(0, 10) : ""}
+                      onChange={(br, iso) => {
+                        const hora = dataFimCampanha.includes("T") ? dataFimCampanha.split("T")[1] : "23:59";
+                        setDataFimCampanha(iso ? `${iso}T${hora}` : "");
+                      }}
+                      placeholder="DD/MM/AAAA"
+                      required
+                    />
+                    <input
+                      type="time"
+                      value={dataFimCampanha.includes("T") ? dataFimCampanha.split("T")[1].slice(0, 5) : "23:59"}
+                      onChange={(e) => {
+                        const dataBase = dataFimCampanha.includes("T") ? dataFimCampanha.split("T")[0] : new Date().toISOString().slice(0, 10);
+                        setDataFimCampanha(`${dataBase}T${e.target.value}`);
+                      }}
+                      className="w-24 px-2.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                    />
+                  </div>
+                </div>
+
+
+                {/* Tamanhos Disponíveis */}
+                <div className="sm:col-span-2 space-y-2">
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                    Tamanhos Disponíveis para Seleção *
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {["12", "14", "16", "PP", "P", "M", "G", "GG", "XGG", "G1", "G2"].map((tam) => {
+                      const selecionado = tamanhosSelecionados.includes(tam);
+                      return (
+                        <button
+                          key={tam}
+                          type="button"
+                          onClick={() => {
+                            if (selecionado) {
+                              setTamanhosSelecionados(tamanhosSelecionados.filter((t) => t !== tam));
+                            } else {
+                              setTamanhosSelecionados([...tamanhosSelecionados, tam]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                            selecionado
+                              ? "bg-[#FFC72C] text-neutral-950 border-amber-400 shadow-xs"
+                              : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"
+                          }`}
+                        >
+                          {tam}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Opções de Personalização */}
+                <div className="sm:col-span-2 flex flex-wrap items-center gap-6 p-3 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                    <input
+                      type="checkbox"
+                      checked={permiteNomeCampanha}
+                      onChange={(e) => setPermiteNomeCampanha(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                    />
+                    <span>Permitir personalização de Nome na camiseta</span>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                    <input
+                      type="checkbox"
+                      checked={permiteNumeroCampanha}
+                      onChange={(e) => setPermiteNumeroCampanha(e.target.checked)}
+                      className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                    />
+                    <span>Permitir personalização de Número na camiseta</span>
+                  </label>
+                </div>
+
+                {/* Upload de Fotos da Camiseta (Mínimo 2 fotos) */}
+                <div className="sm:col-span-2 space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Fotos da Camiseta * (mínimo 2 fotos obrigatórias)
+                    </label>
+                    <p className="text-[11px] text-neutral-500">
+                      Envie foto da frente, costas e/ou modelos. A primeira foto será usada na prévia do banner da Home. Você pode adicionar etiquetas/legendas (ex: "Frente", "Costas", "Baby Look", "Tabela de Medidas").
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputCamisetaRef}
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) handleUploadCamisetaFoto(e.target.files[0], false);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputCamisetaRef.current?.click()}
+                      disabled={uploadingFotoCamiseta}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold text-neutral-900 dark:text-white transition-colors"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-[#FFC72C]" />
+                      {uploadingFotoCamiseta ? "Enviando Foto..." : "Adicionar Foto da Camiseta"}
+                    </button>
+                    <span className="text-xs text-neutral-500">
+                      {fotosCampanha.length} foto(s) anexada(s)
+                    </span>
+                  </div>
+
+                  {/* Galeria de Fotos Anexadas com Seleção de Capa e Legendas */}
+                  {fotosCampanha.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      {fotosCampanha.map((foto, idx) => {
+                        const ehCapa = idx === 0;
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-2xl border-2 transition-all group bg-neutral-50 dark:bg-[#1a1d26] flex items-center gap-3 ${
+                              ehCapa ? "border-[#FFC72C] ring-2 ring-[#FFC72C]/30" : "border-neutral-200 dark:border-neutral-800"
+                            }`}
+                          >
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black/10 flex-shrink-0">
+                              <Image src={foto.url} alt={`Foto ${idx + 1}`} fill unoptimized className="object-cover" />
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                {ehCapa ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-[#FFC72C] text-neutral-950 text-[10px] font-black">
+                                    ⭐ Foto de Capa
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const reordenadas = [foto, ...fotosCampanha.filter((_, i) => i !== idx)];
+                                      setFotosCampanha(reordenadas);
+                                    }}
+                                    className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
+                                  >
+                                    Definir como Capa
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => setFotosCampanha(fotosCampanha.filter((_, i) => i !== idx))}
+                                  className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                                  title="Remover foto"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              <div className="relative">
+                                <Tag className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Legenda (ex: Frente, Baby Look)"
+                                  value={foto.label || ""}
+                                  onChange={(e) => {
+                                    const novas = [...fotosCampanha];
+                                    novas[idx] = { ...novas[idx], label: e.target.value };
+                                    setFotosCampanha(novas);
+                                  }}
+                                  className="w-full pl-7 pr-2 py-1 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={criandoCampanha}
+                  className="px-6 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-black text-xs shadow-md transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Shirt className="w-4 h-4" />
+                  {criandoCampanha ? "Publicando..." : "Publicar Campanha de Camisetas"}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Listagem de Campanhas Existentes */}
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+            <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900 dark:text-white">
+              Campanhas Lançadas ({campanhas.length})
+            </h2>
+
+            {campanhas.length === 0 ? (
+              <p className="text-xs text-neutral-500 py-4">Nenhuma campanha de camisetas cadastrada.</p>
+            ) : (
+              <div className="space-y-4">
+                {campanhas.map((camp) => (
+                  <div
+                    key={camp.id}
+                    className="p-5 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs"
+                  >
+                    <div className="flex items-center gap-4">
+                      {(() => {
+                        const primeiraFoto = camp.fotos?.[0];
+                        const urlFoto = typeof primeiraFoto === "object" && primeiraFoto ? primeiraFoto.url : primeiraFoto;
+                        return urlFoto ? (
+                          <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-amber-400 flex-shrink-0">
+                            <Image src={urlFoto} alt={camp.titulo} fill unoptimized className="object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-xs text-neutral-400">
+                            Sem foto
+                          </div>
+                        );
+                      })()}
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                              camp.expirada
+                                ? "bg-neutral-200 text-neutral-600"
+                                : camp.ativa
+                                ? "bg-emerald-500 text-white"
+                                : "bg-neutral-200 text-neutral-600"
+                            }`}
+                          >
+                            {camp.expirada ? "Expirada (oculta)" : camp.ativa ? "Ativa na Home" : "Pausada"}
+                          </span>
+                          <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
+                            R$ {camp.precoUnitario.toFixed(2)}
+                          </span>
+                        </div>
+                        <h4 className="font-extrabold text-sm text-neutral-900 dark:text-white">
+                          {camp.titulo}
+                        </h4>
+                        <p className="text-neutral-500">
+                          Modelos: {camp.modelos?.join(", ")} • Tamanhos: {camp.tamanhosDisponiveis?.join(", ")}
+                        </p>
+                        <p className="text-[11px] text-neutral-400">
+                          Disponível até: {formatarDataHora(camp.dataFim)} • {camp._count?.pedidos || 0} pedido(s)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => abrirEdicaoCampanha(camp)}
+                        className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        onClick={() => alternarStatusCampanha(camp.id, camp.ativa)}
+                        className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
+                      >
+                        {camp.ativa ? "Pausar" : "Ativar"}
+                      </button>
+                      <button
+                        onClick={() => excluirCampanha(camp.id)}
+                        className="p-1.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                        title="Excluir campanha"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Modal de Edição de Campanha */}
+          {campanhaEditando && (
+            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+              <div className="bg-white dark:bg-[#13151c] rounded-3xl max-w-2xl w-full p-6 border border-neutral-200 dark:border-neutral-800 shadow-2xl space-y-4 my-8">
+                <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Edit3 className="w-5 h-5 text-amber-500" />
+                    <h3 className="font-black text-base text-neutral-900 dark:text-white">
+                      Editar Campanha de Camisetas
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCampanhaEditando(null)}
+                    className="p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSalvarEdicaoCampanha} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block font-bold mb-1">Título da Campanha *</label>
+                      <input
+                        type="text"
+                        required
+                        value={campanhaEditando.titulo}
+                        onChange={(e) =>
+                          setCampanhaEditando({ ...campanhaEditando, titulo: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold mb-1">Valor Unitário (R$) *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={campanhaEditando.precoUnitarioInput}
+                        onChange={(e) =>
+                          setCampanhaEditando({ ...campanhaEditando, precoUnitarioInput: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-bold text-emerald-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold mb-1">Modelos (separados por vírgula)</label>
+                      <input
+                        type="text"
+                        value={campanhaEditando.modelosInput}
+                        onChange={(e) =>
+                          setCampanhaEditando({ ...campanhaEditando, modelosInput: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block font-bold mb-1">Descrição / Avisos</label>
+                      <textarea
+                        rows={2}
+                        value={campanhaEditando.descricao || ""}
+                        onChange={(e) =>
+                          setCampanhaEditando({ ...campanhaEditando, descricao: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block font-bold mb-1">Data Limite de Pedidos * (DD/MM/AAAA)</label>
+                      <div className="flex items-center gap-2">
+                        <InputDataBr
+                          value={campanhaEditando.dataFimInput ? campanhaEditando.dataFimInput.slice(0, 10) : ""}
+                          onChange={(br, iso) => {
+                            const hora = campanhaEditando.dataFimInput?.includes("T")
+                              ? campanhaEditando.dataFimInput.split("T")[1]
+                              : "23:59";
+                            setCampanhaEditando({
+                              ...campanhaEditando,
+                              dataFimInput: iso ? `${iso}T${hora}` : "",
+                            });
+                          }}
+                          placeholder="DD/MM/AAAA"
+                          required
+                        />
+                        <input
+                          type="time"
+                          value={
+                            campanhaEditando.dataFimInput?.includes("T")
+                              ? campanhaEditando.dataFimInput.split("T")[1].slice(0, 5)
+                              : "23:59"
+                          }
+                          onChange={(e) => {
+                            const dataBase = campanhaEditando.dataFimInput?.includes("T")
+                              ? campanhaEditando.dataFimInput.split("T")[0]
+                              : new Date().toISOString().slice(0, 10);
+                            setCampanhaEditando({
+                              ...campanhaEditando,
+                              dataFimInput: `${dataBase}T${e.target.value}`,
+                            });
+                          }}
+                          className="w-24 px-2 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tamanhos */}
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className="block font-bold">Tamanhos Permitidos *</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {["12", "14", "16", "PP", "P", "M", "G", "GG", "XGG", "G1", "G2"].map((tam) => {
+                          const sel = (campanhaEditando.tamanhosInput || []).includes(tam);
+                          return (
+                            <button
+                              key={tam}
+                              type="button"
+                              onClick={() => {
+                                const atuais = campanhaEditando.tamanhosInput || [];
+                                const novos = sel ? atuais.filter((t: string) => t !== tam) : [...atuais, tam];
+                                setCampanhaEditando({ ...campanhaEditando, tamanhosInput: novos });
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                                sel
+                                  ? "bg-[#FFC72C] text-neutral-950 border-amber-400"
+                                  : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"
+                              }`}
+                            >
+                              {tam}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Personalização */}
+                    <div className="sm:col-span-2 flex items-center gap-6 p-3 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700">
+                      <label className="flex items-center gap-2 cursor-pointer font-bold">
+                        <input
+                          type="checkbox"
+                          checked={campanhaEditando.permiteNome}
+                          onChange={(e) =>
+                            setCampanhaEditando({ ...campanhaEditando, permiteNome: e.target.checked })
+                          }
+                          className="w-4 h-4 rounded text-[#FFC72C]"
+                        />
+                        <span>Permitir Nome</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer font-bold">
+                        <input
+                          type="checkbox"
+                          checked={campanhaEditando.permiteNumero}
+                          onChange={(e) =>
+                            setCampanhaEditando({ ...campanhaEditando, permiteNumero: e.target.checked })
+                          }
+                          className="w-4 h-4 rounded text-[#FFC72C]"
+                        />
+                        <span>Permitir Número</span>
+                      </label>
+                    </div>
+
+                    {/* Fotos da Edição com Legendas e Capa */}
+                    <div className="sm:col-span-2 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block font-bold">Fotos da Camiseta * (mínimo 2 fotos)</label>
+                          <p className="text-[11px] text-neutral-500">
+                            Adicione legendas aos modelos (ex: Frente, Costas, Baby Look, Tabela de Medidas).
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 font-bold cursor-pointer">
+                            <Upload className="w-3.5 h-3.5 text-[#FFC72C]" />
+                            {uploadingFotoCamiseta ? "Enviando..." : "Adicionar Foto"}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploadingFotoCamiseta}
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) handleUploadCamisetaFoto(e.target.files[0], true);
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {campanhaEditando.fotos && campanhaEditando.fotos.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          {campanhaEditando.fotos.map((foto: FotoComLabel, idx: number) => {
+                            const ehCapa = idx === 0;
+                            return (
+                              <div
+                                key={idx}
+                                className={`p-3 rounded-2xl border-2 transition-all group bg-neutral-50 dark:bg-[#1a1d26] flex items-center gap-3 ${
+                                  ehCapa ? "border-[#FFC72C] ring-2 ring-[#FFC72C]/30" : "border-neutral-200 dark:border-neutral-800"
+                                }`}
+                              >
+                                <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black/10 flex-shrink-0">
+                                  <Image src={foto.url} alt={`Foto ${idx + 1}`} fill unoptimized className="object-cover" />
+                                </div>
+
+                                <div className="flex-1 min-w-0 space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    {ehCapa ? (
+                                      <span className="px-2 py-0.5 rounded-md bg-[#FFC72C] text-neutral-950 text-[10px] font-black">
+                                        ⭐ Foto de Capa
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const reordenadas = [foto, ...campanhaEditando.fotos.filter((_: any, i: number) => i !== idx)];
+                                          setCampanhaEditando({ ...campanhaEditando, fotos: reordenadas });
+                                        }}
+                                        className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
+                                      >
+                                        Definir como Capa
+                                      </button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const filtradas = campanhaEditando.fotos.filter((_: any, i: number) => i !== idx);
+                                        setCampanhaEditando({ ...campanhaEditando, fotos: filtradas });
+                                      }}
+                                      className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
+                                      title="Remover foto"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+
+                                  <div className="relative">
+                                    <Tag className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                    <input
+                                      type="text"
+                                      placeholder="Legenda (ex: Frente, Baby Look)"
+                                      value={foto.label || ""}
+                                      onChange={(e) => {
+                                        const novas = [...campanhaEditando.fotos];
+                                        novas[idx] = { ...novas[idx], label: e.target.value };
+                                        setCampanhaEditando({ ...campanhaEditando, fotos: novas });
+                                      }}
+                                      className="w-full pl-7 pr-2 py-1 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                    <button
+                      type="button"
+                      onClick={() => setCampanhaEditando(null)}
+                      className="px-4 py-2 rounded-xl text-neutral-600 dark:text-neutral-400 font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={salvandoEditCampanha}
+                      className="px-5 py-2 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-black shadow-md transition-all active:scale-95 flex items-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {salvandoEditCampanha ? "Salvando..." : "Salvar Alterações"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ABA 4: PAUSAS DOS ENCONTROS (FÉRIAS / RECESSO) */}
+      {aba === "PAUSAS" && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Card de Controle da Pausa Atual */}
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 sm:p-8 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-5">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
+              <div>
+                <h2 className="text-base font-black text-neutral-900 dark:text-white flex items-center gap-2">
+                  <PauseCircle className="w-5 h-5 text-amber-500" />
+                  Pausar Encontros (Férias Pastorais / Recesso)
+                </h2>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Quando o grupo entra em férias ou recesso, pause os encontros para congelar o cálculo de ausência e evitar que os jovens sejam inativados indevidamente.
+                </p>
+              </div>
+
+              <div>
+                {config.encontrosPausados ? (
+                  <span className="px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs font-black border border-amber-300 flex items-center gap-1.5">
+                    <PauseCircle className="w-4 h-4 text-amber-600" />
+                    EM RECESSO PASTORAL
+                  </span>
+                ) : (
+                  <span className="px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-black border border-emerald-300 flex items-center gap-1.5">
+                    <PlayCircle className="w-4 h-4 text-emerald-600" />
+                    EM ATIVIDADE NORMAL
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {config.encontrosPausados ? (
+              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 space-y-3">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-extrabold text-sm text-amber-900 dark:text-amber-200">
+                      Os encontros estão pausados atualmente
+                    </h4>
+                    <p className="text-xs text-amber-800/90 dark:text-amber-300 mt-1">
+                      Motivo registrado: <strong>&quot;{config.motivoPausa || "Férias"}&quot;</strong>
+                    </p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                      Pausado desde: {formatarDataHora(config.pausadoEm)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    disabled={processandoPausa}
+                    onClick={() => handleAcaoPausa("RETOMAR")}
+                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-2"
+                  >
+                    <PlayCircle className="w-4 h-4" />
+                    {processandoPausa ? "Processando..." : "Retomar Encontros Agora"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Motivo da Pausa / Recesso (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={motivoPausaInput}
+                    onChange={(e) => setMotivoPausaInput(e.target.value)}
+                    placeholder="Ex.: Férias de fim de ano, Recesso pastoral de Julho..."
+                    className="w-full sm:w-96 px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  disabled={processandoPausa}
+                  onClick={() => handleAcaoPausa("PAUSAR")}
+                  className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-black text-xs shadow-md transition-all flex items-center gap-2"
+                >
+                  <PauseCircle className="w-4 h-4" />
+                  {processandoPausa ? "Processando..." : "Pausar Encontros Agora (Congelar Ausências)"}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Histórico de Pausas */}
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+            <h3 className="text-sm font-black uppercase tracking-wider text-neutral-900 dark:text-white">
+              Histórico de Pausas e Recessos
+            </h3>
+
+            {pausas.length === 0 ? (
+              <p className="text-xs text-neutral-500 py-3">Nenhum registro histórico de pausas.</p>
+            ) : (
+              <div className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
+                {pausas.map((p) => (
+                  <div key={p.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-neutral-900 dark:text-white">
+                        {p.motivo}
+                      </span>
+                      <p className="text-neutral-500 text-[11px] mt-0.5">
+                        Início: {formatarDataHora(p.dataInicio)} •{" "}
+                        {p.dataFim ? `Término: ${formatarDataHora(p.dataFim)}` : "Ativa no momento"}
+                      </p>
+                    </div>
+                    <div>
+                      {p.dataFim ? (
+                        <span className="px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 text-[10px] font-bold">
+                          Encerrada
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">
+                          Ativa
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ABA 5: BANNERS & AVISOS */}
+      {aba === "BANNERS" && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+            <h2 className="text-sm font-black uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-2">
+              <PlusCircle className="w-4 h-4" />
+              Publicar Novo Banner / Comunicado
             </h2>
 
             <form onSubmit={handleCriarBanner} className="space-y-4">
@@ -760,16 +2267,30 @@ export function AdminPanelClient() {
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Data de Expiração * (Some automaticamente após esta data)
+                    Data de Expiração * (DD/MM/AAAA)
                   </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={expiracaoBanner}
-                    onChange={(e) => setExpiracaoBanner(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
-                  />
+                  <div className="flex items-center gap-2">
+                    <InputDataBr
+                      value={expiracaoBanner ? expiracaoBanner.slice(0, 10) : ""}
+                      onChange={(br, iso) => {
+                        const hora = expiracaoBanner.includes("T") ? expiracaoBanner.split("T")[1] : "23:59";
+                        setExpiracaoBanner(iso ? `${iso}T${hora}` : "");
+                      }}
+                      placeholder="DD/MM/AAAA"
+                      required
+                    />
+                    <input
+                      type="time"
+                      value={expiracaoBanner.includes("T") ? expiracaoBanner.split("T")[1].slice(0, 5) : "23:59"}
+                      onChange={(e) => {
+                        const dataBase = expiracaoBanner.includes("T") ? expiracaoBanner.split("T")[0] : new Date().toISOString().slice(0, 10);
+                        setExpiracaoBanner(`${dataBase}T${e.target.value}`);
+                      }}
+                      className="w-24 px-2.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                    />
+                  </div>
                 </div>
+
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
@@ -815,7 +2336,7 @@ export function AdminPanelClient() {
 
                 <div className="sm:col-span-2 space-y-2">
                   <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Imagem do Banner (opcional — faça upload caso queira)
+                    Imagem do Banner (opcional — aparece em ambos os banners vermelho e amarelo)
                   </label>
                   <div className="flex items-center gap-3">
                     <input
@@ -912,15 +2433,14 @@ export function AdminPanelClient() {
                       </h4>
                       <p className="text-neutral-500">{b.resumo}</p>
                       <p className="text-[11px] text-neutral-400">
-                        Expira em: {formatarDataHora(b.dataExpiracao)} • Criado por:{" "}
-                        {b.criadoPor?.nome}
+                        Expira em: {formatarDataHora(b.dataExpiracao)} • Criado por: {b.criadoPor?.nome}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={() => abrirEdicaoBanner(b)}
-                        className="px-3 py-1.5 rounded-xl bg-[#FFC72C]/20 text-neutral-900 dark:text-[#FFC72C] hover:bg-[#FFC72C]/30 font-bold transition-colors inline-flex items-center gap-1"
+                        className="px-3 py-1.5 rounded-xl bg-[#FFC72C]/20 text-neutral-950 dark:text-[#FFC72C] hover:bg-[#FFC72C]/30 font-bold transition-colors inline-flex items-center gap-1"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         Editar
@@ -945,7 +2465,7 @@ export function AdminPanelClient() {
             )}
           </div>
 
-          {/* Modal de Edição de Banner */}
+          {/* Modal Edição Banner */}
           {bannerEditando && (
             <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 max-w-lg w-full border border-neutral-200 dark:border-neutral-800 shadow-2xl space-y-4">
@@ -1003,27 +2523,10 @@ export function AdminPanelClient() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                      Data de Expiração *
-                    </label>
-                    <input
-                      type="datetime-local"
-                      required
-                      value={bannerEditando.dataExpiracaoInput}
-                      onChange={(e) =>
-                        setBannerEditando({
-                          ...bannerEditando,
-                          dataExpiracaoInput: e.target.value,
-                        })
-                      }
-                      className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-bold"
-                    />
-                  </div>
-
+                  {/* Imagem do Banner em Edição */}
                   <div className="space-y-2">
                     <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                      Imagem do Banner (opcional — faça upload caso queira)
+                      Foto do Banner (opcional)
                     </label>
                     <div className="flex items-center gap-3">
                       <input
@@ -1041,20 +2544,19 @@ export function AdminPanelClient() {
                         type="button"
                         onClick={() => fileInputEditBannerRef.current?.click()}
                         disabled={uploadingEditBannerImg}
-                        className="px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                        className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold text-neutral-900 dark:text-white transition-colors"
                       >
                         <Upload className="w-3.5 h-3.5 text-[#FFC72C]" />
-                        {uploadingEditBannerImg ? "Enviando..." : bannerEditando.imagemUrl ? "Trocar Foto" : "Fazer Upload de Imagem"}
+                        {uploadingEditBannerImg
+                          ? "Enviando Imagem..."
+                          : bannerEditando.imagemUrl
+                          ? "Trocar Imagem"
+                          : "Adicionar Imagem"}
                       </button>
                       {bannerEditando.imagemUrl && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setBannerEditando({
-                              ...bannerEditando,
-                              imagemUrl: null,
-                            })
-                          }
+                          onClick={() => setBannerEditando({ ...bannerEditando, imagemUrl: null })}
                           className="text-xs text-red-500 hover:underline font-semibold"
                         >
                           Remover Foto
@@ -1062,31 +2564,65 @@ export function AdminPanelClient() {
                       )}
                     </div>
                     {bannerEditando.imagemUrl && (
-                      <div className="relative w-32 h-20 rounded-xl overflow-hidden border border-amber-300 dark:border-amber-700 mt-2">
-                        <Image
-                          src={bannerEditando.imagemUrl}
-                          alt="Preview Edição"
-                          fill
-                          unoptimized
-                          className="object-cover"
-                        />
+                      <div className="relative w-36 h-20 rounded-xl overflow-hidden border border-amber-300 dark:border-amber-700 mt-2">
+                        <Image src={bannerEditando.imagemUrl} alt="Preview Banner" fill unoptimized className="object-cover" />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                      Data de Expiração (DD/MM/AAAA)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <InputDataBr
+                        value={bannerEditando.dataExpiracaoInput ? bannerEditando.dataExpiracaoInput.slice(0, 10) : ""}
+                        onChange={(br, iso) => {
+                          const hora = bannerEditando.dataExpiracaoInput?.includes("T")
+                            ? bannerEditando.dataExpiracaoInput.split("T")[1]
+                            : "23:59";
+                          setBannerEditando({
+                            ...bannerEditando,
+                            dataExpiracaoInput: iso ? `${iso}T${hora}` : "",
+                          });
+                        }}
+                        placeholder="DD/MM/AAAA"
+                        required
+                      />
+                      <input
+                        type="time"
+                        value={
+                          bannerEditando.dataExpiracaoInput?.includes("T")
+                            ? bannerEditando.dataExpiracaoInput.split("T")[1].slice(0, 5)
+                            : "23:59"
+                        }
+                        onChange={(e) => {
+                          const dataBase = bannerEditando.dataExpiracaoInput?.includes("T")
+                            ? bannerEditando.dataExpiracaoInput.split("T")[0]
+                            : new Date().toISOString().slice(0, 10);
+                          setBannerEditando({
+                            ...bannerEditando,
+                            dataExpiracaoInput: `${dataBase}T${e.target.value}`,
+                          });
+                        }}
+                        className="w-24 px-2.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                      />
+                    </div>
+                  </div>
+
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
                     <button
                       type="button"
                       onClick={() => setBannerEditando(null)}
-                      disabled={salvandoEditBanner}
-                      className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 font-bold transition-colors"
+                      className="px-4 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={salvandoEditBanner}
-                      className="px-4 py-2 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-bold shadow-sm transition-all"
+                      className="px-5 py-2 rounded-xl bg-[#FFC72C] text-neutral-950 font-black text-xs shadow-sm"
                     >
                       {salvandoEditBanner ? "Salvando..." : "Salvar Alterações"}
                     </button>
@@ -1098,156 +2634,145 @@ export function AdminPanelClient() {
         </div>
       )}
 
-      {/* ABA USUÁRIOS */}
+      {/* ABA 6: USUÁRIOS (COM PERFIL TESOUREIRO) */}
       {aba === "USUARIOS" && (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fadeIn">
+          {/* Formulário Novo Usuário */}
           <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-2">
               <UserPlus className="w-4 h-4" />
-              Criar Novo Usuário de Liderança
+              Criar Novo Usuário de Acesso
             </h2>
 
-            <form onSubmit={handleCriarUsuario} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Nome Completo *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={novoNome}
-                  onChange={(e) => setNovoNome(e.target.value)}
-                  placeholder="Ex.: João Bruno"
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
-                />
+            <form onSubmit={handleCriarUsuario} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={novoNome}
+                    onChange={(e) => setNovoNome(e.target.value)}
+                    placeholder="Ex.: Lucas Tesoureiro"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Login / Usuário de Acesso * (único)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={novoLogin}
+                    onChange={(e) => setNovoLogin(e.target.value)}
+                    placeholder="Ex.: lucas.tesouraria"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    E-mail (opcional)
+                  </label>
+                  <input
+                    type="email"
+                    value={novoEmail}
+                    onChange={(e) => setNovoEmail(e.target.value)}
+                    placeholder="lucas@exemplo.com"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Senha Provisória * (mínimo 6 caracteres)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Perfil de Acesso *
+                  </label>
+                  <select
+                    value={novoPerfil}
+                    onChange={(e: any) => setNovoPerfil(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                  >
+                    <option value="COLABORADOR">Colaborador (Presenças, Integrantes e Relatórios)</option>
+                    <option value="TESOUREIRO">Tesoureiro (Coordenação Geral + Baixa de Pedidos)</option>
+                    <option value="ADMIN">Administrador Geral (Acesso Total)</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Nome de Usuário (Login) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={novoLogin}
-                  onChange={(e) => setNovoLogin(e.target.value.toLowerCase().replace(/\s+/g, ""))}
-                  placeholder="Ex.: brunao ou foletto"
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  E-mail de Contato (opcional)
-                </label>
-                <input
-                  type="email"
-                  value={novoEmail}
-                  onChange={(e) => setNovoEmail(e.target.value)}
-                  placeholder="opcional@exemplo.com"
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Senha Inicial Provisória * (usuário trocará no 1º acesso)
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={novaSenha}
-                  onChange={(e) => setNovaSenha(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Perfil de Acesso *
-                </label>
-                <select
-                  value={novoPerfil}
-                  onChange={(e: any) => setNovoPerfil(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
-                >
-                  <option value="COLABORADOR">Colaborador (gestão de integrantes/chamada)</option>
-                  <option value="ADMIN">Administrador (acesso total)</option>
-                </select>
-              </div>
-
-              <div className="sm:col-span-2 flex justify-end">
+              <div className="flex justify-end">
                 <button
                   type="submit"
                   disabled={criandoUsuario}
                   className="px-5 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-bold text-xs shadow-sm transition-all"
                 >
-                  {criandoUsuario ? "Criando..." : "Cadastrar Usuário"}
+                  {criandoUsuario ? "Criando..." : "Criar Usuário"}
                 </button>
               </div>
             </form>
           </div>
 
+          {/* Listagem de Usuários */}
           <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900 dark:text-white">
-              Usuários Cadastrados ({usuarios.length})
+              Usuários do Sistema ({usuarios.length})
             </h2>
 
-            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            <div className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
               {usuarios.map((u) => (
-                <div key={u.id} className="py-3.5 flex items-center justify-between gap-3 text-xs">
+                <div key={u.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-extrabold text-sm text-neutral-900 dark:text-white">
                         {u.nome}
                       </span>
-                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-bold">
-                        @{u.login || u.email?.split("@")[0]}
-                      </span>
+                      <span className="text-neutral-400 font-mono">(@{u.login})</span>
                       <span
-                        className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
                           u.perfil === "ADMIN"
-                            ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300"
-                            : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                            ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                            : u.perfil === "TESOUREIRO"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
                         }`}
                       >
                         {u.perfil}
                       </span>
-                      {u.primeiroAcesso && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300">
-                          Aguardando troca de senha
-                        </span>
-                      )}
                     </div>
-                    <p className="text-neutral-500 mt-0.5">
-                      Login: <strong className="text-neutral-700 dark:text-neutral-300">{u.login}</strong>
-                      {u.email && ` • E-mail: ${u.email}`}
+                    <p className="text-neutral-500 text-[11px] mt-0.5">
+                      {u.email || "Sem e-mail cadastrado"} • Status: <strong>{u.status}</strong>
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
-                      type="button"
-                      onClick={() => {
-                        setUsuarioResetSenha(u);
-                        setNovaSenhaAdmin("");
-                      }}
-                      title="Redefinir senha de acesso deste usuário"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-amber-300 dark:border-amber-700/80 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
+                      onClick={() => setUsuarioResetSenha(u)}
+                      className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors flex items-center gap-1.5 text-[11px]"
                     >
-                      <KeyRound className="w-3.5 h-3.5" />
+                      <KeyRound className="w-3.5 h-3.5 text-amber-500" />
                       Redefinir Senha
                     </button>
-
                     <button
-                      type="button"
                       onClick={() => alternarStatusUsuario(u.id, u.status)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                        u.status === "ATIVO"
-                          ? "border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100"
-                          : "border-emerald-300 text-emerald-600 hover:bg-emerald-50"
-                      }`}
+                      className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-[11px]"
                     >
                       {u.status === "ATIVO" ? "Desativar" : "Ativar"}
                     </button>
@@ -1259,52 +2784,16 @@ export function AdminPanelClient() {
         </div>
       )}
 
-      {/* ABA CONFIGURAÇÕES GERAIS */}
+      {/* ABA 7: REGRAS DE AUSÊNCIA */}
       {aba === "CONFIG" && (
-        <form onSubmit={handleSalvarConfig} className="space-y-6">
+        <form onSubmit={handleSalvarConfig} className="space-y-6 animate-fadeIn">
           <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
-            <h2 className="text-sm font-black uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Local, Horários e Regras Pastorais
-            </h2>
+            <h3 className="font-black text-base text-neutral-900 dark:text-white flex items-center gap-2">
+              <Settings className="w-5 h-5 text-[#FFC72C]" />
+              Parâmetros de Alerta e Inativação Automática
+            </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Local dos Encontros
-                </label>
-                <input
-                  type="text"
-                  value={config.enderecoPadrao}
-                  onChange={(e) => setConfig({ ...config, enderecoPadrao: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Horário Padrão do Encontro
-                </label>
-                <input
-                  type="text"
-                  value={config.horarioPadrao}
-                  onChange={(e) => setConfig({ ...config, horarioPadrao: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Instagram Oficial do JUSC (URL)
-                </label>
-                <input
-                  type="text"
-                  value={config.instagramUrl || ""}
-                  onChange={(e) => setConfig({ ...config, instagramUrl: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium"
-                />
-              </div>
-
               <div>
                 <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
                   Meses para Alerta de Ausência Prolongada (mínimo de 2 meses)
@@ -1323,15 +2812,15 @@ export function AdminPanelClient() {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Meses para Inativação Automática
+                  Meses para Inativação Automática por Falta de Presença
                 </label>
                 <input
                   type="number"
-                  min={6}
+                  min={3}
                   max={36}
                   value={config.limiteMesesInativacao}
                   onChange={(e) =>
-                    setConfig({ ...config, limiteMesesInativacao: e.target.value })
+                    setConfig({ ...config, limiteMesesInativacao: Math.max(3, Number(e.target.value)) })
                   }
                   className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
                 />
@@ -1344,16 +2833,16 @@ export function AdminPanelClient() {
                 disabled={salvandoConfig}
                 className="px-6 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-bold text-xs shadow-md transition-all"
               >
-                {salvandoConfig ? "Salvando..." : "Salvar Configurações"}
+                {salvandoConfig ? "Salvando..." : "Salvar Regras de Ausência"}
               </button>
             </div>
           </div>
         </form>
       )}
 
-      {/* ABA AUDITORIA */}
+      {/* ABA 8: AUDITORIA */}
       {aba === "AUDITORIA" && (
-        <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4 animate-fadeIn">
           <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900 dark:text-white flex items-center gap-2">
             <History className="w-4 h-4 text-[#FFC72C]" />
             Histórico Recente de Ações no Sistema
@@ -1368,7 +2857,7 @@ export function AdminPanelClient() {
                       {log.acao}
                     </span>
                     <span className="font-bold text-neutral-900 dark:text-white">
-                      {log.usuario?.nome} ({log.usuario?.email})
+                      {log.usuario?.nome}
                     </span>
                   </div>
                   <p className="text-neutral-500 mt-1">{log.detalhes}</p>
@@ -1382,7 +2871,7 @@ export function AdminPanelClient() {
         </div>
       )}
 
-      {/* Modal Redefinir Senha de Usuário */}
+      {/* Modal Redefinir Senha */}
       {usuarioResetSenha && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-white dark:bg-[#15171e] rounded-3xl max-w-md w-full p-6 border border-neutral-200 dark:border-neutral-800 shadow-2xl space-y-4">
@@ -1398,10 +2887,6 @@ export function AdminPanelClient() {
               </div>
             </div>
 
-            <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-              Defina uma nova senha temporária para o colaborador. Ao fazer login com esta senha, o sistema exigirá que ele crie sua senha definitiva pessoal.
-            </p>
-
             <form onSubmit={handleRedefinirSenha} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
@@ -1415,28 +2900,26 @@ export function AdminPanelClient() {
                   value={novaSenhaAdmin}
                   onChange={(e) => setNovaSenhaAdmin(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#FFC72C] transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium"
                 />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  disabled={salvandoReset}
                   onClick={() => {
                     setUsuarioResetSenha(null);
                     setNovaSenhaAdmin("");
                   }}
-                  className="px-4 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  className="px-4 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={salvandoReset}
-                  className="px-5 py-2 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 text-xs font-black shadow-sm transition-all flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl bg-[#FFC72C] text-neutral-950 text-xs font-black shadow-sm"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
                   {salvandoReset ? "Salvando..." : "Confirmar Nova Senha"}
                 </button>
               </div>

@@ -44,7 +44,7 @@ export default function EncontrosPage() {
           <div className="flex items-center gap-2">
             <Calendar className="w-6 h-6 text-[#FFC72C]" />
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white">
-              Encontros do JUSC
+              Encontros do Grupo
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-1">

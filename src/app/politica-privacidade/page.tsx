@@ -1,11 +1,20 @@
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { PublicHeader } from "@/components/public/header";
+import { prisma } from "@/lib/prisma";
 
-export default function PoliticaPrivacidadePage() {
+export const dynamic = "force-dynamic";
+
+export default async function PoliticaPrivacidadePage() {
+  const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
+  const nomeGrupo = config?.nomeGrupo || "JUSC";
+  const subtituloGrupo = config?.subtituloGrupo || "Jovens Unidos Seguindo Cristo";
+  const paroquiaNome = config?.paroquiaNome || "Paróquia Menino Jesus";
+  const logoUrl = config?.logoUrl || "/assets/logo-jusc.jpeg";
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fafafa] dark:bg-[#0a0b0e] text-neutral-900 dark:text-neutral-100">
-      <PublicHeader />
+      <PublicHeader nomeGrupo={nomeGrupo} paroquiaNome={paroquiaNome} logoUrl={logoUrl} />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
         <Link
@@ -33,7 +42,7 @@ export default function PoliticaPrivacidadePage() {
               1. Finalidade e Escopo
             </h2>
             <p>
-              O <strong>JUSC — Jovens Unidos Seguindo Cristo</strong>, grupo pastoral vinculado à <strong>Paróquia Menino Jesus</strong> de Foz do Iguaçu - PR, preza pela transparência, privacidade e proteção dos dados pessoais de seus participantes, especialmente jovens e menores de idade.
+              O <strong>{nomeGrupo} — {subtituloGrupo}</strong>, grupo pastoral vinculado à <strong>{paroquiaNome}</strong>, preza pela transparência, privacidade e proteção dos dados pessoais de seus participantes, especialmente jovens e menores de idade.
             </p>
           </section>
 

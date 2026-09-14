@@ -11,7 +11,7 @@ export interface TokenPayload {
   login: string;
   email?: string | null;
   nome: string;
-  perfil: "ADMIN" | "COLABORADOR";
+  perfil: "ADMIN" | "COLABORADOR" | "TESOUREIRO";
   primeiroAcesso?: boolean;
 }
 
@@ -75,6 +75,14 @@ export async function requireAuth() {
 export async function requireAdmin() {
   const user = await requireAuth();
   if (user.perfil !== "ADMIN") {
+    throw new Error("FORBIDDEN");
+  }
+  return user;
+}
+
+export async function requireTesoureiroOrAdmin() {
+  const user = await requireAuth();
+  if (user.perfil !== "ADMIN" && user.perfil !== "TESOUREIRO") {
     throw new Error("FORBIDDEN");
   }
   return user;

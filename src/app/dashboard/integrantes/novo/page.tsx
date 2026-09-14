@@ -25,9 +25,11 @@ import {
 import {
   formatarTelefone,
   formatarDataDigitacao,
+  formatarNumeroClj,
   brasileiroParaIso,
   isoParaBrasileiro,
 } from "@/lib/utils";
+
 
 export default function NovoIntegrantePage() {
   const router = useRouter();
@@ -57,6 +59,10 @@ export default function NovoIntegrantePage() {
   const [batismo, setBatismo] = useState(false);
   const [primeiraEucaristia, setPrimeiraEucaristia] = useState(false);
   const [crisma, setCrisma] = useState(false);
+
+  // CLJ
+  const [fezClj, setFezClj] = useState(false);
+  const [qualClj, setQualClj] = useState("");
 
   // WhatsApp
   const [noGrupoWhatsapp, setNoGrupoWhatsapp] = useState(false);
@@ -171,6 +177,8 @@ export default function NovoIntegrantePage() {
           batismo,
           primeiraEucaristia,
           crisma,
+          fezClj,
+          qualClj: fezClj ? qualClj.trim() : null,
           noGrupoWhatsapp,
           possuiAlergia,
           descricaoAlergia: possuiAlergia ? descricaoAlergia.trim() : null,
@@ -661,7 +669,53 @@ export default function NovoIntegrantePage() {
             </div>
           </div>
 
-          {/* Seção 5: Saúde e Restrições Alimentares (Alergias e Intolerâncias) */}
+          {/* Seção 5: Curso de Liderança Juvenil (CLJ) */}
+          <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+              <span>🌹</span>
+              5. Curso de Liderança Juvenil (CLJ - opcional)
+            </h2>
+
+            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={fezClj}
+                  onChange={(e) => {
+                    setFezClj(e.target.checked);
+                    if (!e.target.checked) setQualClj("");
+                  }}
+                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
+                />
+                <div>
+                  <span className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
+                    Fez o CLJ? 🌹
+                  </span>
+                  <span className="text-[11px] text-neutral-500 block">
+                    Marque caso o jovem já tenha participado do Curso de Liderança Juvenil
+                  </span>
+                </div>
+              </label>
+
+              {fezClj && (
+                <div className="pt-2 border-t border-neutral-200 dark:border-neutral-700 animate-fadeIn">
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Qual CLJ fez? (número da edição, ex.: 48°)
+                  </label>
+                  <input
+                    type="text"
+                    value={qualClj}
+                    onChange={(e) => setQualClj(formatarNumeroClj(e.target.value))}
+                    placeholder="Ex.: 48°, 51°"
+                    className="w-full sm:w-64 px-3.5 py-2 rounded-xl bg-white dark:bg-[#13161f] border border-neutral-300 dark:border-neutral-700 text-xs text-neutral-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+              )}
+            </div>
+          </div>
+
+          {/* Seção 6: Saúde e Restrições Alimentares (Alergias e Intolerâncias) */}
           <div className="space-y-4 pt-2 border-t border-neutral-100 dark:border-neutral-800">
             <div>
               <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">

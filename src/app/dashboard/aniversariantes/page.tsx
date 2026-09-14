@@ -18,6 +18,7 @@ export default function AniversariantesPage() {
   const [aba, setAba] = useState<"NASCIMENTO" | "GRUPO">("NASCIMENTO");
   const [aniversariantesNasc, setAniversariantesNasc] = useState<any[]>([]);
   const [aniversariantesGrupo, setAniversariantesGrupo] = useState<any[]>([]);
+  const [nomeGrupo, setNomeGrupo] = useState("JUSC");
   const [carregando, setCarregando] = useState(true);
 
   const mesNomeAtual = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(
@@ -33,6 +34,7 @@ export default function AniversariantesPage() {
           const data = await res.json();
           setAniversariantesNasc(data.nascimento || []);
           setAniversariantesGrupo(data.grupo || []);
+          if (data.nomeGrupo) setNomeGrupo(data.nomeGrupo);
         }
       } catch (e) {
         console.error(e);
@@ -59,7 +61,7 @@ export default function AniversariantesPage() {
         </div>
 
         {/* Abas */}
-        <div className="flex items-center gap-2 bg-neutral-200/70 dark:bg-[#15171e] p-1 rounded-2xl border border-neutral-300/60 dark:border-neutral-800">
+        <div className="flex items-center gap-2 bg-neutral-100 dark:bg-[#15171e] p-1.5 rounded-2xl border border-neutral-200 dark:border-neutral-800">
           <button
             onClick={() => setAba("NASCIMENTO")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
@@ -68,7 +70,7 @@ export default function AniversariantesPage() {
                 : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
             }`}
           >
-            <Cake className="w-4 h-4" />
+            <Sparkles className="w-4 h-4" />
             Nascimento ({aniversariantesNasc.length})
           </button>
           <button
@@ -80,7 +82,7 @@ export default function AniversariantesPage() {
             }`}
           >
             <Clock className="w-4 h-4" />
-            Tempo de JUSC ({aniversariantesGrupo.length})
+            Tempo de {nomeGrupo} ({aniversariantesGrupo.length})
           </button>
         </div>
       </div>
@@ -98,7 +100,7 @@ export default function AniversariantesPage() {
             <div className="relative w-28 h-28 mx-auto">
               <Image
                 src="/assets/abelhudo.png"
-                alt="Abelhudo"
+                alt="Mascote"
                 fill
                 className="object-contain"
               />
@@ -117,7 +119,7 @@ export default function AniversariantesPage() {
                 /\D/g,
                 ""
               )}&text=${encodeURIComponent(
-                `Parabéns, ${a.apelido || a.nomeCompleto}! 🎂🎉 Que Deus e o Menino Jesus abençoem grandemente sua vida e sua vocação. Abraço de toda a família JUSC!`
+                `Parabéns, ${a.apelido || a.nomeCompleto}! 🎂🎉 Que Deus abençoe grandemente sua vida e sua vocação. Abraço de toda a família ${nomeGrupo}!`
               )}`;
 
               return (
@@ -125,7 +127,7 @@ export default function AniversariantesPage() {
                   key={a.id}
                   className={`p-5 rounded-3xl border shadow-sm transition-all flex flex-col justify-between space-y-4 ${
                     a.fazHoje
-                      ? "bg-gradient-to-br from-amber-400/20 via-[#FFC72C]/10 to-transparent border-[#FFC72C] shadow-md ring-2 ring-[#FFC72C]/30 animate-pulse"
+                      ? "bg-gradient-to-br from-amber-400/20 via-[#FFC72C]/10 to-transparent border-[#FFC72C] shadow-md ring-2 ring-[#FFC72C]/30"
                       : "bg-white dark:bg-[#15171e] border-neutral-200 dark:border-neutral-800"
                   }`}
                 >
@@ -147,7 +149,7 @@ export default function AniversariantesPage() {
                             className="object-cover"
                           />
                         ) : (
-                          <span>{a.dia}</span>
+                          <span>{a.dia || "🎂"}</span>
                         )}
                       </div>
                       <div>
@@ -159,36 +161,36 @@ export default function AniversariantesPage() {
                             {a.nomeCompleto}
                           </Link>
                           {a.apelido && (
-                            <span className="text-xs text-neutral-500 font-medium">
-                              ({a.apelido})
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-bold">
+                              "{a.apelido}"
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-neutral-500 mt-0.5">
-                          {a.idadeSendoCompletada > 0
-                            ? `Completando ${a.idadeSendoCompletada} anos (Dia ${a.dia})`
-                            : `Dia ${a.dia}`}
+                        <p className="text-xs text-neutral-500 font-medium mt-0.5 flex items-center gap-1.5">
+                          <span>{a.idadeCompletada} anos</span>
+                          <span>•</span>
+                          <span>
+                            {a.fazHoje
+                              ? "🎉 Faz aniversário HOJE!"
+                              : `Dia ${a.dia} de ${mesNomeAtual}`}
+                          </span>
                         </p>
                       </div>
                     </div>
-
-                    {a.fazHoje && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FFC72C] text-neutral-950 font-black text-[10px] uppercase shadow-sm">
-                        <Sparkles className="w-3 h-3" /> É Hoje!
-                      </span>
-                    )}
                   </div>
 
-                  <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">{a.telefone}</span>
+                  <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between">
+                    <span className="text-xs text-neutral-400 font-mono">
+                      {a.telefone}
+                    </span>
                     <a
                       href={linkMsg}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-sm transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all active:scale-95"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      Dar Parabéns
+                      Felicitar no WhatsApp
                     </a>
                   </div>
                 </div>
@@ -197,13 +199,13 @@ export default function AniversariantesPage() {
           </div>
         )
       ) : (
-        /* Aba 2: Tempo de Grupo (JUSC) */
+        /* Aba 2: Tempo de Grupo */
         aniversariantesGrupo.length === 0 ? (
           <div className="text-center bg-white dark:bg-[#15171e] rounded-3xl p-10 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3">
             <div className="relative w-28 h-28 mx-auto">
               <Image
                 src="/assets/abelhudo.png"
-                alt="Abelhudo"
+                alt="Mascote"
                 fill
                 className="object-contain"
               />
@@ -212,7 +214,7 @@ export default function AniversariantesPage() {
               Nenhum aniversário de grupo neste mês
             </h3>
             <p className="text-xs text-neutral-500 max-w-xs mx-auto">
-              Nenhum jovem completa ano de caminhada no JUSC no mês de {mesNomeAtual}.
+              Nenhum jovem completa ano de caminhada no {nomeGrupo} no mês de {mesNomeAtual}.
             </p>
           </div>
         ) : (
@@ -222,7 +224,7 @@ export default function AniversariantesPage() {
                 /\D/g,
                 ""
               )}&text=${encodeURIComponent(
-                `Parabéns pelos seus ${g.tempoTexto}, ${g.apelido || g.nomeCompleto}! 🐝💛 Obrigado por fazer parte da nossa colmeia no JUSC!`
+                `Parabéns pelos seus ${g.tempoTexto}, ${g.apelido || g.nomeCompleto}! 💛 Obrigado por fazer parte da nossa caminhada no ${nomeGrupo}!`
               )}`;
 
               return (
@@ -247,7 +249,7 @@ export default function AniversariantesPage() {
                           />
                         ) : (
                           <span className="text-xs font-black">
-                            {g.anos ? `${g.anos} ${g.anos === 1 ? "ano" : "anos"}` : g.tempoTexto.replace(/ de JUSC.*/i, "")}
+                            {g.anos ? `${g.anos} ${g.anos === 1 ? "ano" : "anos"}` : g.tempoTexto}
                           </span>
                         )}
                       </div>
@@ -260,37 +262,38 @@ export default function AniversariantesPage() {
                             {g.nomeCompleto}
                           </Link>
                           {g.apelido && (
-                            <span className="text-xs text-neutral-500 font-medium">
-                              ({g.apelido})
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-bold">
+                              "{g.apelido}"
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-semibold text-amber-600 dark:text-[#FFC72C] mt-0.5 flex items-center gap-1">
-                          <Heart className="w-3.5 h-3.5 fill-current" />
-                          {g.tempoTexto} {g.dia ? `• Dia ${g.dia}` : ""}
+                        <p className="text-xs text-neutral-500 font-medium mt-0.5 flex items-center gap-1.5">
+                          <span>{g.tempoTexto}</span>
+                          <span>•</span>
+                          <span>
+                            {g.fazHoje
+                              ? "🎉 Completa aniversário HOJE!"
+                              : g.dia
+                              ? `Dia ${g.dia} de ${mesNomeAtual}`
+                              : `Comemorativo em ${mesNomeAtual}`}
+                          </span>
                         </p>
                       </div>
                     </div>
-
-                    {g.fazHoje && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#FFC72C] text-neutral-950 font-black text-[10px] uppercase shadow-sm">
-                        <Sparkles className="w-3 h-3" /> Hoje!
-                      </span>
-                    )}
                   </div>
 
-                  <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">
-                      {g.precisao === "COMPLETA" ? "Data exata registrada" : "Período comemorativo"}
+                  <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between">
+                    <span className="text-xs text-neutral-400 font-mono">
+                      {g.telefone}
                     </span>
                     <a
                       href={linkMsg}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-sm transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-[#FFC72C] text-xs font-bold transition-all active:scale-95"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      Felicitar
+                      Parabenizar no WhatsApp
                     </a>
                   </div>
                 </div>

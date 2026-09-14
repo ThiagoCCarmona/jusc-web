@@ -116,20 +116,22 @@ export default async function DashboardPage() {
             Olá, {usuario?.nome.split(" ")[0]}!
           </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-300 max-w-lg leading-relaxed">
-            Bem-vindo(a) ao painel de gestão do JUSC. Acompanhe a caminhada dos jovens, registre presenças e cuide de nossa colmeia pastoral.
+            Bem-vindo(a) ao painel de gestão do {config?.nomeGrupo || "JUSC"}. Acompanhe a caminhada dos jovens, registre presenças e cuide de nossa colmeia pastoral.
           </p>
         </div>
 
         <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0">
           <Image
-            src="/assets/abelhudo.png"
-            alt="Abelhudo"
+            src={config?.mascoteUrl || "/assets/abelhudo.png"}
+            alt="Mascote"
             fill
+            unoptimized
             className="object-contain drop-shadow-md"
             priority
           />
         </div>
       </div>
+
 
       {/* Destaque Especial: Aniversariante de Hoje */}
       {aniversariantesHoje.length > 0 && (
@@ -173,7 +175,7 @@ export default async function DashboardPage() {
               Cadastrar Integrante
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Novo jovem no JUSC
+              Novo jovem no {config?.nomeGrupo || "grupo"}
             </p>
           </Link>
 
@@ -203,7 +205,7 @@ export default async function DashboardPage() {
               Aniversariantes
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {aniversariantesNasc.length} neste mês
+              Vida e caminhada pastoral
             </p>
           </Link>
 
@@ -211,65 +213,58 @@ export default async function DashboardPage() {
             href="/dashboard/relatorios"
             className="p-4 rounded-2xl bg-white dark:bg-[#15171e] border border-neutral-200 dark:border-neutral-800 hover:border-[#FFC72C] dark:hover:border-[#FFC72C] hover:shadow-md transition-all group"
           >
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
               <BarChart3 className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-sm text-neutral-900 dark:text-white">
-              Relatórios & PDF
+              Relatórios & Presenças
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-              Frequência e gráficos
+              Matriz, alertas e gráficos
             </p>
           </Link>
         </div>
       </section>
 
-      {/* Indicadores Principais */}
-      <section>
-        <h2 className="text-xs font-extrabold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3 px-1">
-          Indicadores do Grupo
-        </h2>
+      {/* Grid de Estatísticas Resumidas */}
+      <section aria-label="Estatísticas Principais">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-sm">
+          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 mb-2">
-              <span className="text-xs font-bold uppercase">Ativos</span>
+              <span className="text-xs font-bold uppercase">Jovens Ativos</span>
               <Users className="w-4 h-4 text-emerald-500" />
             </div>
-            <div className="text-3xl font-black text-neutral-900 dark:text-white">
-              {ativos}
-            </div>
+            <div className="text-3xl font-black text-neutral-900 dark:text-white">{ativos}</div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              {inativos} inativos cadastrados
+              com frequência regular
             </p>
           </div>
 
-          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-sm">
+          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 mb-2">
-              <span className="text-xs font-bold uppercase">Alerta Ausência</span>
+              <span className="text-xs font-bold uppercase">Alertas de Ausência</span>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
-            <div className="text-3xl font-black text-amber-600 dark:text-amber-400">
-              {alertasAusencia}
-            </div>
+            <div className="text-3xl font-black text-amber-500">{alertasAusencia}</div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
               &gt; {limiteAlerta} meses sem presença
             </p>
           </div>
 
-          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-sm">
+          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 mb-2">
-              <span className="text-xs font-bold uppercase">Média Presença</span>
-              <CheckCircle className="w-4 h-4 text-[#FFC72C]" />
+              <span className="text-xs font-bold uppercase">Média Presenças</span>
+              <BarChart3 className="w-4 h-4 text-blue-500" />
             </div>
             <div className="text-3xl font-black text-neutral-900 dark:text-white">
               {mediaPresenca}
             </div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              jovens por encontro recente
+              jovens por encontro
             </p>
           </div>
 
-          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-5 border border-neutral-200 dark:border-neutral-800 shadow-sm">
+          <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm">
             <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 mb-2">
               <span className="text-xs font-bold uppercase">Aniversários Grupo</span>
               <Cake className="w-4 h-4 text-pink-500" />
@@ -278,7 +273,7 @@ export default async function DashboardPage() {
               {aniversariantesGrupo.length}
             </div>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-              completando anos de JUSC este mês
+              completando anos de caminhada este mês
             </p>
           </div>
         </div>

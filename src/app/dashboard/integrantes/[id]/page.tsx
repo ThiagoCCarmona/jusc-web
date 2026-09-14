@@ -325,6 +325,20 @@ export default function DetalhesIntegrantePage({
                 <CheckCircle2 className="w-3.5 h-3.5" /> Crisma
               </span>
             </div>
+
+            {/* Curso de Liderança Juvenil (CLJ) */}
+            <div className="pt-2">
+              {integrante.fezClj ? (
+                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold px-3 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                  <span>🌹</span>
+                  Fez o CLJ {integrante.qualClj ? `— ${integrante.qualClj}` : ""}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs text-neutral-400">
+                  Não participou do CLJ
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="space-y-3">

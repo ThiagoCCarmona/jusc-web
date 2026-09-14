@@ -1,11 +1,20 @@
 import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
 import { PublicHeader } from "@/components/public/header";
+import { prisma } from "@/lib/prisma";
 
-export default function TermosUsoPage() {
+export const dynamic = "force-dynamic";
+
+export default async function TermosUsoPage() {
+  const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
+  const nomeGrupo = config?.nomeGrupo || "JUSC";
+  const subtituloGrupo = config?.subtituloGrupo || "Jovens Unidos Seguindo Cristo";
+  const paroquiaNome = config?.paroquiaNome || "Paróquia Menino Jesus";
+  const logoUrl = config?.logoUrl || "/assets/logo-jusc.jpeg";
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fafafa] dark:bg-[#0a0b0e] text-neutral-900 dark:text-neutral-100">
-      <PublicHeader />
+      <PublicHeader nomeGrupo={nomeGrupo} paroquiaNome={paroquiaNome} logoUrl={logoUrl} />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
         <Link
@@ -25,7 +34,7 @@ export default function TermosUsoPage() {
           </div>
 
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            JUSC — Jovens Unidos Seguindo Cristo • Paróquia Menino Jesus
+            {nomeGrupo} — {subtituloGrupo} • {paroquiaNome}
           </p>
 
           <section className="space-y-3 text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed">
@@ -33,7 +42,7 @@ export default function TermosUsoPage() {
               1. Objeto da Plataforma
             </h2>
             <p>
-              Esta plataforma digital tem como objetivo divulgar as atividades, eventos e canais de acolhimento do grupo de jovens <strong>JUSC</strong>, além de servir como ferramenta de apoio à gestão pastoral e controle de presenças pela liderança da Paróquia Menino Jesus.
+              Esta plataforma digital tem como objetivo divulgar as atividades, eventos e canais de acolhimento do grupo de jovens <strong>{nomeGrupo}</strong>, além de servir como ferramenta de apoio à gestão pastoral e controle de presenças pela liderança da {paroquiaNome}.
             </p>
           </section>
 
@@ -51,7 +60,7 @@ export default function TermosUsoPage() {
               3. Propriedade Intelectual e Marca
             </h2>
             <p>
-              O nome <strong>JUSC — Jovens Unidos Seguindo Cristo</strong>, o brasão oficial e o mascote <strong>Abelhudo</strong> são símbolos comunitários da pastoral juvenil da Paróquia Menino Jesus, sendo vedada sua reprodução não autorizada para fins comerciais externos.
+              O nome <strong>{nomeGrupo} — {subtituloGrupo}</strong>, o brasão oficial e os símbolos comunitários vinculados à pastoral juvenil da {paroquiaNome} são de uso pastoral comunitário, sendo vedada sua reprodução não autorizada para fins comerciais externos.
             </p>
           </section>
         </div>

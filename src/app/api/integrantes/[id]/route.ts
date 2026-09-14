@@ -31,13 +31,16 @@ export async function GET(
     const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });
     const limiteAlerta = config?.limiteMesesAlertaAusencia || 3;
     const limiteInativo = config?.limiteMesesInativacao || 12;
+    const pausas = await prisma.pausaEncontro.findMany();
 
     const statusInfo = calcularStatusPorAusencia(
       integrante.status,
       integrante.dataCadastro,
       integrante.presencas,
       limiteAlerta,
-      limiteInativo
+      limiteInativo,
+      new Date(),
+      pausas
     );
 
     return NextResponse.json({
@@ -124,6 +127,11 @@ export async function PUT(
         batismo: batismo !== undefined ? Boolean(batismo) : integranteAtual.batismo,
         primeiraEucaristia: primeiraEucaristia !== undefined ? Boolean(primeiraEucaristia) : integranteAtual.primeiraEucaristia,
         crisma: crisma !== undefined ? Boolean(crisma) : integranteAtual.crisma,
+        fezClj: body.fezClj !== undefined ? Boolean(body.fezClj) : integranteAtual.fezClj,
+        qualClj:
+          body.fezClj !== undefined
+            ? (body.fezClj ? (body.qualClj ? body.qualClj.trim() : null) : null)
+            : integranteAtual.qualClj,
         noGrupoWhatsapp: body.noGrupoWhatsapp !== undefined ? Boolean(body.noGrupoWhatsapp) : integranteAtual.noGrupoWhatsapp,
         possuiAlergia: body.possuiAlergia !== undefined ? Boolean(body.possuiAlergia) : integranteAtual.possuiAlergia,
         descricaoAlergia:

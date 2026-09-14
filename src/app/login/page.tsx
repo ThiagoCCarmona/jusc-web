@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,6 +18,34 @@ function LoginForm() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [esqueciSenhaAberto, setEsqueciSenhaAberto] = useState(false);
+
+  const [config, setConfig] = useState<{
+    nomeGrupo: string;
+    subtituloGrupo: string;
+    logoUrl: string | null;
+    mascoteUrl: string | null;
+  }>({
+    nomeGrupo: "JUSC",
+    subtituloGrupo: "Jovens Unidos Seguindo Cristo",
+    logoUrl: "/assets/logo-jusc.jpeg",
+    mascoteUrl: "/assets/abelhudo.png",
+  });
+
+  useEffect(() => {
+    fetch("/api/admin/configuracoes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.config) {
+          setConfig({
+            nomeGrupo: data.config.nomeGrupo || "JUSC",
+            subtituloGrupo: data.config.subtituloGrupo || "Jovens Unidos Seguindo Cristo",
+            logoUrl: data.config.logoUrl || "/assets/logo-jusc.jpeg",
+            mascoteUrl: data.config.mascoteUrl || "/assets/abelhudo.png",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -56,20 +84,22 @@ function LoginForm() {
     <div className="w-full max-w-md bg-white dark:bg-[#15171e] rounded-3xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-6 sm:p-8 mt-12 sm:mt-0 transition-all">
       {/* Identidade Visual: Logo e Mascote */}
       <div className="flex flex-col items-center text-center mb-6">
-        <div className="relative w-20 h-20 mb-3 rounded-full overflow-hidden border-2 border-[#FFC72C] shadow-md bg-black">
+        <div className="relative w-20 h-20 mb-3 rounded-full overflow-hidden border-2 border-[#FFC72C] shadow-md bg-black flex-shrink-0 aspect-square">
           <Image
-            src="/assets/logo-jusc.jpeg"
-            alt="Logo JUSC"
+            src={config.logoUrl || "/assets/logo-jusc.jpeg"}
+            alt={`Logo ${config.nomeGrupo}`}
             fill
-            className="object-cover"
+            unoptimized
+            className="object-contain"
             priority
           />
         </div>
+
         <h1 className="text-2xl font-black text-neutral-900 dark:text-white">
           Acesso à Liderança
         </h1>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
-          JUSC — Jovens Unidos Seguindo Cristo
+          {config.nomeGrupo} — {config.subtituloGrupo}
         </p>
       </div>
 
@@ -147,14 +177,17 @@ function LoginForm() {
       </form>
 
       <div className="mt-6 pt-5 border-t border-neutral-100 dark:border-neutral-800 text-center flex items-center justify-center gap-3">
-        <div className="relative w-8 h-8 flex-shrink-0">
-          <Image
-            src="/assets/abelhudo.png"
-            alt="Mascote Abelhudo"
-            fill
-            className="object-contain"
-          />
-        </div>
+        {config.mascoteUrl && (
+          <div className="relative w-8 h-8 flex-shrink-0">
+            <Image
+              src={config.mascoteUrl}
+              alt={`Mascote ${config.nomeGrupo}`}
+              fill
+              unoptimized
+              className="object-contain"
+            />
+          </div>
+        )}
         <p className="text-xs text-neutral-500 dark:text-neutral-400 text-left">
           Acesso exclusivo para os membros da coordenação e liderança.
         </p>
@@ -171,7 +204,7 @@ function LoginForm() {
               </h3>
             </div>
             <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
-              As contas e senhas são gerenciadas pela Coordenação Geral do JUSC. Se você esqueceu seu login ou senha, solicite a redefinição diretamente ao Administrador.
+              As contas e senhas são gerenciadas pela Coordenação Geral do {config.nomeGrupo}. Se você esqueceu seu login ou senha, solicite a redefinição diretamente ao Administrador.
             </p>
             <button
               type="button"
