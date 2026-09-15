@@ -79,6 +79,7 @@ model Encontro {
   local        String
   conduzidoPor String
   tema         String?
+  observacao   String?
 
   criadoPorId  String
   criadoPor    Usuario    @relation("EncontroCriadoPor", fields: [criadoPorId], references: [id])

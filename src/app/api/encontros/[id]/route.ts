@@ -50,7 +50,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await req.json();
-    const { dataHora, local, conduzidoPor, tema, presencasIntegrantes, visitantes } = body;
+    const { dataHora, local, conduzidoPor, tema, observacao, presencasIntegrantes, visitantes } = body;
 
     const encontroAtual = await prisma.encontro.findUnique({
       where: { id },
@@ -94,6 +94,7 @@ export async function PUT(
         local: local ? local.trim() : encontroAtual.local,
         conduzidoPor: conduzidoPor ? conduzidoPor.trim() : encontroAtual.conduzidoPor,
         tema: tema !== undefined ? (tema ? tema.trim() : null) : encontroAtual.tema,
+        observacao: observacao !== undefined ? (observacao ? observacao.trim() : null) : encontroAtual.observacao,
       },
       include: {
         presencas: {

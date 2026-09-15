@@ -172,6 +172,9 @@ export async function DELETE(
 ) {
   try {
     const usuario = await requireAuth();
+    if (usuario.perfil !== "ADMIN") {
+      return NextResponse.json({ error: "Apenas administradores podem excluir integrantes." }, { status: 403 });
+    }
     const { id } = await params;
 
     const integrante = await prisma.integrante.findUnique({ where: { id } });

@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       local,
       conduzidoPor,
       tema,
+      observacao,
       presencasIntegrantes, // Array<{ integranteId: string, presente: boolean }>
       visitantes,          // Array<string>
     } = body;
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
         local: local.trim(),
         conduzidoPor: conduzidoPor.trim(),
         tema: tema?.trim() || null,
+        observacao: observacao?.trim() || null,
         criadoPorId: usuario.id,
         presencas: {
           create: [

@@ -21,9 +21,11 @@ import {
   UserPlus,
   Plus,
   X,
+  FileText,
 } from "lucide-react";
 import { formatarDataHora } from "@/lib/utils";
 import { InputDataBr } from "@/components/ui/input-data-br";
+import { EditorBasico } from "@/components/ui/editor-basico";
 
 
 interface IntegranteOption {
@@ -61,6 +63,7 @@ export default function DetalhesEncontroPage({
   const [localEdit, setLocalEdit] = useState("");
   const [conduzidoPorEdit, setConduzidoPorEdit] = useState("");
   const [dataHoraEdit, setDataHoraEdit] = useState("");
+  const [observacaoEdit, setObservacaoEdit] = useState("");
 
   // Presenças e visitantes em edição
   const [presencasEdit, setPresencasEdit] = useState<Record<string, boolean>>({});
@@ -76,8 +79,8 @@ export default function DetalhesEncontroPage({
           const data = await res.json();
           setUsuario(data.usuario);
         }
-      } catch (e) {
-        console.error(e);
+      } catch {
+        // Falha silenciosa ao carregar usuário atual
       }
     }
     carregarUsuario();
@@ -90,8 +93,8 @@ export default function DetalhesEncontroPage({
         const data = await res.json();
         setTodosIntegrantes(data.integrantes || []);
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // Falha silenciosa ao carregar integrantes
     }
   }
 
@@ -104,6 +107,7 @@ export default function DetalhesEncontroPage({
         setTemaEdit(data.encontro.tema || "");
         setLocalEdit(data.encontro.local || "");
         setConduzidoPorEdit(data.encontro.conduzidoPor || "");
+        setObservacaoEdit(data.encontro.observacao || "");
         // Format ISO date to YYYY-MM-DDTHH:mm for datetime-local input
         const d = new Date(data.encontro.dataHora);
         const pad = (n: number) => n.toString().padStart(2, "0");
@@ -210,6 +214,7 @@ export default function DetalhesEncontroPage({
           tema: temaEdit,
           local: localEdit,
           conduzidoPor: conduzidoPorEdit,
+          observacao: observacaoEdit,
           dataHora: dataHoraEdit ? new Date(dataHoraEdit).toISOString() : undefined,
           presencasIntegrantes: presencasPayload,
           visitantes: visitantesEdit,
@@ -259,8 +264,8 @@ export default function DetalhesEncontroPage({
         }));
         await carregarEncontro();
       }
-    } catch (e) {
-      console.error("Erro ao alternar presença:", e);
+    } catch {
+      // Falha de conexão ao alternar presença
     }
   }
 
@@ -505,6 +510,27 @@ export default function DetalhesEncontroPage({
         </div>
       )}
 
+      {/* Card de Observações e Ata do Encontro (Abaixo de tudo) */}
+      <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-amber-500" />
+          <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900 dark:text-white">
+            Observações, Reflexões e Anotações do Encontro
+          </h2>
+        </div>
+
+        {encontro.observacao && encontro.observacao.trim() ? (
+          <div
+            className="prose prose-xs sm:prose-sm dark:prose-invert max-w-none text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed bg-neutral-50 dark:bg-[#1a1d26] p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 [&_h3]:text-sm [&_h3]:font-black [&_h3]:my-2 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4 [&_blockquote]:border-l-2 [&_blockquote]:border-amber-400 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-neutral-500"
+            dangerouslySetInnerHTML={{ __html: encontro.observacao }}
+          />
+        ) : (
+          <p className="text-xs text-neutral-400 italic py-1">
+            Nenhuma observação ou anotação registrada para este encontro.
+          </p>
+        )}
+      </div>
+
       {/* Modal de Edição Completa para Administrador */}
       {modalEditar && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -723,6 +749,19 @@ export default function DetalhesEncontroPage({
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Observações e Anotações no Modal de Edição */}
+              <div className="space-y-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
+                  Observações, Reflexões e Anotações do Encontro
+                </label>
+                <EditorBasico
+                  value={observacaoEdit}
+                  onChange={setObservacaoEdit}
+                  placeholder="Edite aqui as anotações do encontro, reflexão, avisos..."
+                  minHeight="120px"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-100 dark:border-neutral-800">

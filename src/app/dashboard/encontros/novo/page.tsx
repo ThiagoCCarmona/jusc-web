@@ -17,8 +17,10 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle2,
+  FileText,
 } from "lucide-react";
 import { InputDataBr } from "@/components/ui/input-data-br";
+import { EditorBasico } from "@/components/ui/editor-basico";
 
 interface IntegranteItem {
 
@@ -35,6 +37,7 @@ export default function NovoEncontroPage() {
   const [local, setLocal] = useState("Salão Paroquial Menino Jesus");
   const [conduzidoPor, setConduzidoPor] = useState("");
   const [tema, setTema] = useState("");
+  const [observacao, setObservacao] = useState("");
 
   const [integrantes, setIntegrantes] = useState<IntegranteItem[]>([]);
   const [presencas, setPresencas] = useState<Record<string, boolean>>({});
@@ -141,6 +144,7 @@ export default function NovoEncontroPage() {
           local,
           conduzidoPor,
           tema,
+          observacao,
           presencasIntegrantes,
           visitantes,
         }),
@@ -418,6 +422,26 @@ export default function NovoEncontroPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Campo de Observação / Ata do Encontro (Abaixo de tudo) */}
+          <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
+            <div>
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-1.5">
+                <FileText className="w-4 h-4" />
+                Observações, Reflexões e Anotações do Encontro
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Anotações importantes sobre o encontro, reflexões partilhadas, avisos ou planejamento pastoral.
+              </p>
+            </div>
+
+            <EditorBasico
+              value={observacao}
+              onChange={setObservacao}
+              placeholder="Digite aqui as anotações do encontro, reflexão do Evangelho, avisos ou pontos de atenção..."
+              minHeight="140px"
+            />
           </div>
 
           {/* Resumo e Botão Salvar */}

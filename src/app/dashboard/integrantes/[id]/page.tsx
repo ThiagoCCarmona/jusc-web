@@ -34,17 +34,30 @@ export default function DetalhesIntegrantePage({
   const id = resolvedParams.id;
 
   const [integrante, setIntegrante] = useState<any>(null);
+  const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
   const [carregando, setCarregando] = useState(true);
   const [modalInativar, setModalInativar] = useState(false);
   const [motivoInativacao, setMotivoInativacao] = useState("");
   const [processandoStatus, setProcessandoStatus] = useState(false);
+  const [modalExcluir, setModalExcluir] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
 
   async function carregar() {
     setCarregando(true);
     try {
-      const res = await fetch(`/api/integrantes/${id}`);
-      if (res.ok) {
-        const data = await res.json();
+      const [resInt, resAuth] = await Promise.all([
+        fetch(`/api/integrantes/${id}`),
+        fetch("/api/auth/me"),
+      ]);
+
+      if (resAuth.ok) {
+        const authData = await resAuth.json();
+        setUsuarioLogado(authData.usuario);
+      }
+
+      if (resInt.ok) {
+        const data = await resInt.json();
         setIntegrante(data.integrante);
       } else {
         router.push("/dashboard/integrantes");
@@ -53,6 +66,24 @@ export default function DetalhesIntegrantePage({
       router.push("/dashboard/integrantes");
     } finally {
       setCarregando(false);
+    }
+  }
+
+  async function handleExcluirIntegrante() {
+    setExcluindo(true);
+    setErroExclusao(null);
+    try {
+      const res = await fetch(`/api/integrantes/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        router.push("/dashboard/integrantes");
+      } else {
+        setErroExclusao(data.error || "Erro ao excluir integrante.");
+      }
+    } catch {
+      setErroExclusao("Erro de conexão ao excluir.");
+    } finally {
+      setExcluindo(false);
     }
   }
 
@@ -134,6 +165,22 @@ export default function DetalhesIntegrantePage({
             >
               <CheckCircle2 className="w-4 h-4" />
               Reativar Integrante
+            </button>
+          )}
+
+          {/* Botão Exclusão Definitiva (Apenas ADMIN) */}
+          {usuarioLogado?.perfil === "ADMIN" && (
+            <button
+              type="button"
+              onClick={() => {
+                setErroExclusao(null);
+                setModalExcluir(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all shadow-sm"
+              title="Excluir integrante definitivamente (Apenas Administrador)"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Excluir</span>
             </button>
           )}
         </div>
@@ -514,6 +561,55 @@ export default function DetalhesIntegrantePage({
                 className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors"
               >
                 {processandoStatus ? "Inativando..." : "Confirmar Inativação"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão Definitiva (Apenas ADMIN) */}
+      {modalExcluir && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl max-w-md w-full p-6 border border-red-200 dark:border-red-900/40 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="flex items-center gap-3 text-red-600">
+              <Trash2 className="w-6 h-6" />
+              <h3 className="font-extrabold text-lg text-neutral-900 dark:text-white">
+                Excluir Integrante Definitivamente
+              </h3>
+            </div>
+
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+              Tem certeza que deseja excluir o integrante <strong>{integrante.nomeCompleto}</strong>?
+            </p>
+
+            <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs">
+              <p className="font-bold">⚠️ Atenção: Esta ação é irreversível!</p>
+              <p className="mt-1">
+                Todos os dados cadastrais, presenças e histórico deste integrante serão excluídos definitivamente de acordo com as diretrizes da LGPD.
+              </p>
+            </div>
+
+            {erroExclusao && (
+              <p className="text-xs font-bold text-red-600">{erroExclusao}</p>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setModalExcluir(false)}
+                disabled={excluindo}
+                className="px-4 py-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-semibold hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExcluirIntegrante}
+                disabled={excluindo}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{excluindo ? "Excluindo..." : "Sim, Excluir Integrante"}</span>
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomInt } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { GeradorPix, gerarLinkComprovanteWhatsapp } from "@/lib/pix";
@@ -97,8 +98,8 @@ export async function POST(req: NextRequest) {
     const valorPagoAgora = tipoQuitacao === "PARCELADO_50_50" ? valorTotal / 2 : valorTotal;
     const saldoRestante = tipoQuitacao === "PARCELADO_50_50" ? valorTotal / 2 : 0;
 
-    // Gerar código único do pedido, ex: PED-8492
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    // Gerar código único do pedido, ex: PED-8492 (CSPRNG)
+    const randomNum = randomInt(1000, 10000);
     const codigoPedido = `PED-${randomNum}`;
 
     // Buscar dados do tesoureiro para Pix e WhatsApp

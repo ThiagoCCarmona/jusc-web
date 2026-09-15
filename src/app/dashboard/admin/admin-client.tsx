@@ -31,8 +31,9 @@ import {
   Tag,
   X,
 } from "lucide-react";
-import { formatarDataHora } from "@/lib/utils";
+import { formatarDataHora, formatarFaixaPrecos, normalizarModelos } from "@/lib/utils";
 import { InputDataBr } from "@/components/ui/input-data-br";
+import { ModalCampanha } from "@/components/dashboard/modal-campanha";
 
 export interface FotoComLabel {
   url: string;
@@ -88,12 +89,14 @@ export function AdminPanelClient() {
 
   // Estados de Usuários
   const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [usuarioLogado, setUsuarioLogado] = useState<any>(null);
   const [novoNome, setNovoNome] = useState("");
   const [novoLogin, setNovoLogin] = useState("");
   const [novoEmail, setNovoEmail] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [novoPerfil, setNovoPerfil] = useState<"ADMIN" | "COLABORADOR" | "TESOUREIRO">("COLABORADOR");
   const [criandoUsuario, setCriandoUsuario] = useState(false);
+  const [excluindoUsuarioId, setExcluindoUsuarioId] = useState<string | null>(null);
 
   // Estados de Redefinição de Senha
   const [usuarioResetSenha, setUsuarioResetSenha] = useState<any | null>(null);
@@ -118,23 +121,8 @@ export function AdminPanelClient() {
 
   // Estados de Campanhas de Camisetas
   const [campanhas, setCampanhas] = useState<any[]>([]);
-  const [tituloCampanha, setTituloCampanha] = useState("");
-  const [descCampanha, setDescCampanha] = useState("");
-  const [precoCampanha, setPrecoCampanha] = useState("");
-  const [fotosCampanha, setFotosCampanha] = useState<FotoComLabel[]>([]);
-  const [modelosCampanha, setModelosCampanha] = useState("Branca Tradicional, Preta Baby Look");
-  const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>([
-    "PP", "P", "M", "G", "GG", "XGG"
-  ]);
-  const [permiteNomeCampanha, setPermiteNomeCampanha] = useState(true);
-  const [permiteNumeroCampanha, setPermiteNumeroCampanha] = useState(true);
-  const [dataFimCampanha, setDataFimCampanha] = useState("");
-  const [criandoCampanha, setCriandoCampanha] = useState(false);
-  const [uploadingFotoCamiseta, setUploadingFotoCamiseta] = useState(false);
-
-  // Modal de Edição de Campanha
-  const [campanhaEditando, setCampanhaEditando] = useState<any | null>(null);
-  const [salvandoEditCampanha, setSalvandoEditCampanha] = useState(false);
+  const [modalCampanhaAberto, setModalCampanhaAberto] = useState(false);
+  const [campanhaSelecionada, setCampanhaSelecionada] = useState<any | null>(null);
 
   // Estados de Pausas / Férias
   const [pausas, setPausas] = useState<any[]>([]);
@@ -158,12 +146,20 @@ export function AdminPanelClient() {
   const fileInputMascoteRef = useRef<HTMLInputElement>(null);
   const fileInputBannerRef = useRef<HTMLInputElement>(null);
   const fileInputEditBannerRef = useRef<HTMLInputElement>(null);
-  const fileInputCamisetaRef = useRef<HTMLInputElement>(null);
 
   // Carregar dados conforme aba
   async function carregarDados() {
     try {
-      const resConf = await fetch("/api/admin/configuracoes");
+      const [resConf, resAuth] = await Promise.all([
+        fetch("/api/admin/configuracoes"),
+        fetch("/api/auth/me"),
+      ]);
+
+      if (resAuth.ok) {
+        const authData = await resAuth.json();
+        setUsuarioLogado(authData.usuario);
+      }
+
       if (resConf.ok) {
         const d = await resConf.json();
         if (d.config) setConfig(d.config);
@@ -208,8 +204,8 @@ export function AdminPanelClient() {
           setLogs(d.logs || []);
         }
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // Falha ao carregar dados da aba
     }
   }
 
@@ -268,98 +264,14 @@ export function AdminPanelClient() {
     }
   }
 
-  // Upload de Foto de Camiseta
-  async function handleUploadCamisetaFoto(file: File, isEdit: boolean = false) {
-    const formData = new FormData();
-    formData.append("file", file);
-    setUploadingFotoCamiseta(true);
-
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        if (isEdit) {
-          setCampanhaEditando((prev: any) => ({
-            ...prev,
-            fotos: [...(prev.fotos || []), { url: data.url, label: "" }],
-          }));
-        } else {
-          setFotosCampanha((prev) => [...prev, { url: data.url, label: "" }]);
-        }
-        dispararSucesso("Foto da camiseta adicionada com sucesso!");
-      } else {
-        dispararErro(data.error || "Erro ao enviar foto da camiseta.");
-      }
-    } catch {
-      dispararErro("Falha no upload da foto da camiseta.");
-    } finally {
-      setUploadingFotoCamiseta(false);
-    }
+  function abrirCriarCampanha() {
+    setCampanhaSelecionada(null);
+    setModalCampanhaAberto(true);
   }
 
   function abrirEdicaoCampanha(camp: any) {
-    const fotosFormatadas: FotoComLabel[] = (camp.fotos || []).map((f: any) =>
-      typeof f === "string" ? { url: f, label: "" } : f
-    );
-
-    setCampanhaEditando({
-      ...camp,
-      precoUnitarioInput: camp.precoUnitario?.toString() || "",
-      modelosInput: Array.isArray(camp.modelos) ? camp.modelos.join(", ") : "",
-      tamanhosInput: Array.isArray(camp.tamanhosDisponiveis) ? [...camp.tamanhosDisponiveis] : ["P", "M", "G"],
-      dataFimInput: camp.dataFim ? new Date(camp.dataFim).toISOString() : "",
-      fotos: fotosFormatadas,
-    });
-  }
-
-  async function handleSalvarEdicaoCampanha(e: React.FormEvent) {
-    e.preventDefault();
-    if (!campanhaEditando) return;
-
-    if (!campanhaEditando.fotos || campanhaEditando.fotos.length < 2) {
-      dispararErro("A campanha deve conter pelo menos 2 fotos.");
-      return;
-    }
-
-    setSalvandoEditCampanha(true);
-    try {
-      const modelosArr = (campanhaEditando.modelosInput || "")
-        .split(",")
-        .map((m: string) => m.trim())
-        .filter(Boolean);
-
-      const res = await fetch(`/api/campanhas/${campanhaEditando.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          titulo: campanhaEditando.titulo,
-          descricao: campanhaEditando.descricao,
-          precoUnitario: parseFloat(campanhaEditando.precoUnitarioInput || "0"),
-          fotos: campanhaEditando.fotos,
-          modelos: modelosArr.length > 0 ? modelosArr : ["Padrão"],
-          tamanhosDisponiveis: campanhaEditando.tamanhosInput || [],
-          permiteNome: campanhaEditando.permiteNome,
-          permiteNumero: campanhaEditando.permiteNumero,
-          dataFim: campanhaEditando.dataFimInput,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        dispararSucesso("Campanha atualizada com sucesso!");
-        setCampanhaEditando(null);
-        carregarDados();
-      } else {
-        dispararErro(data.error || "Erro ao salvar edição da campanha.");
-      }
-    } catch {
-      dispararErro("Erro de conexão ao atualizar campanha.");
-    } finally {
-      setSalvandoEditCampanha(false);
-    }
+    setCampanhaSelecionada(camp);
+    setModalCampanhaAberto(true);
   }
 
   // Salvar Configurações Gerais
@@ -412,56 +324,6 @@ export function AdminPanelClient() {
       dispararErro("Erro de conexão ao processar pausa.");
     } finally {
       setProcessandoPausa(false);
-    }
-  }
-
-  // Criar Campanha de Camisetas
-  async function handleCriarCampanha(e: React.FormEvent) {
-    e.preventDefault();
-    if (fotosCampanha.length < 2) {
-      dispararErro("É obrigatório anexar pelo menos 2 fotos da camiseta.");
-      return;
-    }
-
-    setCriandoCampanha(true);
-    try {
-      const modelosArr = modelosCampanha
-        .split(",")
-        .map((m) => m.trim())
-        .filter(Boolean);
-
-      const res = await fetch("/api/campanhas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          titulo: tituloCampanha,
-          descricao: descCampanha,
-          precoUnitario: precoCampanha,
-          fotos: fotosCampanha,
-          modelos: modelosArr.length > 0 ? modelosArr : ["Padrão"],
-          tamanhosDisponiveis: tamanhosSelecionados,
-          permiteNome: permiteNomeCampanha,
-          permiteNumero: permiteNumeroCampanha,
-          dataFim: dataFimCampanha,
-        }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        dispararSucesso("Campanha de camisetas publicada com sucesso!");
-        setTituloCampanha("");
-        setDescCampanha("");
-        setPrecoCampanha("");
-        setFotosCampanha([]);
-        setDataFimCampanha("");
-        carregarDados();
-      } else {
-        dispararErro(data.error || "Erro ao publicar campanha.");
-      }
-    } catch {
-      dispararErro("Erro de conexão ao criar campanha.");
-    } finally {
-      setCriandoCampanha(false);
     }
   }
 
@@ -572,6 +434,30 @@ export function AdminPanelClient() {
       dispararErro("Erro de conexão ao redefinir senha.");
     } finally {
       setSalvandoReset(false);
+    }
+  }
+
+  async function handleExcluirUsuario(u: any) {
+    if (!confirm(`Tem certeza que deseja excluir o usuário "${u.nome}" (@${u.login})? Esta ação é irreversível e apenas administradores podem executá-la.`)) {
+      return;
+    }
+
+    setExcluindoUsuarioId(u.id);
+    try {
+      const res = await fetch(`/api/admin/usuarios/${u.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        dispararSucesso(`Usuário "${u.nome}" excluído com sucesso.`);
+        carregarDados();
+      } else {
+        dispararErro(data.error || "Erro ao excluir usuário.");
+      }
+    } catch {
+      dispararErro("Erro de conexão ao excluir usuário.");
+    } finally {
+      setExcluindoUsuarioId(null);
     }
   }
 
@@ -1474,641 +1360,140 @@ export function AdminPanelClient() {
       {/* ABA 3: CAMISETAS & PEDIDOS */}
       {aba === "CAMISETAS" && (
         <div className="space-y-6 animate-fadeIn">
-          {/* Formulário de Criação de Campanha */}
-          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
-            <h2 className="text-sm font-black uppercase tracking-wider text-amber-600 dark:text-[#FFC72C] flex items-center gap-2">
+          {/* Header da Aba com Botão para Lançar Novo Pedido / Campanha */}
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Shirt className="w-5 h-5 text-amber-500" />
+                <h2 className="text-base font-black text-neutral-900 dark:text-white">
+                  Campanhas de Camisetas & Lançamento de Pedidos
+                </h2>
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">
+                Cadastre ou edite campanhas com modelos, fotos, tabela de medidas e tamanhos dinâmicos.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={abrirCriarCampanha}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 flex-shrink-0"
+            >
               <PlusCircle className="w-4 h-4" />
-              Lançar Novo Pedido / Campanha de Camisetas
-            </h2>
-
-            <form onSubmit={handleCriarCampanha} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Título da Camiseta *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={tituloCampanha}
-                    onChange={(e) => setTituloCampanha(e.target.value)}
-                    placeholder="Ex.: Camiseta Oficial JUSC 2026"
-                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Valor Unitário (R$) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    required
-                    value={precoCampanha}
-                    onChange={(e) => setPrecoCampanha(e.target.value)}
-                    placeholder="Ex.: 45.00"
-                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-emerald-600"
-                  />
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Descrição / Detalhes do Tecido / Regras de Retirada
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={descCampanha}
-                    onChange={(e) => setDescCampanha(e.target.value)}
-                    placeholder="Ex.: Malha 100% algodão penteado fio 30.1. Entrega prevista para o próximo retiro..."
-                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Modelos Disponíveis (separados por vírgula) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={modelosCampanha}
-                    onChange={(e) => setModelosCampanha(e.target.value)}
-                    placeholder="Branca Tradicional, Preta Baby Look..."
-                    className="w-full px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Data Limite de Pedidos * (DD/MM/AAAA)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <InputDataBr
-                      value={dataFimCampanha ? dataFimCampanha.slice(0, 10) : ""}
-                      onChange={(br, iso) => {
-                        const hora = dataFimCampanha.includes("T") ? dataFimCampanha.split("T")[1] : "23:59";
-                        setDataFimCampanha(iso ? `${iso}T${hora}` : "");
-                      }}
-                      placeholder="DD/MM/AAAA"
-                      required
-                    />
-                    <input
-                      type="time"
-                      value={dataFimCampanha.includes("T") ? dataFimCampanha.split("T")[1].slice(0, 5) : "23:59"}
-                      onChange={(e) => {
-                        const dataBase = dataFimCampanha.includes("T") ? dataFimCampanha.split("T")[0] : new Date().toISOString().slice(0, 10);
-                        setDataFimCampanha(`${dataBase}T${e.target.value}`);
-                      }}
-                      className="w-24 px-2.5 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
-                    />
-                  </div>
-                </div>
-
-
-                {/* Tamanhos Disponíveis */}
-                <div className="sm:col-span-2 space-y-2">
-                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                    Tamanhos Disponíveis para Seleção *
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {["12", "14", "16", "PP", "P", "M", "G", "GG", "XGG", "G1", "G2"].map((tam) => {
-                      const selecionado = tamanhosSelecionados.includes(tam);
-                      return (
-                        <button
-                          key={tam}
-                          type="button"
-                          onClick={() => {
-                            if (selecionado) {
-                              setTamanhosSelecionados(tamanhosSelecionados.filter((t) => t !== tam));
-                            } else {
-                              setTamanhosSelecionados([...tamanhosSelecionados, tam]);
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                            selecionado
-                              ? "bg-[#FFC72C] text-neutral-950 border-amber-400 shadow-xs"
-                              : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"
-                          }`}
-                        >
-                          {tam}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Opções de Personalização */}
-                <div className="sm:col-span-2 flex flex-wrap items-center gap-6 p-3 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700">
-                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                    <input
-                      type="checkbox"
-                      checked={permiteNomeCampanha}
-                      onChange={(e) => setPermiteNomeCampanha(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
-                    />
-                    <span>Permitir personalização de Nome na camiseta</span>
-                  </label>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                    <input
-                      type="checkbox"
-                      checked={permiteNumeroCampanha}
-                      onChange={(e) => setPermiteNumeroCampanha(e.target.checked)}
-                      className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
-                    />
-                    <span>Permitir personalização de Número na camiseta</span>
-                  </label>
-                </div>
-
-                {/* Upload de Fotos da Camiseta (Mínimo 2 fotos) */}
-                <div className="sm:col-span-2 space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                      Fotos da Camiseta * (mínimo 2 fotos obrigatórias)
-                    </label>
-                    <p className="text-[11px] text-neutral-500">
-                      Envie foto da frente, costas e/ou modelos. A primeira foto será usada na prévia do banner da Home. Você pode adicionar etiquetas/legendas (ex: "Frente", "Costas", "Baby Look", "Tabela de Medidas").
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      ref={fileInputCamisetaRef}
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) handleUploadCamisetaFoto(e.target.files[0], false);
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputCamisetaRef.current?.click()}
-                      disabled={uploadingFotoCamiseta}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold text-neutral-900 dark:text-white transition-colors"
-                    >
-                      <Upload className="w-3.5 h-3.5 text-[#FFC72C]" />
-                      {uploadingFotoCamiseta ? "Enviando Foto..." : "Adicionar Foto da Camiseta"}
-                    </button>
-                    <span className="text-xs text-neutral-500">
-                      {fotosCampanha.length} foto(s) anexada(s)
-                    </span>
-                  </div>
-
-                  {/* Galeria de Fotos Anexadas com Seleção de Capa e Legendas */}
-                  {fotosCampanha.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                      {fotosCampanha.map((foto, idx) => {
-                        const ehCapa = idx === 0;
-                        return (
-                          <div
-                            key={idx}
-                            className={`p-3 rounded-2xl border-2 transition-all group bg-neutral-50 dark:bg-[#1a1d26] flex items-center gap-3 ${
-                              ehCapa ? "border-[#FFC72C] ring-2 ring-[#FFC72C]/30" : "border-neutral-200 dark:border-neutral-800"
-                            }`}
-                          >
-                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black/10 flex-shrink-0">
-                              <Image src={foto.url} alt={`Foto ${idx + 1}`} fill unoptimized className="object-cover" />
-                            </div>
-
-                            <div className="flex-1 min-w-0 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                {ehCapa ? (
-                                  <span className="px-2 py-0.5 rounded-md bg-[#FFC72C] text-neutral-950 text-[10px] font-black">
-                                    ⭐ Foto de Capa
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const reordenadas = [foto, ...fotosCampanha.filter((_, i) => i !== idx)];
-                                      setFotosCampanha(reordenadas);
-                                    }}
-                                    className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                                  >
-                                    Definir como Capa
-                                  </button>
-                                )}
-
-                                <button
-                                  type="button"
-                                  onClick={() => setFotosCampanha(fotosCampanha.filter((_, i) => i !== idx))}
-                                  className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
-                                  title="Remover foto"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
-                              <div className="relative">
-                                <Tag className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                <input
-                                  type="text"
-                                  placeholder="Legenda (ex: Frente, Baby Look)"
-                                  value={foto.label || ""}
-                                  onChange={(e) => {
-                                    const novas = [...fotosCampanha];
-                                    novas[idx] = { ...novas[idx], label: e.target.value };
-                                    setFotosCampanha(novas);
-                                  }}
-                                  className="w-full pl-7 pr-2 py-1 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={criandoCampanha}
-                  className="px-6 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-black text-xs shadow-md transition-all active:scale-95 flex items-center gap-2"
-                >
-                  <Shirt className="w-4 h-4" />
-                  {criandoCampanha ? "Publicando..." : "Publicar Campanha de Camisetas"}
-                </button>
-              </div>
-            </form>
+              <span>Nova Campanha / Lançar Pedido</span>
+            </button>
           </div>
 
           {/* Listagem de Campanhas Existentes */}
           <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
             <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900 dark:text-white">
-              Campanhas Lançadas ({campanhas.length})
+              Campanhas Cadastradas ({campanhas.length})
             </h2>
 
             {campanhas.length === 0 ? (
               <p className="text-xs text-neutral-500 py-4">Nenhuma campanha de camisetas cadastrada.</p>
             ) : (
               <div className="space-y-4">
-                {campanhas.map((camp) => (
-                  <div
-                    key={camp.id}
-                    className="p-5 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs"
-                  >
-                    <div className="flex items-center gap-4">
-                      {(() => {
-                        const primeiraFoto = camp.fotos?.[0];
-                        const urlFoto = typeof primeiraFoto === "object" && primeiraFoto ? primeiraFoto.url : primeiraFoto;
-                        return urlFoto ? (
+                {campanhas.map((camp) => {
+                  const primeiraFoto = camp.fotos?.[0];
+                  const urlFoto = typeof primeiraFoto === "object" && primeiraFoto ? primeiraFoto.url : primeiraFoto;
+                  const modelosLista = normalizarModelos(camp.modelos, camp.precoUnitario);
+
+                  return (
+                    <div
+                      key={camp.id}
+                      className="p-5 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs"
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        {urlFoto ? (
                           <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-amber-400 flex-shrink-0">
                             <Image src={urlFoto} alt={camp.titulo} fill unoptimized className="object-cover" />
                           </div>
                         ) : (
-                          <div className="w-16 h-16 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-xs text-neutral-400">
+                          <div className="w-16 h-16 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-xs text-neutral-400 flex-shrink-0">
                             Sem foto
                           </div>
-                        );
-                      })()}
+                        )}
 
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                              camp.expirada
-                                ? "bg-neutral-200 text-neutral-600"
-                                : camp.ativa
-                                ? "bg-emerald-500 text-white"
-                                : "bg-neutral-200 text-neutral-600"
-                            }`}
-                          >
-                            {camp.expirada ? "Expirada (oculta)" : camp.ativa ? "Ativa na Home" : "Pausada"}
-                          </span>
-                          <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
-                            R$ {camp.precoUnitario.toFixed(2)}
-                          </span>
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                camp.expirada
+                                  ? "bg-neutral-200 text-neutral-600"
+                                  : camp.ativa
+                                  ? "bg-emerald-500 text-white"
+                                  : "bg-neutral-200 text-neutral-600"
+                              }`}
+                            >
+                              {camp.expirada ? "Expirada (oculta)" : camp.ativa ? "Ativa na Home" : "Pausada"}
+                            </span>
+                            <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
+                              {formatarFaixaPrecos(camp.modelos, camp.precoUnitario)}
+                            </span>
+                          </div>
+                          <h4 className="font-extrabold text-sm text-neutral-900 dark:text-white truncate">
+                            {camp.titulo}
+                          </h4>
+                          <p className="text-neutral-500 truncate">
+                            Modelos: {modelosLista.map((m) => m.nome).join(", ")}
+                          </p>
+                          <p className="text-neutral-500 truncate">
+                            Tamanhos: {camp.tamanhosDisponiveis?.join(", ") || "—"}
+                          </p>
+                          <p className="text-[11px] text-neutral-400">
+                            Disponível até: {formatarDataHora(camp.dataFim)} • {camp._count?.pedidos || 0} pedido(s)
+                          </p>
                         </div>
-                        <h4 className="font-extrabold text-sm text-neutral-900 dark:text-white">
-                          {camp.titulo}
-                        </h4>
-                        <p className="text-neutral-500">
-                          Modelos: {camp.modelos?.join(", ")} • Tamanhos: {camp.tamanhosDisponiveis?.join(", ")}
-                        </p>
-                        <p className="text-[11px] text-neutral-400">
-                          Disponível até: {formatarDataHora(camp.dataFim)} • {camp._count?.pedidos || 0} pedido(s)
-                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => abrirEdicaoCampanha(camp)}
+                          className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => alternarStatusCampanha(camp.id, camp.ativa)}
+                          className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
+                        >
+                          {camp.ativa ? "Pausar" : "Ativar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => excluirCampanha(camp.id)}
+                          className="p-1.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                          title="Excluir campanha"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => abrirEdicaoCampanha(camp)}
-                        className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Editar</span>
-                      </button>
-                      <button
-                        onClick={() => alternarStatusCampanha(camp.id, camp.ativa)}
-                        className="px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
-                      >
-                        {camp.ativa ? "Pausar" : "Ativar"}
-                      </button>
-                      <button
-                        onClick={() => excluirCampanha(camp.id)}
-                        className="p-1.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-                        title="Excluir campanha"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Modal de Edição de Campanha */}
-          {campanhaEditando && (
-            <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
-              <div className="bg-white dark:bg-[#13151c] rounded-3xl max-w-2xl w-full p-6 border border-neutral-200 dark:border-neutral-800 shadow-2xl space-y-4 my-8">
-                <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Edit3 className="w-5 h-5 text-amber-500" />
-                    <h3 className="font-black text-base text-neutral-900 dark:text-white">
-                      Editar Campanha de Camisetas
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCampanhaEditando(null)}
-                    className="p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleSalvarEdicaoCampanha} className="space-y-4 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold mb-1">Título da Campanha *</label>
-                      <input
-                        type="text"
-                        required
-                        value={campanhaEditando.titulo}
-                        onChange={(e) =>
-                          setCampanhaEditando({ ...campanhaEditando, titulo: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-bold mb-1">Valor Unitário (R$) *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={campanhaEditando.precoUnitarioInput}
-                        onChange={(e) =>
-                          setCampanhaEditando({ ...campanhaEditando, precoUnitarioInput: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-bold text-emerald-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-bold mb-1">Modelos (separados por vírgula)</label>
-                      <input
-                        type="text"
-                        value={campanhaEditando.modelosInput}
-                        onChange={(e) =>
-                          setCampanhaEditando({ ...campanhaEditando, modelosInput: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold mb-1">Descrição / Avisos</label>
-                      <textarea
-                        rows={2}
-                        value={campanhaEditando.descricao || ""}
-                        onChange={(e) =>
-                          setCampanhaEditando({ ...campanhaEditando, descricao: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
-                      />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold mb-1">Data Limite de Pedidos * (DD/MM/AAAA)</label>
-                      <div className="flex items-center gap-2">
-                        <InputDataBr
-                          value={campanhaEditando.dataFimInput ? campanhaEditando.dataFimInput.slice(0, 10) : ""}
-                          onChange={(br, iso) => {
-                            const hora = campanhaEditando.dataFimInput?.includes("T")
-                              ? campanhaEditando.dataFimInput.split("T")[1]
-                              : "23:59";
-                            setCampanhaEditando({
-                              ...campanhaEditando,
-                              dataFimInput: iso ? `${iso}T${hora}` : "",
-                            });
-                          }}
-                          placeholder="DD/MM/AAAA"
-                          required
-                        />
-                        <input
-                          type="time"
-                          value={
-                            campanhaEditando.dataFimInput?.includes("T")
-                              ? campanhaEditando.dataFimInput.split("T")[1].slice(0, 5)
-                              : "23:59"
-                          }
-                          onChange={(e) => {
-                            const dataBase = campanhaEditando.dataFimInput?.includes("T")
-                              ? campanhaEditando.dataFimInput.split("T")[0]
-                              : new Date().toISOString().slice(0, 10);
-                            setCampanhaEditando({
-                              ...campanhaEditando,
-                              dataFimInput: `${dataBase}T${e.target.value}`,
-                            });
-                          }}
-                          className="w-24 px-2 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Tamanhos */}
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <label className="block font-bold">Tamanhos Permitidos *</label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {["12", "14", "16", "PP", "P", "M", "G", "GG", "XGG", "G1", "G2"].map((tam) => {
-                          const sel = (campanhaEditando.tamanhosInput || []).includes(tam);
-                          return (
-                            <button
-                              key={tam}
-                              type="button"
-                              onClick={() => {
-                                const atuais = campanhaEditando.tamanhosInput || [];
-                                const novos = sel ? atuais.filter((t: string) => t !== tam) : [...atuais, tam];
-                                setCampanhaEditando({ ...campanhaEditando, tamanhosInput: novos });
-                              }}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-                                sel
-                                  ? "bg-[#FFC72C] text-neutral-950 border-amber-400"
-                                  : "bg-neutral-50 dark:bg-[#1c202a] border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400"
-                              }`}
-                            >
-                              {tam}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Personalização */}
-                    <div className="sm:col-span-2 flex items-center gap-6 p-3 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700">
-                      <label className="flex items-center gap-2 cursor-pointer font-bold">
-                        <input
-                          type="checkbox"
-                          checked={campanhaEditando.permiteNome}
-                          onChange={(e) =>
-                            setCampanhaEditando({ ...campanhaEditando, permiteNome: e.target.checked })
-                          }
-                          className="w-4 h-4 rounded text-[#FFC72C]"
-                        />
-                        <span>Permitir Nome</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer font-bold">
-                        <input
-                          type="checkbox"
-                          checked={campanhaEditando.permiteNumero}
-                          onChange={(e) =>
-                            setCampanhaEditando({ ...campanhaEditando, permiteNumero: e.target.checked })
-                          }
-                          className="w-4 h-4 rounded text-[#FFC72C]"
-                        />
-                        <span>Permitir Número</span>
-                      </label>
-                    </div>
-
-                    {/* Fotos da Edição com Legendas e Capa */}
-                    <div className="sm:col-span-2 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="block font-bold">Fotos da Camiseta * (mínimo 2 fotos)</label>
-                          <p className="text-[11px] text-neutral-500">
-                            Adicione legendas aos modelos (ex: Frente, Costas, Baby Look, Tabela de Medidas).
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 font-bold cursor-pointer">
-                            <Upload className="w-3.5 h-3.5 text-[#FFC72C]" />
-                            {uploadingFotoCamiseta ? "Enviando..." : "Adicionar Foto"}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              disabled={uploadingFotoCamiseta}
-                              onChange={(e) => {
-                                if (e.target.files?.[0]) handleUploadCamisetaFoto(e.target.files[0], true);
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      {campanhaEditando.fotos && campanhaEditando.fotos.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                          {campanhaEditando.fotos.map((foto: FotoComLabel, idx: number) => {
-                            const ehCapa = idx === 0;
-                            return (
-                              <div
-                                key={idx}
-                                className={`p-3 rounded-2xl border-2 transition-all group bg-neutral-50 dark:bg-[#1a1d26] flex items-center gap-3 ${
-                                  ehCapa ? "border-[#FFC72C] ring-2 ring-[#FFC72C]/30" : "border-neutral-200 dark:border-neutral-800"
-                                }`}
-                              >
-                                <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-black/10 flex-shrink-0">
-                                  <Image src={foto.url} alt={`Foto ${idx + 1}`} fill unoptimized className="object-cover" />
-                                </div>
-
-                                <div className="flex-1 min-w-0 space-y-1.5">
-                                  <div className="flex items-center justify-between">
-                                    {ehCapa ? (
-                                      <span className="px-2 py-0.5 rounded-md bg-[#FFC72C] text-neutral-950 text-[10px] font-black">
-                                        ⭐ Foto de Capa
-                                      </span>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const reordenadas = [foto, ...campanhaEditando.fotos.filter((_: any, i: number) => i !== idx)];
-                                          setCampanhaEditando({ ...campanhaEditando, fotos: reordenadas });
-                                        }}
-                                        className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline"
-                                      >
-                                        Definir como Capa
-                                      </button>
-                                    )}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const filtradas = campanhaEditando.fotos.filter((_: any, i: number) => i !== idx);
-                                        setCampanhaEditando({ ...campanhaEditando, fotos: filtradas });
-                                      }}
-                                      className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
-                                      title="Remover foto"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-
-                                  <div className="relative">
-                                    <Tag className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                    <input
-                                      type="text"
-                                      placeholder="Legenda (ex: Frente, Baby Look)"
-                                      value={foto.label || ""}
-                                      onChange={(e) => {
-                                        const novas = [...campanhaEditando.fotos];
-                                        novas[idx] = { ...novas[idx], label: e.target.value };
-                                        setCampanhaEditando({ ...campanhaEditando, fotos: novas });
-                                      }}
-                                      className="w-full pl-7 pr-2 py-1 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-[11px] font-medium"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-3 pt-4 border-t border-neutral-200 dark:border-neutral-800">
-                    <button
-                      type="button"
-                      onClick={() => setCampanhaEditando(null)}
-                      className="px-4 py-2 rounded-xl text-neutral-600 dark:text-neutral-400 font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={salvandoEditCampanha}
-                      className="px-5 py-2 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-black shadow-md transition-all active:scale-95 flex items-center gap-2"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {salvandoEditCampanha ? "Salvando..." : "Salvar Alterações"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          {/* Modal Unificado de Criação e Edição de Campanha */}
+          <ModalCampanha
+            aberto={modalCampanhaAberto}
+            onFechar={() => setModalCampanhaAberto(false)}
+            campanha={campanhaSelecionada}
+            onSalvo={async () => {
+              dispararSucesso(
+                campanhaSelecionada
+                  ? "Campanha atualizada com sucesso!"
+                  : "Campanha lançada com sucesso!"
+              );
+              await carregarDados();
+            }}
+            onErro={(msg) => dispararErro(msg)}
+          />
         </div>
       )}
 
@@ -2776,6 +2161,16 @@ export function AdminPanelClient() {
                     >
                       {u.status === "ATIVO" ? "Desativar" : "Ativar"}
                     </button>
+                    {usuarioLogado?.id !== u.id && (
+                      <button
+                        onClick={() => handleExcluirUsuario(u)}
+                        disabled={excluindoUsuarioId === u.id}
+                        className="p-1.5 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                        title={`Excluir usuário ${u.nome}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

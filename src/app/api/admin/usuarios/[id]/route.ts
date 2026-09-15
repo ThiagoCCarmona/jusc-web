@@ -63,3 +63,67 @@ export async function PUT(
     return NextResponse.json({ error: "Erro ao atualizar usuário." }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const adminLogado = await requireAdmin();
+    const { id } = await params;
+
+    if (id === adminLogado.id) {
+      return NextResponse.json(
+        { error: "Você não pode excluir seu próprio usuário." },
+        { status: 400 }
+      );
+    }
+
+    const usuarioAlvo = await prisma.usuario.findUnique({ where: { id } });
+    if (!usuarioAlvo) {
+      return NextResponse.json(
+        { error: "Usuário não encontrado." },
+        { status: 404 }
+      );
+    }
+
+    // Reatribuir referências de FK para o admin logado para evitar violação de integridade referencial
+    await prisma.$transaction([
+      prisma.integrante.updateMany({
+        where: { cadastradoPorId: id },
+        data: { cadastradoPorId: adminLogado.id },
+      }),
+      prisma.encontro.updateMany({
+        where: { criadoPorId: id },
+        data: { criadoPorId: adminLogado.id },
+      }),
+      prisma.banner.updateMany({
+        where: { criadoPorId: id },
+        data: { criadoPorId: adminLogado.id },
+      }),
+      prisma.logAuditoria.updateMany({
+        where: { usuarioId: id },
+        data: { usuarioId: adminLogado.id },
+      }),
+      prisma.usuario.delete({
+        where: { id },
+      }),
+    ]);
+
+    await prisma.logAuditoria.create({
+      data: {
+        usuarioId: adminLogado.id,
+        acao: "EXCLUIR_USUARIO",
+        detalhes: `Excluiu o usuário "${usuarioAlvo.nome}" (@${usuarioAlvo.login})`,
+      },
+    }).catch(() => {});
+
+    return NextResponse.json({ success: true, message: "Usuário excluído com sucesso." });
+  } catch (error: any) {
+    if (error.message === "FORBIDDEN") {
+      return NextResponse.json({ error: "Acesso restrito a administradores." }, { status: 403 });
+    }
+    console.error("Erro ao excluir usuário:", error);
+    return NextResponse.json({ error: "Erro ao excluir usuário." }, { status: 500 });
+  }
+}
