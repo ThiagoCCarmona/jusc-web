@@ -28,6 +28,7 @@ import {
   Check,
   X,
   Shirt,
+  ClipboardList,
 } from "lucide-react";
 import { formatarData, formatarTelefone } from "@/lib/utils";
 import { calcularIdade } from "@/lib/rules";
@@ -38,12 +39,16 @@ import autoTable from "jspdf-autotable";
 
 export default function RelatoriosPage() {
   const [aba, setAba] = useState<
-    "MATRIZ" | "SAUDE" | "SACRAMENTOS" | "RESPONSAVEIS" | "INDIVIDUAL" | "AUSENCIA" | "CAMISETAS"
+    "MATRIZ" | "SAUDE" | "SACRAMENTOS" | "RESPONSAVEIS" | "INDIVIDUAL" | "AUSENCIA" | "CAMISETAS" | "INSCRICOES"
   >("MATRIZ");
   const [encontros, setEncontros] = useState<any[]>([]);
   const [integrantes, setIntegrantes] = useState<any[]>([]);
   const [relatorioResponsaveis, setRelatorioResponsaveis] = useState<any[]>([]);
   const [pedidosCamisetas, setPedidosCamisetas] = useState<any[]>([]);
+  const [inscricoes, setInscricoes] = useState<any[]>([]);
+  const [campanhasInscricao, setCampanhasInscricao] = useState<any[]>([]);
+  const [filtroCampanhaInscricao, setFiltroCampanhaInscricao] = useState<string>("TODAS");
+  const [filtroStatusPagInscricao, setFiltroStatusPagInscricao] = useState<string>("TODOS");
   const [limiteAlerta, setLimiteAlerta] = useState<number>(2);
   const [limiteInativo, setLimiteInativo] = useState<number>(12);
   const [nomeGrupo, setNomeGrupo] = useState<string>("JUSC");
@@ -102,9 +107,11 @@ export default function RelatoriosPage() {
   async function carregar() {
     setCarregando(true);
     try {
-      const [resRel, resPed] = await Promise.all([
+      const [resRel, resPed, resIns, resCamp] = await Promise.all([
         fetch("/api/relatorios"),
         fetch("/api/pedidos"),
+        fetch("/api/inscricoes"),
+        fetch("/api/campanhas-inscricao?todas=true"),
       ]);
 
       if (resRel.ok) {
@@ -124,6 +131,16 @@ export default function RelatoriosPage() {
       if (resPed.ok) {
         const dataPed = await resPed.json();
         setPedidosCamisetas(dataPed.pedidos || []);
+      }
+
+      if (resIns.ok) {
+        const dataIns = await resIns.json();
+        setInscricoes(dataIns.inscricoes || []);
+      }
+
+      if (resCamp.ok) {
+        const dataCamp = await resCamp.json();
+        setCampanhasInscricao(dataCamp.campanhas || []);
       }
     } catch (e) {
       console.error(e);
@@ -952,6 +969,170 @@ export default function RelatoriosPage() {
 
     doc.save(`pedidos-camisetas-jusc-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
+
+  // Filtragem de Inscrições de Eventos para a Aba Inscrições
+  const inscricoesFiltradas = useMemo(() => {
+    return inscricoes.filter((i) => {
+      if (filtroCampanhaInscricao !== "TODAS" && i.campanhaId !== filtroCampanhaInscricao) {
+        return false;
+      }
+      if (filtroStatusPagInscricao !== "TODOS" && i.statusPagamento !== filtroStatusPagInscricao) {
+        return false;
+      }
+      if (busca.trim()) {
+        const termo = busca.toLowerCase();
+        const codMatch = i.codigoInscricao?.toLowerCase().includes(termo);
+        const nomeMatch = i.nomeCompleto?.toLowerCase().includes(termo);
+        const telMatch = i.telefone?.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const respMatch = i.nomeResponsavel?.toLowerCase().includes(termo);
+        if (!codMatch && !nomeMatch && !telMatch && !respMatch) return false;
+      }
+      return true;
+    });
+  }, [inscricoes, filtroCampanhaInscricao, filtroStatusPagInscricao, busca]);
+
+  const statsInscricoes = useMemo(() => {
+    const total = inscricoesFiltradas.length;
+    let confirmadas = 0;
+    let somaIdades = 0;
+    let idadesContadas = 0;
+    let totalArrecadado = 0;
+
+    inscricoesFiltradas.forEach((i) => {
+      if (i.statusPagamento === "PAGO_TOTAL" || i.statusPagamento === "ISENTO") {
+        confirmadas++;
+      }
+      if (i.dataNascimento) {
+        somaIdades += calcularIdade(i.dataNascimento);
+        idadesContadas++;
+      }
+      totalArrecadado += Number(i.valorPago || 0);
+    });
+
+    return {
+      total,
+      confirmadas,
+      mediaIdade: idadesContadas > 0 ? (somaIdades / idadesContadas).toFixed(1) : "-",
+      totalArrecadado,
+    };
+  }, [inscricoesFiltradas]);
+
+  function exportarInscricoesCSV() {
+    const cabecalho = [
+      "Código",
+      "Data Inscrição",
+      "Participante",
+      "Telefone",
+      "Sexo",
+      "Idade",
+      "Evento",
+      "Nome Responsável",
+      "Tel Responsável",
+      "Possui Alergia",
+      "Glúten",
+      "Lactose",
+      "Remédio Contínuo",
+      "Descrição Remédio",
+      "No Grupo WhatsApp",
+      "Camiseta Pedida",
+      "Valor Total",
+      "Valor Pago",
+      "Status Pagamento",
+    ];
+
+    const linhas = inscricoesFiltradas.map((i) => {
+      const idade = i.dataNascimento ? calcularIdade(i.dataNascimento) : "";
+      const camiseta = i.pediuCamiseta ? `${i.camisetaModelo || "Camiseta"} (${i.camisetaTamanho || ""})` : "Não";
+      return [
+        `"${i.codigoInscricao}"`,
+        formatarData(i.criadoEm),
+        `"${i.nomeCompleto}"`,
+        `"${i.telefone}"`,
+        i.sexo || "",
+        idade,
+        `"${i.campanha?.titulo || ""}"`,
+        `"${i.nomeResponsavel || ""}"`,
+        `"${i.telefoneResponsavel || ""}"`,
+        i.possuiAlergia ? "Sim" : "Não",
+        i.intoleranciaGluten ? "Sim" : "Não",
+        i.intoleranciaLactose ? "Sim" : "Não",
+        i.usaRemedioContinuo ? "Sim" : "Não",
+        `"${i.descricaoRemedioContinuo || ""}"`,
+        i.entrouNoGrupoWhatsapp ? "Sim" : "Não",
+        `"${camiseta}"`,
+        Number(i.valorTotal || 0).toFixed(2),
+        Number(i.valorPago || 0).toFixed(2),
+        i.statusPagamento,
+      ].join(";");
+    });
+
+    const csvContent = "\uFEFF" + [cabecalho.join(";"), ...linhas].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `relatorio-inscricoes-eventos-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function exportarInscricoesPDF() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const dataHoraEmissao = new Date().toLocaleString("pt-BR");
+
+    doc.setFontSize(14);
+    doc.text(`${nomeGrupo} — Relatório de Inscrições de Eventos`, 14, 15);
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    doc.text(
+      `Gerado em: ${dataHoraEmissao} | Total Inscritos: ${statsInscricoes.total} | Idade Média: ${statsInscricoes.mediaIdade} anos | Arrecadado: R$ ${statsInscricoes.totalArrecadado.toFixed(2).replace(".", ",")}`,
+      14,
+      21
+    );
+
+    const head = [
+      ["Cód.", "Participante", "Sexo", "Idade", "Telefone", "Tel. Resp.", "Nome Resp.", "Evento", "Saúde/Remédio", "Camiseta", "Status Pag."],
+    ];
+
+    const body = inscricoesFiltradas.map((i) => {
+      const idade = i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-";
+      const saude = [
+        i.possuiAlergia ? `Alergia` : "",
+        i.intoleranciaGluten ? "Glúten" : "",
+        i.intoleranciaLactose ? "Lactose" : "",
+        i.usaRemedioContinuo ? "Remédio" : "",
+      ].filter(Boolean).join(", ") || "Sem restrições";
+
+      const camiseta = i.pediuCamiseta ? `${i.camisetaModelo || "Cam."} (${i.camisetaTamanho || ""})` : "-";
+
+      return [
+        i.codigoInscricao,
+        i.nomeCompleto,
+        i.sexo === "MASCULINO" ? "M" : i.sexo === "FEMININO" ? "F" : "-",
+        idade,
+        i.telefone,
+        i.telefoneResponsavel || "-",
+        i.nomeResponsavel ? `${i.nomeResponsavel}` : "-",
+        i.campanha?.titulo || "-",
+        saude,
+        camiseta,
+        i.statusPagamento,
+      ];
+    });
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 25,
+      styles: { fontSize: 7.5, cellPadding: 2 },
+      headStyles: { fillColor: [255, 199, 44], textColor: [20, 20, 20], fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+    });
+
+    doc.save(`relatorio-inscricoes-${nomeGrupo.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
   const integranteSel = integrantes.find((i) => i.id === integranteSelecionadoId);
   const encontrosParaFrequencia = encontros.slice(0, qtdEncontrosFrequencia);
   const presencasIndividual = encontrosParaFrequencia.map((e) => {
@@ -1061,6 +1242,17 @@ export default function RelatoriosPage() {
           >
             <Shirt className="w-3.5 h-3.5 text-amber-500" />
             Camisetas
+          </button>
+          <button
+            onClick={() => setAba("INSCRICOES")}
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              aba === "INSCRICOES"
+                ? "bg-[#FFC72C] text-neutral-950 shadow-sm"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+            }`}
+          >
+            <ClipboardList className="w-3.5 h-3.5 text-amber-500" />
+            Inscrições de Eventos
           </button>
         </div>
       </div>
@@ -2433,7 +2625,7 @@ export default function RelatoriosPage() {
             </div>
           )}
         </div>
-      ) : (
+      ) : aba === "CAMISETAS" ? (
         /* Aba 7: Relatório de Pedidos de Camisetas */
         <div className="space-y-4">
           <div className="bg-white dark:bg-[#15171e] rounded-2xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3 print:hidden">
@@ -2568,6 +2760,230 @@ export default function RelatoriosPage() {
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${p.entregue ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" : "text-neutral-400"}`}>
                               {p.entregue ? "Entregue" : "Pendente"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Aba 8: Inscrições de Eventos (Redundância Consolidada em Relatórios) */
+        <div className="space-y-4">
+          {/* Métricas Consolidadas */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#15171e] border border-neutral-200 dark:border-neutral-800 shadow-sm">
+              <span className="text-[11px] font-black uppercase text-neutral-400 block mb-1">
+                Total Inscritos
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white">
+                {statsInscricoes.total}
+              </div>
+              <span className="text-[11px] text-neutral-400">participantes listados</span>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#15171e] border border-neutral-200 dark:border-neutral-800 shadow-sm">
+              <span className="text-[11px] font-black uppercase text-neutral-400 block mb-1">
+                Idade Média
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-neutral-900 dark:text-white">
+                {statsInscricoes.mediaIdade} {statsInscricoes.mediaIdade !== "-" ? "anos" : ""}
+              </div>
+              <span className="text-[11px] text-neutral-400">cálculo automático</span>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#15171e] border border-neutral-200 dark:border-neutral-800 shadow-sm">
+              <span className="text-[11px] font-black uppercase text-neutral-400 block mb-1">
+                Confirmados / Isentos
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-600">
+                {statsInscricoes.confirmadas}
+              </div>
+              <span className="text-[11px] text-neutral-400">vagas garantidas</span>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#15171e] border border-neutral-200 dark:border-neutral-800 shadow-sm">
+              <span className="text-[11px] font-black uppercase text-neutral-400 block mb-1">
+                Total Arrecadado
+              </span>
+              <div className="text-xl sm:text-2xl font-black text-amber-500">
+                R$ {statsInscricoes.totalArrecadado.toFixed(2).replace(".", ",")}
+              </div>
+              <span className="text-[11px] text-neutral-400">inscrições e camisetas</span>
+            </div>
+          </div>
+
+          {/* Painel de Filtros e Exportação */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#15171e] border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full md:max-w-md">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome, telefone, responsável ou código..."
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <select
+                  value={filtroCampanhaInscricao}
+                  onChange={(e) => setFiltroCampanhaInscricao(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-semibold text-neutral-900 dark:text-white"
+                >
+                  <option value="TODAS">Todos os Eventos</option>
+                  {campanhasInscricao.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.titulo}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filtroStatusPagInscricao}
+                  onChange={(e) => setFiltroStatusPagInscricao(e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-semibold text-neutral-900 dark:text-white"
+                >
+                  <option value="TODOS">Todos os Pagamentos</option>
+                  <option value="ISENTO">Isento (Gratuito)</option>
+                  <option value="PAGO_TOTAL">Pago Total</option>
+                  <option value="PAGO_PARCIAL">Pago Parcial (50%)</option>
+                  <option value="PENDENTE">Pendente</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800 text-xs">
+              <span className="text-neutral-500 font-medium">
+                Total de <strong>{inscricoesFiltradas.length}</strong> inscrições listadas.
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportarInscricoesPDF}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 text-xs font-bold shadow-sm transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-neutral-950" />
+                  <span>Exportar PDF</span>
+                </button>
+                <button
+                  onClick={exportarInscricoesCSV}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Exportar Planilha (CSV)</span>
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Imprimir</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabela de Inscrições de Eventos */}
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
+            {inscricoesFiltradas.length === 0 ? (
+              <div className="p-12 text-center text-xs text-neutral-500">
+                Nenhuma inscrição de evento encontrada para os filtros selecionados.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-neutral-50 dark:bg-neutral-900/60 border-b border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-3 px-4">Cód. / Data</th>
+                      <th className="py-3 px-4">Participante</th>
+                      <th className="py-3 px-4">Idade</th>
+                      <th className="py-3 px-4">Evento</th>
+                      <th className="py-3 px-4">Responsável</th>
+                      <th className="py-3 px-4">Saúde / Restrições</th>
+                      <th className="py-3 px-4">Camiseta</th>
+                      <th className="py-3 px-4">Financeiro</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
+                    {inscricoesFiltradas.map((i) => {
+                      const telLimpo = i.telefone?.replace(/\D/g, "") || "";
+                      const idade = i.dataNascimento ? calcularIdade(i.dataNascimento) : null;
+                      return (
+                        <tr key={i.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30">
+                          <td className="py-3 px-4 whitespace-nowrap font-mono font-bold text-neutral-900 dark:text-white">
+                            {i.codigoInscricao}
+                            <span className="block font-normal text-[10px] text-neutral-400">
+                              {formatarData(i.criadoEm)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-bold text-neutral-900 dark:text-white block">
+                              {i.nomeCompleto}
+                            </span>
+                            <a
+                              href={`https://api.whatsapp.com/send?phone=${telLimpo}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] text-emerald-600 hover:underline"
+                            >
+                              {i.telefone}
+                            </a>
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {idade !== null ? (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${idade < 18 ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"}`}>
+                                {idade} anos
+                              </span>
+                            ) : "-"}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-neutral-800 dark:text-neutral-200">
+                            {i.campanha?.titulo || "-"}
+                          </td>
+                          <td className="py-3 px-4 text-neutral-600 dark:text-neutral-400">
+                            {i.nomeResponsavel ? (
+                              <div>
+                                <span className="font-bold block text-neutral-900 dark:text-white">
+                                  {i.nomeResponsavel}
+                                </span>
+                                <span className="text-[10px]">
+                                  {i.telefoneResponsavel || "-"} ({i.parentescoResponsavel || "Resp."})
+                                </span>
+                              </div>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {[
+                              i.possuiAlergia ? `Alergia` : "",
+                              i.intoleranciaGluten ? "Glúten" : "",
+                              i.intoleranciaLactose ? "Lactose" : "",
+                              i.usaRemedioContinuo ? "Remédio" : "",
+                            ].filter(Boolean).join(", ") || "Nenhuma"}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            {i.pediuCamiseta ? (
+                              <span className="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[10px]">
+                                {i.camisetaModelo} ({i.camisetaTamanho})
+                              </span>
+                            ) : (
+                              <span className="text-neutral-400">-</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap font-bold text-neutral-900 dark:text-white">
+                            R$ {Number(i.valorPago || 0).toFixed(2).replace(".", ",")} / R$ {Number(i.valorTotal || 0).toFixed(2).replace(".", ",")}
+                          </td>
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
+                              {i.statusPagamento}
                             </span>
                           </td>
                         </tr>

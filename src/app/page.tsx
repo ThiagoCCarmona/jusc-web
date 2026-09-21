@@ -8,6 +8,7 @@ import {
   BannerContato,
   BannerEvento,
   BannerCamiseta,
+  BannerInscricao,
 } from "@/components/public/home-banners";
 import { Heart, Users, Flame, CalendarCheck } from "lucide-react";
 
@@ -72,6 +73,18 @@ export default async function HomePage() {
       tipo: "EVENTO",
       ativo: true,
       dataExpiracao: { gt: agora },
+    },
+    orderBy: { criadoEm: "desc" },
+  });
+
+  // Buscar Campanhas de Inscrição Ativas e NÃO expiradas
+  const campanhasInscricao = await prisma.campanhaInscricao.findMany({
+    where: {
+      ativa: true,
+      dataLimite: { gt: agora },
+    },
+    include: {
+      campanhaCamiseta: true,
     },
     orderBy: { criadoEm: "desc" },
   });
@@ -216,7 +229,14 @@ export default async function HomePage() {
             ladoFoto="esquerda"
           />
 
-          {/* Banners de Campanhas de Camisetas (Abaixo do Secretário, exibe todas as campanhas ativas) */}
+          {/* Banners de Inscrições Abertas (Logo abaixo da Coordenação) */}
+          {campanhasInscricao.map((campanha) => (
+            <div key={campanha.id} className="pt-2 animate-fadeIn">
+              <BannerInscricao campanha={campanha as any} />
+            </div>
+          ))}
+
+          {/* Banners de Campanhas de Camisetas */}
           {campanhasCamisetas.map((campanha) => (
             <div key={campanha.id} className="pt-2 animate-fadeIn">
               <BannerCamiseta campanha={campanha as any} />

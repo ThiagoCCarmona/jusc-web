@@ -14,6 +14,7 @@ import {
   BarChart3,
   ShieldAlert,
   Shirt,
+  ClipboardList,
   LogOut,
   Menu,
   X,
@@ -62,6 +63,7 @@ export function DashboardNavbar({ usuario, config }: NavbarProps) {
     { href: "/dashboard/integrantes", label: "Integrantes", icon: Users },
     { href: "/dashboard/encontros", label: "Encontros", icon: Calendar },
     { href: "/dashboard/aniversariantes", label: "Aniversariantes", icon: Cake },
+    { href: "/dashboard/inscricoes", label: "Inscrições", icon: ClipboardList },
     { href: "/dashboard/relatorios", label: "Relatórios", icon: BarChart3 },
   ];
 

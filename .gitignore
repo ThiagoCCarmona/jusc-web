@@ -41,3 +41,7 @@ Thumbs.db
 /uploads/
 
 *.tsbuildinfo
+
+# Pastas externas / não relacionadas
+Virtual Machines/
+projeto app vet/

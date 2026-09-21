@@ -140,6 +140,7 @@ model CampanhaCamiseta {
   atualizadoEm        DateTime         @updatedAt
 
   pedidos             PedidoCamiseta[]
+  campanhasInscricao  CampanhaInscricao[]
 }
 
 model PedidoCamiseta {
@@ -223,3 +224,106 @@ model LogAuditoria {
   detalhes  String?
   criadoEm  DateTime @default(now())
 }
+
+model CampanhaInscricao {
+  id                         String            @id @default(cuid())
+  titulo                     String
+  descricao                  String?
+  fotoUrl                    String?
+  dataLimite                 DateTime
+  ativa                      Boolean           @default(true)
+
+  // Financeiro
+  requerPagamento            Boolean           @default(false)
+  valor                      Float             @default(0)
+  permiteParcelamento        Boolean           @default(false)
+
+  // Campos modulares configuráveis pelo admin
+  campoNomeCompleto          Boolean           @default(true)
+  campoCpf                   Boolean           @default(false)
+  campoTelefone              Boolean           @default(true)
+  campoDataNascimento        Boolean           @default(true)
+  campoNomeResponsavel       Boolean           @default(false)
+  campoParentescoResponsavel Boolean           @default(false)
+  campoTelefoneResponsavel   Boolean           @default(false)
+  campoAlergia               Boolean           @default(false)
+  campoIntolerancia          Boolean           @default(false)
+  campoRemedioContinuo       Boolean           @default(false)
+  campoSexo                  Boolean           @default(false)
+  campoBatismo               Boolean           @default(false)
+  campoPrimeiraEucaristia    Boolean           @default(false)
+  campoCrisma                Boolean           @default(false)
+
+  // Suporte a Grupo de WhatsApp do Evento
+  linkGrupoWhatsapp          String?
+
+  // Suporte a Camiseta no Evento
+  permiteCamiseta            Boolean           @default(false)
+  campanhaCamisetaId         String?
+  campanhaCamiseta           CampanhaCamiseta? @relation(fields: [campanhaCamisetaId], references: [id], onDelete: SetNull)
+  camisetaInclusaNoValor     Boolean           @default(false)
+
+  criadoEm                   DateTime          @default(now())
+  atualizadoEm               DateTime          @updatedAt
+
+  inscricoes                 InscricaoEvento[]
+}
+
+model InscricaoEvento {
+  id                    String            @id @default(cuid())
+  campanhaId            String
+  campanha              CampanhaInscricao @relation(fields: [campanhaId], references: [id], onDelete: Cascade)
+  codigoInscricao       String            @unique
+
+  // Dados do participante
+  nomeCompleto          String
+  cpf                   String?
+  telefone              String
+  dataNascimento        DateTime?
+  sexo                  String?           // "MASCULINO" | "FEMININO"
+
+  // Responsável (se menor ou solicitado)
+  nomeResponsavel       String?
+  parentescoResponsavel String?
+  telefoneResponsavel   String?
+
+  // Restrições de saúde e medicamentos
+  possuiAlergia              Boolean           @default(false)
+  descricaoAlergia           String?
+  intoleranciaGluten         Boolean           @default(false)
+  intoleranciaLactose        Boolean           @default(false)
+  usaRemedioContinuo         Boolean           @default(false)
+  descricaoRemedioContinuo   String?
+
+  // Sacramentos
+  batismo               Boolean           @default(false)
+  primeiraEucaristia    Boolean           @default(false)
+  crisma                Boolean           @default(false)
+
+  // Suporte a Grupo de WhatsApp
+  entrouNoGrupoWhatsapp Boolean           @default(false)
+  clicouGrupoEm         DateTime?
+
+  // Camiseta pedida no Evento
+  pediuCamiseta               Boolean           @default(false)
+  camisetaModelo              String?
+  camisetaTamanho             String?
+  camisetaNomePersonalizado   String?
+  camisetaNumeroPersonalizado String?
+  camisetaValor               Float             @default(0)
+
+  // Financeiro
+  formaPagamento        String?           // "PIX" | "DINHEIRO" | "ISENTO"
+  tipoQuitacao          String?           // "INTEGRAL" | "PARCELADO_50_50"
+  valorTotal            Float             @default(0)
+  valorPago             Float             @default(0)
+  statusPagamento       String            @default("ISENTO") // "PENDENTE" | "PAGO_PARCIAL" | "PAGO_TOTAL" | "ISENTO" | "CANCELADO"
+
+  // Status geral
+  status                String            @default("CONFIRMADA") // "CONFIRMADA" | "PENDENTE" | "CANCELADA"
+  observacao            String?
+
+  criadoEm              DateTime          @default(now())
+  atualizadoEm          DateTime          @updatedAt
+}
+

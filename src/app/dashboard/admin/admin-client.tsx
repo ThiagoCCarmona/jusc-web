@@ -30,10 +30,12 @@ import {
   ExternalLink,
   Tag,
   X,
+  ClipboardList,
 } from "lucide-react";
-import { formatarDataHora, formatarFaixaPrecos, normalizarModelos } from "@/lib/utils";
+import { formatarData, formatarDataHora, formatarFaixaPrecos, normalizarModelos } from "@/lib/utils";
 import { InputDataBr } from "@/components/ui/input-data-br";
 import { ModalCampanha } from "@/components/dashboard/modal-campanha";
+import { ModalCampanhaInscricao } from "@/components/dashboard/modal-campanha-inscricao";
 
 export interface FotoComLabel {
   url: string;
@@ -44,7 +46,7 @@ export function AdminPanelClient() {
 
 
   const [aba, setAba] = useState<
-    "IDENTIDADE" | "LIDERANCA" | "CAMISETAS" | "PAUSAS" | "BANNERS" | "USUARIOS" | "CONFIG" | "AUDITORIA"
+    "IDENTIDADE" | "LIDERANCA" | "INSCRICOES" | "CAMISETAS" | "PAUSAS" | "BANNERS" | "USUARIOS" | "CONFIG" | "AUDITORIA"
   >("IDENTIDADE");
 
   // Estados de Configurações, Branding e Liderança
@@ -119,6 +121,11 @@ export function AdminPanelClient() {
   const [salvandoEditBanner, setSalvandoEditBanner] = useState(false);
   const [uploadingEditBannerImg, setUploadingEditBannerImg] = useState(false);
 
+  // Estados de Campanhas de Inscrição
+  const [campanhasInscricao, setCampanhasInscricao] = useState<any[]>([]);
+  const [modalCampInscricaoAberto, setModalCampInscricaoAberto] = useState(false);
+  const [campInscricaoSelecionada, setCampInscricaoSelecionada] = useState<any | null>(null);
+
   // Estados de Campanhas de Camisetas
   const [campanhas, setCampanhas] = useState<any[]>([]);
   const [modalCampanhaAberto, setModalCampanhaAberto] = useState(false);
@@ -176,6 +183,12 @@ export function AdminPanelClient() {
         if (res.ok) {
           const d = await res.json();
           setBanners(d.banners || []);
+        }
+      } else if (aba === "INSCRICOES") {
+        const res = await fetch("/api/campanhas-inscricao?todas=true");
+        if (res.ok) {
+          const d = await res.json();
+          setCampanhasInscricao(d.campanhas || []);
         }
       } else if (aba === "CAMISETAS") {
         const res = await fetch("/api/campanhas?todas=true");
@@ -324,6 +337,36 @@ export function AdminPanelClient() {
       dispararErro("Erro de conexão ao processar pausa.");
     } finally {
       setProcessandoPausa(false);
+    }
+  }
+
+  // Ações de Campanhas de Inscrição
+  async function alternarStatusCampanhaInscricao(id: string, ativaAtual: boolean) {
+    try {
+      const res = await fetch(`/api/campanhas-inscricao/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ativa: !ativaAtual }),
+      });
+      if (res.ok) {
+        dispararSucesso("Status da campanha de inscrição atualizado.");
+        carregarDados();
+      }
+    } catch {
+      dispararErro("Erro ao alterar campanha de inscrição.");
+    }
+  }
+
+  async function excluirCampanhaInscricao(id: string) {
+    if (!confirm("Tem certeza que deseja excluir esta campanha e todas as suas inscrições?")) return;
+    try {
+      const res = await fetch(`/api/campanhas-inscricao/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        dispararSucesso("Campanha de inscrição excluída com sucesso.");
+        carregarDados();
+      }
+    } catch {
+      dispararErro("Erro ao excluir campanha de inscrição.");
     }
   }
 
@@ -656,6 +699,18 @@ export function AdminPanelClient() {
         >
           <Sparkles className="w-4 h-4" />
           Coordenação & Tesouraria
+        </button>
+
+        <button
+          onClick={() => setAba("INSCRICOES")}
+          className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+            aba === "INSCRICOES"
+              ? "bg-[#FFC72C] text-neutral-950 shadow-sm"
+              : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+          }`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          Inscrições & Eventos
         </button>
 
         <button
@@ -1355,6 +1410,156 @@ export function AdminPanelClient() {
             </button>
           </div>
         </form>
+      )}
+
+      {/* ABA: INSCRIÇÕES & EVENTOS */}
+      {aba === "INSCRICOES" && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Header da Aba com Botão para Publicar Nova Inscrição */}
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-amber-500" />
+                <h2 className="text-base font-black text-neutral-900 dark:text-white">
+                  Abertura de Inscrições & Banners Oficiais
+                </h2>
+              </div>
+              <p className="text-xs text-neutral-500 mt-1">
+                Publique eventos com formulários modulares, prazos e controle de pagamento.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <a
+                href="/dashboard/inscricoes"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white font-bold text-xs shadow-sm transition-all"
+              >
+                <Users className="w-3.5 h-3.5 text-amber-500" />
+                <span>Ver Inscritos & Relatórios</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCampInscricaoSelecionada(null);
+                  setModalCampInscricaoAberto(true);
+                }}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 font-bold text-xs sm:text-sm shadow-sm transition-all active:scale-95 flex-shrink-0 cursor-pointer"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Publicar Nova Inscrição</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Listagem de Campanhas de Inscrição Existentes */}
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-4">
+            <h2 className="text-sm font-black uppercase tracking-wider text-neutral-900 dark:text-white">
+              Inscrições Publicadas ({campanhasInscricao.length})
+            </h2>
+
+            {campanhasInscricao.length === 0 ? (
+              <p className="text-xs text-neutral-500 py-4">Nenhuma campanha de inscrição publicada até o momento.</p>
+            ) : (
+              <div className="space-y-4">
+                {campanhasInscricao.map((camp) => (
+                  <div
+                    key={camp.id}
+                    className="p-5 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      {camp.fotoUrl ? (
+                        <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-amber-400 flex-shrink-0">
+                          <Image src={camp.fotoUrl} alt={camp.titulo} fill unoptimized className="object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-neutral-400 flex-shrink-0">
+                          <ClipboardList className="w-6 h-6" />
+                        </div>
+                      )}
+
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-sm text-neutral-900 dark:text-white truncate">
+                            {camp.titulo}
+                          </h3>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                              camp.ativa
+                                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                                : "bg-neutral-500/20 text-neutral-500"
+                            }`}
+                          >
+                            {camp.ativa ? "Ativa na Home" : "Pausada"}
+                          </span>
+                        </div>
+
+                        <p className="text-neutral-500 line-clamp-1">
+                          {camp.descricao || "Sem descrição"}
+                        </p>
+
+                        <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-400 pt-0.5">
+                          <span>Data Limite: {formatarData(camp.dataLimite)}</span>
+                          <span>•</span>
+                          <span className="font-bold text-neutral-700 dark:text-neutral-300">
+                            {camp.requerPagamento
+                              ? `R$ ${camp.valor.toFixed(2).replace(".", ",")}`
+                              : "Gratuita"}
+                          </span>
+                          <span>•</span>
+                          <span className="text-amber-600 dark:text-amber-400 font-bold">
+                            {camp._count?.inscricoes ?? 0} inscrito(s)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0">
+                      <a
+                        href={`/dashboard/inscricoes?campanhaId=${camp.id}`}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold text-xs transition-colors"
+                      >
+                        Ver Fichas
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => alternarStatusCampanhaInscricao(camp.id, camp.ativa)}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                          camp.ativa
+                            ? "bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-700 dark:text-neutral-300"
+                            : "bg-emerald-500 hover:bg-emerald-600 text-white"
+                        }`}
+                      >
+                        {camp.ativa ? "Pausar" : "Reativar"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCampInscricaoSelecionada(camp);
+                          setModalCampInscricaoAberto(true);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 text-neutral-700 dark:text-neutral-300 font-bold text-xs transition-colors cursor-pointer"
+                      >
+                        Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => excluirCampanhaInscricao(camp.id)}
+                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors cursor-pointer"
+                        title="Excluir campanha"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ABA 3: CAMISETAS & PEDIDOS */}
@@ -2322,6 +2527,20 @@ export function AdminPanelClient() {
           </div>
         </div>
       )}
+
+      {/* Modal de Publicação / Edição de Campanha de Inscrição */}
+      <ModalCampanhaInscricao
+        aberto={modalCampInscricaoAberto}
+        onFechar={() => {
+          setModalCampInscricaoAberto(false);
+          setCampInscricaoSelecionada(null);
+        }}
+        onSalvo={() => {
+          dispararSucesso("Campanha de inscrição salva com sucesso!");
+          carregarDados();
+        }}
+        campanha={campInscricaoSelecionada}
+      />
     </div>
   );
 }
