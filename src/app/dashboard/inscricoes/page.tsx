@@ -545,6 +545,7 @@ export default function InscricoesPage() {
       [
         "Nº",
         "Nome do Participante",
+        "CPF",
         "Idade",
         "Telefone",
         "Tel. Responsável",
@@ -556,6 +557,7 @@ export default function InscricoesPage() {
 
     const body = inscricoesFiltradas.map((i, idx) => {
       const idade = i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-";
+      const cpfFormatado = i.cpf ? formatarCpf(i.cpf) : "-";
       const telResp = i.telefoneResponsavel || "-";
       const nomeResp = i.nomeResponsavel
         ? `${i.nomeResponsavel} (${i.parentescoResponsavel || "Resp."})`
@@ -567,6 +569,7 @@ export default function InscricoesPage() {
       return [
         `${idx + 1}`,
         i.nomeCompleto,
+        cpfFormatado,
         idade,
         i.telefone,
         telResp,
