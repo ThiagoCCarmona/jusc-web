@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
             valor: true,
             fotoUrl: true,
             dataLimite: true,
+            linkGrupoWhatsapp: true,
           },
         },
       },
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
       batismo = false,
       primeiraEucaristia = false,
       crisma = false,
+      entrouNoGrupoWhatsapp = false,
       formaPagamento = "PIX",
       tipoQuitacao = "INTEGRAL",
       statusPagamentoManual,
@@ -98,12 +100,12 @@ export async function POST(req: NextRequest) {
       camisetaValor = 0,
     } = body;
 
-    // Se estiver sendo criado diretamente pelo painel administrativo com override
+    // Se estiver sendo criado diretamente pelo painel com override
     if (origemAdmin) {
-      if (!usuario || usuario.perfil !== "ADMIN") {
+      if (!usuario) {
         return NextResponse.json(
-          { error: "Apenas administradores podem cadastrar inscrições manualmente pelo painel." },
-          { status: 403 }
+          { error: "Acesso não autorizado." },
+          { status: 401 }
         );
       }
     }
@@ -254,6 +256,8 @@ export async function POST(req: NextRequest) {
         batismo: Boolean(batismo),
         primeiraEucaristia: Boolean(primeiraEucaristia),
         crisma: Boolean(crisma),
+        entrouNoGrupoWhatsapp: Boolean(entrouNoGrupoWhatsapp),
+        clicouGrupoEm: Boolean(entrouNoGrupoWhatsapp) ? new Date() : null,
         pediuCamiseta: Boolean(pediuCamiseta),
         camisetaModelo: pediuCamiseta ? camisetaModelo : null,
         camisetaTamanho: pediuCamiseta ? camisetaTamanho : null,

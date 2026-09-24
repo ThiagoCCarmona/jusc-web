@@ -43,13 +43,6 @@ export async function PUT(
       return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
     }
 
-    if (usuario.perfil !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Apenas administradores têm permissão para editar inscrições e alterar status financeiros." },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
     const body = await req.json();
 
@@ -114,9 +107,12 @@ export async function PUT(
     if (batismo !== undefined) data.batismo = Boolean(batismo);
     if (primeiraEucaristia !== undefined) data.primeiraEucaristia = Boolean(primeiraEucaristia);
     if (crisma !== undefined) data.crisma = Boolean(crisma);
-    if (entrouNoGrupoWhatsapp !== undefined) data.entrouNoGrupoWhatsapp = Boolean(entrouNoGrupoWhatsapp);
-
-    if (pediuCamiseta !== undefined) data.pediuCamiseta = Boolean(pediuCamiseta);
+    if (entrouNoGrupoWhatsapp !== undefined) {
+      data.entrouNoGrupoWhatsapp = Boolean(entrouNoGrupoWhatsapp);
+      if (Boolean(entrouNoGrupoWhatsapp)) {
+        data.clicouGrupoEm = new Date();
+      }
+    }
     if (camisetaModelo !== undefined) data.camisetaModelo = camisetaModelo ? camisetaModelo.trim() : null;
     if (camisetaTamanho !== undefined) data.camisetaTamanho = camisetaTamanho ? camisetaTamanho.trim() : null;
     if (camisetaNomePersonalizado !== undefined) data.camisetaNomePersonalizado = camisetaNomePersonalizado ? camisetaNomePersonalizado.trim() : null;
@@ -152,13 +148,6 @@ export async function DELETE(
     const usuario = await getCurrentUser();
     if (!usuario) {
       return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
-    }
-
-    if (usuario.perfil !== "ADMIN") {
-      return NextResponse.json(
-        { error: "Apenas administradores podem excluir inscrições." },
-        { status: 403 }
-      );
     }
 
     const { id } = await params;

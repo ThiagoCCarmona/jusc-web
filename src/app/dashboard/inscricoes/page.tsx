@@ -122,10 +122,69 @@ export default function InscricoesPage() {
 
   // Estados de Processamento
   const [processandoId, setProcessandoId] = useState<string | null>(null);
+  const [processandoGrupoId, setProcessandoGrupoId] = useState<string | null>(null);
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
 
   const isSuperAdmin = usuarioLogado?.perfil === "ADMIN";
+
+  async function handleToggleGrupoWhatsapp(inscricao: InscricaoItem) {
+    const novoStatus = !inscricao.entrouNoGrupoWhatsapp;
+    setProcessandoGrupoId(inscricao.id);
+
+    // Atualização otimista
+    setInscricoes((prev) =>
+      prev.map((item) =>
+        item.id === inscricao.id ? { ...item, entrouNoGrupoWhatsapp: novoStatus } : item
+      )
+    );
+    if (inscricaoDetalhes?.id === inscricao.id) {
+      setInscricaoDetalhes((prev) => (prev ? { ...prev, entrouNoGrupoWhatsapp: novoStatus } : null));
+    }
+
+    try {
+      const res = await fetch(`/api/inscricoes/${inscricao.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entrouNoGrupoWhatsapp: novoStatus }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        // Reverter em caso de erro
+        setInscricoes((prev) =>
+          prev.map((item) =>
+            item.id === inscricao.id ? { ...item, entrouNoGrupoWhatsapp: inscricao.entrouNoGrupoWhatsapp } : item
+          )
+        );
+        if (inscricaoDetalhes?.id === inscricao.id) {
+          setInscricaoDetalhes((prev) => (prev ? { ...prev, entrouNoGrupoWhatsapp: inscricao.entrouNoGrupoWhatsapp } : null));
+        }
+        alert(data.error || "Erro ao atualizar status do grupo WhatsApp.");
+        return;
+      }
+
+      const data = await res.json();
+      setInscricoes((prev) =>
+        prev.map((item) => (item.id === inscricao.id ? data.inscricao : item))
+      );
+      if (inscricaoDetalhes?.id === inscricao.id) {
+        setInscricaoDetalhes(data.inscricao);
+      }
+    } catch {
+      setInscricoes((prev) =>
+        prev.map((item) =>
+          item.id === inscricao.id ? { ...item, entrouNoGrupoWhatsapp: inscricao.entrouNoGrupoWhatsapp } : item
+        )
+      );
+      if (inscricaoDetalhes?.id === inscricao.id) {
+        setInscricaoDetalhes((prev) => (prev ? { ...prev, entrouNoGrupoWhatsapp: inscricao.entrouNoGrupoWhatsapp } : null));
+      }
+      alert("Erro ao comunicar com o servidor.");
+    } finally {
+      setProcessandoGrupoId(null);
+    }
+  }
 
   async function carregarDados() {
     setCarregando(true);
@@ -660,7 +719,7 @@ export default function InscricoesPage() {
               Módulo de Inscrição
             </span>
             <span className="text-xs text-neutral-400">
-              {isSuperAdmin ? "Gestão Completa (Admin)" : "Acesso de Visualização (Coordenação)"}
+              Gestão Completa de Inscrições
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-neutral-950 dark:text-white tracking-tight mt-1">
@@ -671,16 +730,14 @@ export default function InscricoesPage() {
           </p>
         </div>
 
-        {/* Botão de Nova Inscrição Manual (Apenas Admin) */}
-        {isSuperAdmin && (
-          <button
-            onClick={() => setModalNovaInscricao(true)}
-            className="px-4 py-2.5 rounded-2xl bg-[#FFC72C] hover:bg-amber-400 active:scale-95 text-neutral-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Nova Inscrição Manual</span>
-          </button>
-        )}
+        {/* Botão de Nova Inscrição Manual */}
+        <button
+          onClick={() => setModalNovaInscricao(true)}
+          className="px-4 py-2.5 rounded-2xl bg-[#FFC72C] hover:bg-amber-400 active:scale-95 text-neutral-950 font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <PlusCircle className="w-4 h-4" />
+          <span>Nova Inscrição Manual</span>
+        </button>
       </div>
 
       {mensagemSucesso && (
@@ -786,9 +843,9 @@ export default function InscricoesPage() {
               className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                 filtrosAvancadosAbertos ||
                 filtroSexo !== "TODOS" ||
-                filtroFaixaEtaria !== "TODAS" ||
+                filtroFaixaEtaria !== "TODOS" ||
                 filtroAlergia !== "TODOS" ||
-                filtroIntolerancia !== "TODAS" ||
+                filtroIntolerancia !== "TODOS" ||
                 filtroRemedio !== "TODOS" ||
                 filtroSacramento !== "TODOS" ||
                 filtroGrupoWhatsapp !== "TODOS"
@@ -800,9 +857,9 @@ export default function InscricoesPage() {
               <span>Filtros Avançados</span>
               {[
                 filtroSexo !== "TODOS",
-                filtroFaixaEtaria !== "TODAS",
+                filtroFaixaEtaria !== "TODOS",
                 filtroAlergia !== "TODOS",
-                filtroIntolerancia !== "TODAS",
+                filtroIntolerancia !== "TODOS",
                 filtroRemedio !== "TODOS",
                 filtroSacramento !== "TODOS",
                 filtroGrupoWhatsapp !== "TODOS",
@@ -810,9 +867,9 @@ export default function InscricoesPage() {
                 <span className="w-4 h-4 rounded-full bg-[#FFC72C] text-black font-black text-[10px] flex items-center justify-center">
                   {[
                     filtroSexo !== "TODOS",
-                    filtroFaixaEtaria !== "TODAS",
+                    filtroFaixaEtaria !== "TODOS",
                     filtroAlergia !== "TODOS",
-                    filtroIntolerancia !== "TODAS",
+                    filtroIntolerancia !== "TODOS",
                     filtroRemedio !== "TODOS",
                     filtroSacramento !== "TODOS",
                     filtroGrupoWhatsapp !== "TODOS",
@@ -832,18 +889,18 @@ export default function InscricoesPage() {
                 Filtros específicos:
               </span>
               {(filtroSexo !== "TODOS" ||
-                filtroFaixaEtaria !== "TODAS" ||
+                filtroFaixaEtaria !== "TODOS" ||
                 filtroAlergia !== "TODOS" ||
-                filtroIntolerancia !== "TODAS" ||
+                filtroIntolerancia !== "TODOS" ||
                 filtroRemedio !== "TODOS" ||
                 filtroSacramento !== "TODOS" ||
                 filtroGrupoWhatsapp !== "TODOS") && (
                 <button
                   onClick={() => {
                     setFiltroSexo("TODOS");
-                    setFiltroFaixaEtaria("TODAS");
+                    setFiltroFaixaEtaria("TODOS");
                     setFiltroAlergia("TODOS");
-                    setFiltroIntolerancia("TODAS");
+                    setFiltroIntolerancia("TODOS");
                     setFiltroRemedio("TODOS");
                     setFiltroSacramento("TODOS");
                     setFiltroGrupoWhatsapp("TODOS");
@@ -1068,29 +1125,43 @@ export default function InscricoesPage() {
                             href={`https://api.whatsapp.com/send?phone=${telLimpo}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
+                            className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-medium"
                           >
                             <MessageCircle className="w-3 h-3" />
                             {i.telefone}
                           </a>
-                        </div>
 
-                        {/* Status no Grupo do WhatsApp (se houver grupo configurado) */}
-                        {i.campanha?.linkGrupoWhatsapp && (
-                          <div className="mt-1">
-                            {i.entrouNoGrupoWhatsapp ? (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold text-[10px] border border-emerald-500/20">
-                                <Check className="w-3 h-3 text-emerald-600" />
-                                <span>No grupo WhatsApp</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold text-[10px] border border-amber-500/30">
-                                <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-                                <span>⚠️ Provavelmente não está no grupo do WhatsApp</span>
-                              </span>
-                            )}
-                          </div>
-                        )}
+                          {/* Botão de Adicionado ao grupo / Não entrou no grupo */}
+                          {Boolean(i.campanha?.linkGrupoWhatsapp || campanhas.find((c) => c.id === i.campanhaId)?.linkGrupoWhatsapp) && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleGrupoWhatsapp(i)}
+                              disabled={processandoGrupoId === i.id}
+                              title={
+                                i.entrouNoGrupoWhatsapp
+                                  ? "Adicionado ao grupo. Clique para alternar caso necessário."
+                                  : "Não entrou no grupo. Clique para marcar como adicionado ao grupo."
+                              }
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all shadow-xs cursor-pointer ${
+                                i.entrouNoGrupoWhatsapp
+                                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                  : "bg-rose-600 hover:bg-rose-700 text-white"
+                              } ${processandoGrupoId === i.id ? "opacity-50 cursor-wait" : "active:scale-95"}`}
+                            >
+                              {i.entrouNoGrupoWhatsapp ? (
+                                <>
+                                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                  <span>Adicionado ao grupo</span>
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-2.5 h-2.5 stroke-[3]" />
+                                  <span>Não entrou no grupo</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
 
                         {i.pediuCamiseta && (
                           <div className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold text-[10px]">
@@ -1195,37 +1266,33 @@ export default function InscricoesPage() {
                           <Eye className="w-4 h-4" />
                         </button>
 
-                        {/* Ações Exclusivas do Admin */}
-                        {isSuperAdmin && (
-                          <>
-                            {i.valorTotal > 0 && (
-                              <button
-                                onClick={() => setInscricaoBaixa(i)}
-                                title="Dar baixa ou alterar pagamento"
-                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
-                              >
-                                <DollarSign className="w-4 h-4" />
-                              </button>
-                            )}
-
-                            <button
-                              onClick={() => setInscricaoEditando(i)}
-                              title="Editar inscrição"
-                              className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              disabled={processandoId === i.id}
-                              onClick={() => handleExcluirInscricao(i.id)}
-                              title="Excluir inscrição"
-                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
+                        {/* Ações do CRUD */}
+                        {i.valorTotal > 0 && (
+                          <button
+                            onClick={() => setInscricaoBaixa(i)}
+                            title="Dar baixa ou alterar pagamento"
+                            className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors"
+                          >
+                            <DollarSign className="w-4 h-4" />
+                          </button>
                         )}
+
+                        <button
+                          onClick={() => setInscricaoEditando(i)}
+                          title="Editar inscrição"
+                          className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          disabled={processandoId === i.id}
+                          onClick={() => handleExcluirInscricao(i.id)}
+                          title="Excluir inscrição"
+                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -1604,7 +1671,7 @@ export default function InscricoesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold block mb-1">Telefone</label>
+                  <label className="font-bold block mb-1">Telefone *</label>
                   <input
                     type="text"
                     required
@@ -1635,54 +1702,27 @@ export default function InscricoesPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold block mb-1">Nome do Responsável</label>
-                <input
-                  type="text"
-                  value={inscricaoEditando.nomeResponsavel || ""}
-                  onChange={(e) =>
-                    setInscricaoEditando({
-                      ...inscricaoEditando,
-                      nomeResponsavel: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
-                />
-              </div>
-
+              {/* Data de Nascimento e Sexo */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold block mb-1">Parentesco</label>
+                  <label className="font-bold block mb-1">Data de Nascimento</label>
                   <input
-                    type="text"
-                    value={inscricaoEditando.parentescoResponsavel || ""}
+                    type="date"
+                    value={
+                      inscricaoEditando.dataNascimento
+                        ? new Date(inscricaoEditando.dataNascimento).toISOString().slice(0, 10)
+                        : ""
+                    }
                     onChange={(e) =>
                       setInscricaoEditando({
                         ...inscricaoEditando,
-                        parentescoResponsavel: e.target.value,
+                        dataNascimento: e.target.value || null,
                       })
                     }
                     className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
                   />
                 </div>
-                <div>
-                  <label className="font-bold block mb-1">Tel. Responsável</label>
-                  <input
-                    type="text"
-                    value={inscricaoEditando.telefoneResponsavel || ""}
-                    onChange={(e) =>
-                      setInscricaoEditando({
-                        ...inscricaoEditando,
-                        telefoneResponsavel: formatarTelefone(e.target.value),
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
-                  />
-                </div>
-              </div>
 
-              {/* Sexo e Remédio Contínuo */}
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-200 dark:border-neutral-800">
                 <div>
                   <label className="font-bold block mb-1">Sexo</label>
                   <select
@@ -1700,10 +1740,124 @@ export default function InscricoesPage() {
                     <option value="FEMININO">Feminino</option>
                   </select>
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold block mb-1">Uso de Remédio Contínuo</label>
-                  <label className="flex items-center gap-2 font-medium cursor-pointer pt-1">
+              {/* Dados do Responsável */}
+              <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800 space-y-3">
+                <div>
+                  <label className="font-bold block mb-1">Nome do Responsável</label>
+                  <input
+                    type="text"
+                    value={inscricaoEditando.nomeResponsavel || ""}
+                    onChange={(e) =>
+                      setInscricaoEditando({
+                        ...inscricaoEditando,
+                        nomeResponsavel: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold block mb-1">Parentesco</label>
+                    <input
+                      type="text"
+                      value={inscricaoEditando.parentescoResponsavel || ""}
+                      onChange={(e) =>
+                        setInscricaoEditando({
+                          ...inscricaoEditando,
+                          parentescoResponsavel: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold block mb-1">Tel. Responsável</label>
+                    <input
+                      type="text"
+                      value={inscricaoEditando.telefoneResponsavel || ""}
+                      onChange={(e) =>
+                        setInscricaoEditando({
+                          ...inscricaoEditando,
+                          telefoneResponsavel: formatarTelefone(e.target.value),
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Saúde e Restrições */}
+              <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800 space-y-3">
+                <span className="font-black text-[11px] uppercase tracking-wider text-rose-600 block">
+                  Saúde & Restrições
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 font-bold cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(inscricaoEditando.possuiAlergia)}
+                        onChange={(e) =>
+                          setInscricaoEditando({
+                            ...inscricaoEditando,
+                            possuiAlergia: e.target.checked,
+                            descricaoAlergia: e.target.checked ? inscricaoEditando.descricaoAlergia || "" : "",
+                          })
+                        }
+                        className="w-4 h-4 rounded text-rose-600"
+                      />
+                      <span>Possui Alergia</span>
+                    </label>
+                    {inscricaoEditando.possuiAlergia && (
+                      <input
+                        type="text"
+                        placeholder="Ex: Amendoim, Dipirona..."
+                        value={inscricaoEditando.descricaoAlergia || ""}
+                        onChange={(e) =>
+                          setInscricaoEditando({ ...inscricaoEditando, descricaoAlergia: e.target.value })
+                        }
+                        className="w-full px-3 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border text-xs"
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="font-bold block text-neutral-600 dark:text-neutral-400">Intolerâncias</span>
+                    <div className="flex gap-4 pt-0.5">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(inscricaoEditando.intoleranciaGluten)}
+                          onChange={(e) =>
+                            setInscricaoEditando({ ...inscricaoEditando, intoleranciaGluten: e.target.checked })
+                          }
+                          className="w-4 h-4 rounded text-amber-600"
+                        />
+                        <span>Glúten</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(inscricaoEditando.intoleranciaLactose)}
+                          onChange={(e) =>
+                            setInscricaoEditando({ ...inscricaoEditando, intoleranciaLactose: e.target.checked })
+                          }
+                          className="w-4 h-4 rounded text-amber-600"
+                        />
+                        <span>Lactose</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 font-bold cursor-pointer">
                     <input
                       type="checkbox"
                       checked={Boolean(inscricaoEditando.usaRemedioContinuo)}
@@ -1718,51 +1872,90 @@ export default function InscricoesPage() {
                       }
                       className="w-4 h-4 rounded text-blue-600"
                     />
-                    <span>Faz uso de remédio</span>
+                    <span>Uso de Remédio Contínuo</span>
+                  </label>
+                  {inscricaoEditando.usaRemedioContinuo && (
+                    <input
+                      type="text"
+                      placeholder="Ex: Insulina 10UI manhã, Ritalina 10mg..."
+                      value={inscricaoEditando.descricaoRemedioContinuo || ""}
+                      onChange={(e) =>
+                        setInscricaoEditando({
+                          ...inscricaoEditando,
+                          descricaoRemedioContinuo: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border text-xs"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Sacramentos */}
+              <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800 space-y-2">
+                <span className="font-black text-[11px] uppercase tracking-wider text-blue-600 block">
+                  Sacramentos Recebidos
+                </span>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(inscricaoEditando.batismo)}
+                      onChange={(e) =>
+                        setInscricaoEditando({ ...inscricaoEditando, batismo: e.target.checked })
+                      }
+                      className="w-4 h-4 rounded text-blue-600"
+                    />
+                    <span>Batismo</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(inscricaoEditando.primeiraEucaristia)}
+                      onChange={(e) =>
+                        setInscricaoEditando({
+                          ...inscricaoEditando,
+                          primeiraEucaristia: e.target.checked,
+                        })
+                      }
+                      className="w-4 h-4 rounded text-blue-600"
+                    />
+                    <span>1ª Eucaristia</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(inscricaoEditando.crisma)}
+                      onChange={(e) =>
+                        setInscricaoEditando({ ...inscricaoEditando, crisma: e.target.checked })
+                      }
+                      className="w-4 h-4 rounded text-blue-600"
+                    />
+                    <span>Crisma</span>
                   </label>
                 </div>
               </div>
 
-              {inscricaoEditando.usaRemedioContinuo && (
-                <div>
-                  <label className="font-bold block mb-1">Qual remédio / dosagem / horário?</label>
+              {/* Status no Grupo do WhatsApp */}
+              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+                <label className="flex items-center gap-2 font-bold cursor-pointer">
                   <input
-                    type="text"
-                    value={inscricaoEditando.descricaoRemedioContinuo || ""}
+                    type="checkbox"
+                    checked={Boolean(inscricaoEditando.entrouNoGrupoWhatsapp)}
                     onChange={(e) =>
                       setInscricaoEditando({
                         ...inscricaoEditando,
-                        descricaoRemedioContinuo: e.target.value,
+                        entrouNoGrupoWhatsapp: e.target.checked,
                       })
                     }
-                    placeholder="Ex: Insulina 10UI manhã, Ritalina 10mg..."
-                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                    className="w-4 h-4 rounded text-emerald-600"
                   />
-                </div>
-              )}
-
-              {/* Status no Grupo Oficial do WhatsApp */}
-              {inscricaoEditando.campanha?.linkGrupoWhatsapp && (
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
-                  <label className="flex items-center gap-2 font-bold cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(inscricaoEditando.entrouNoGrupoWhatsapp)}
-                      onChange={(e) =>
-                        setInscricaoEditando({
-                          ...inscricaoEditando,
-                          entrouNoGrupoWhatsapp: e.target.checked,
-                        })
-                      }
-                      className="w-4 h-4 rounded text-emerald-600"
-                    />
-                    <span>Participante já entrou no grupo oficial do WhatsApp</span>
-                  </label>
-                  <p className="text-[11px] text-neutral-500">
-                    O sistema marca automaticamente quando o inscrito clica na tela de confirmação, mas você pode ajustar manualmente aqui.
-                  </p>
-                </div>
-              )}
+                  <span>Adicionado ao grupo do WhatsApp</span>
+                </label>
+                <p className="text-[11px] text-neutral-500">
+                  Marque para definir como presente no grupo oficial do WhatsApp do evento.
+                </p>
+              </div>
 
               {/* Seção Camiseta */}
               <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800 space-y-3">
@@ -1841,6 +2034,78 @@ export default function InscricoesPage() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Status Geral e Financeiro */}
+              <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800 space-y-3">
+                <span className="font-black text-[11px] uppercase tracking-wider text-emerald-600 block">
+                  Status & Financeiro
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="font-bold block mb-1">Status da Inscrição</label>
+                    <select
+                      value={inscricaoEditando.status || "CONFIRMADA"}
+                      onChange={(e) =>
+                        setInscricaoEditando({ ...inscricaoEditando, status: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-bold"
+                    >
+                      <option value="CONFIRMADA">Confirmada</option>
+                      <option value="PENDENTE">Pendente</option>
+                      <option value="CANCELADA">Cancelada</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">Status Pagamento</label>
+                    <select
+                      value={inscricaoEditando.statusPagamento || "ISENTO"}
+                      onChange={(e) =>
+                        setInscricaoEditando({
+                          ...inscricaoEditando,
+                          statusPagamento: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-bold"
+                    >
+                      <option value="ISENTO">Isento (Gratuito)</option>
+                      <option value="PENDENTE">Pendente</option>
+                      <option value="PAGO_PARCIAL">Pago Parcial</option>
+                      <option value="PAGO_TOTAL">Pago Total</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold block mb-1">Valor Pago (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={inscricaoEditando.valorPago ?? 0}
+                      onChange={(e) =>
+                        setInscricaoEditando({
+                          ...inscricaoEditando,
+                          valorPago: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold block mb-1">Observações Internas</label>
+                  <textarea
+                    rows={2}
+                    value={inscricaoEditando.observacao || ""}
+                    onChange={(e) =>
+                      setInscricaoEditando({ ...inscricaoEditando, observacao: e.target.value })
+                    }
+                    placeholder="Observações da coordenação sobre este participante..."
+                    className="w-full p-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 resize-none"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t">
@@ -2003,7 +2268,7 @@ export default function InscricoesPage() {
   );
 }
 
-// SUB-COMPONENTE: CADASTRO MANUAL DE INSCRIÇÃO (ADMIN)
+// SUB-COMPONENTE: CADASTRO MANUAL DE INSCRIÇÃO
 function ModalCadastroManualInscricao({
   campanhas,
   aberto,
@@ -2021,7 +2286,22 @@ function ModalCadastroManualInscricao({
   const [cpf, setCpf] = useState("");
   const [dataNascBr, setDataNascBr] = useState("");
   const [dataNascIso, setDataNascIso] = useState<string | null>(null);
+  const [sexo, setSexo] = useState("");
+  const [nomeResponsavel, setNomeResponsavel] = useState("");
+  const [parentescoResponsavel, setParentescoResponsavel] = useState("");
+  const [telefoneResponsavel, setTelefoneResponsavel] = useState("");
+  const [possuiAlergia, setPossuiAlergia] = useState(false);
+  const [descricaoAlergia, setDescricaoAlergia] = useState("");
+  const [intoleranciaGluten, setIntoleranciaGluten] = useState(false);
+  const [intoleranciaLactose, setIntoleranciaLactose] = useState(false);
+  const [usaRemedioContinuo, setUsaRemedioContinuo] = useState(false);
+  const [descricaoRemedioContinuo, setDescricaoRemedioContinuo] = useState("");
+  const [batismo, setBatismo] = useState(false);
+  const [primeiraEucaristia, setPrimeiraEucaristia] = useState(false);
+  const [crisma, setCrisma] = useState(false);
+  const [entrouNoGrupoWhatsapp, setEntrouNoGrupoWhatsapp] = useState(false);
   const [statusPag, setStatusPag] = useState("ISENTO");
+  const [observacao, setObservacao] = useState("");
   const [salvando, setSalvando] = useState(false);
 
   if (!aberto) return null;
@@ -2040,7 +2320,22 @@ function ModalCadastroManualInscricao({
           telefone,
           cpf,
           dataNascimento: dataNascIso,
+          sexo: sexo || null,
+          nomeResponsavel: nomeResponsavel || null,
+          parentescoResponsavel: parentescoResponsavel || null,
+          telefoneResponsavel: telefoneResponsavel || null,
+          possuiAlergia,
+          descricaoAlergia: possuiAlergia ? descricaoAlergia : null,
+          intoleranciaGluten,
+          intoleranciaLactose,
+          usaRemedioContinuo,
+          descricaoRemedioContinuo: usaRemedioContinuo ? descricaoRemedioContinuo : null,
+          batismo,
+          primeiraEucaristia,
+          crisma,
+          entrouNoGrupoWhatsapp,
           statusPagamentoManual: statusPag,
+          observacao: observacao || null,
         }),
       });
 
@@ -2058,7 +2353,7 @@ function ModalCadastroManualInscricao({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-[#111318] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4">
+      <div className="bg-white dark:bg-[#111318] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b pb-3">
           <h3 className="font-black text-base">Nova Inscrição Manual</h3>
           <button onClick={onFechar} className="p-1.5 rounded-full hover:bg-neutral-100 text-neutral-400">
@@ -2066,7 +2361,7 @@ function ModalCadastroManualInscricao({
           </button>
         </div>
 
-        <form onSubmit={handleSalvar} className="space-y-3 text-xs">
+        <form onSubmit={handleSalvar} className="space-y-3.5 text-xs">
           <div>
             <label className="font-bold block mb-1">Evento *</label>
             <select
@@ -2089,11 +2384,11 @@ function ModalCadastroManualInscricao({
               required
               value={nomeCompleto}
               onChange={(e) => setNomeCompleto(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border"
+              className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-semibold"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="font-bold block mb-1">Telefone *</label>
               <input
@@ -2117,14 +2412,217 @@ function ModalCadastroManualInscricao({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label className="font-bold block mb-1">Data de Nascimento</label>
+              <InputDataBr
+                value={dataNascBr}
+                onChange={(br, iso) => {
+                  setDataNascBr(br);
+                  setDataNascIso(iso);
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="font-bold block mb-1">Sexo</label>
+              <select
+                value={sexo}
+                onChange={(e) => setSexo(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-semibold"
+              >
+                <option value="">Não informado</option>
+                <option value="MASCULINO">Masculino</option>
+                <option value="FEMININO">Feminino</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Responsável */}
+          <div className="pt-2 border-t space-y-2">
+            <span className="font-bold text-[11px] uppercase tracking-wider text-neutral-500 block">
+              Responsável (se menor ou informado)
+            </span>
+            <div>
+              <label className="font-bold block mb-1">Nome do Responsável</label>
+              <input
+                type="text"
+                value={nomeResponsavel}
+                onChange={(e) => setNomeResponsavel(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="font-bold block mb-1">Parentesco</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Mãe, Pai, Tio"
+                  value={parentescoResponsavel}
+                  onChange={(e) => setParentescoResponsavel(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border"
+                />
+              </div>
+              <div>
+                <label className="font-bold block mb-1">Tel. Responsável</label>
+                <input
+                  type="text"
+                  placeholder="(00) 00000-0000"
+                  value={telefoneResponsavel}
+                  onChange={(e) => setTelefoneResponsavel(formatarTelefone(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Saúde e Restrições */}
+          <div className="pt-2 border-t space-y-2">
+            <span className="font-bold text-[11px] uppercase tracking-wider text-rose-600 block">
+              Saúde & Restrições
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 font-bold cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={possuiAlergia}
+                    onChange={(e) => setPossuiAlergia(e.target.checked)}
+                    className="w-4 h-4 rounded text-rose-600"
+                  />
+                  <span>Possui Alergia</span>
+                </label>
+                {possuiAlergia && (
+                  <input
+                    type="text"
+                    placeholder="Descrição da alergia..."
+                    value={descricaoAlergia}
+                    onChange={(e) => setDescricaoAlergia(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border"
+                  />
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <span className="font-bold block text-neutral-500">Intolerâncias</span>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={intoleranciaGluten}
+                      onChange={(e) => setIntoleranciaGluten(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600"
+                    />
+                    <span>Glúten</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={intoleranciaLactose}
+                      onChange={(e) => setIntoleranciaLactose(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-600"
+                    />
+                    <span>Lactose</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 font-bold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={usaRemedioContinuo}
+                  onChange={(e) => setUsaRemedioContinuo(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600"
+                />
+                <span>Uso de Remédio Contínuo</span>
+              </label>
+              {usaRemedioContinuo && (
+                <input
+                  type="text"
+                  placeholder="Qual remédio / dosagem..."
+                  value={descricaoRemedioContinuo}
+                  onChange={(e) => setDescricaoRemedioContinuo(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Sacramentos */}
+          <div className="pt-2 border-t space-y-1.5">
+            <span className="font-bold text-[11px] uppercase tracking-wider text-blue-600 block">
+              Sacramentos
+            </span>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={batismo}
+                  onChange={(e) => setBatismo(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600"
+                />
+                <span>Batismo</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={primeiraEucaristia}
+                  onChange={(e) => setPrimeiraEucaristia(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600"
+                />
+                <span>1ª Eucaristia</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={crisma}
+                  onChange={(e) => setCrisma(e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600"
+                />
+                <span>Crisma</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Status do Grupo WhatsApp e Pagamento */}
+          <div className="pt-2 border-t grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label className="font-bold block mb-1">Status de Pagamento</label>
+              <select
+                value={statusPag}
+                onChange={(e) => setStatusPag(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-bold"
+              >
+                <option value="ISENTO">Isento (Gratuito)</option>
+                <option value="PENDENTE">Pendente</option>
+                <option value="PAGO_PARCIAL">Pago Parcial</option>
+                <option value="PAGO_TOTAL">Pago Total</option>
+              </select>
+            </div>
+
+            <div className="flex items-center pt-5">
+              <label className="flex items-center gap-2 font-bold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={entrouNoGrupoWhatsapp}
+                  onChange={(e) => setEntrouNoGrupoWhatsapp(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600"
+                />
+                <span>Já está no grupo WhatsApp</span>
+              </label>
+            </div>
+          </div>
+
           <div>
-            <label className="font-bold block mb-1">Data de Nascimento</label>
-            <InputDataBr
-              value={dataNascBr}
-              onChange={(br, iso) => {
-                setDataNascBr(br);
-                setDataNascIso(iso);
-              }}
+            <label className="font-bold block mb-1">Observações Internas</label>
+            <input
+              type="text"
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Ex: Pagou em mãos, padrinho autorizou..."
+              className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border"
             />
           </div>
 
@@ -2137,7 +2635,7 @@ function ModalCadastroManualInscricao({
               disabled={salvando}
               className="px-5 py-2 rounded-xl bg-[#FFC72C] text-black font-black shadow"
             >
-              {salvando ? "Cadastrando..." : "Cadastrar"}
+              {salvando ? "Cadastrando..." : "Cadastrar Inscrição"}
             </button>
           </div>
         </form>
