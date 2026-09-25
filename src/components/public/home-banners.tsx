@@ -375,6 +375,12 @@ export function BannerCamiseta({ campanha }: BannerCamisetaProps) {
               <span className="text-[11px] font-semibold text-neutral-800">
                 Modelos: {normalizarModelos(campanha.modelos, campanha.precoUnitario).map((m) => m.nome).join(", ")}
               </span>
+              {campanha.dataFim && (
+                <span className="text-[11px] font-bold text-neutral-800 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-neutral-700" />
+                  Limite: {formatarDataHoraLimite(campanha.dataFim)}
+                </span>
+              )}
             </div>
           </div>
 

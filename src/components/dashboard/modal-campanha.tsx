@@ -14,7 +14,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { InputDataBr } from "@/components/ui/input-data-br";
-import { normalizarModelos, ModeloPrecoItem } from "@/lib/utils";
+import { normalizarModelos, ModeloPrecoItem, isoParaBrasileiro } from "@/lib/utils";
 
 export interface FotoComLabel {
   url: string;
@@ -72,7 +72,9 @@ export function ModalCampanha({
 
   const [permiteNome, setPermiteNome] = useState(true);
   const [permiteNumero, setPermiteNumero] = useState(true);
-  const [dataFim, setDataFim] = useState("");
+  const [dataFimBr, setDataFimBr] = useState("");
+  const [dataFimIso, setDataFimIso] = useState<string | null>(null);
+  const [horaFim, setHoraFim] = useState("23:59");
   const [fotos, setFotos] = useState<FotoComLabel[]>([]);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -101,8 +103,19 @@ export function ModalCampanha({
       setPermiteNome(Boolean(campanha.permiteNome));
       setPermiteNumero(Boolean(campanha.permiteNumero));
 
-      const dataStr = campanha.dataFim ? new Date(campanha.dataFim).toISOString() : "";
-      setDataFim(dataStr);
+      if (campanha.dataFim) {
+        const d = new Date(campanha.dataFim);
+        const iso = d.toISOString().slice(0, 10);
+        const hora = String(d.getHours()).padStart(2, "0");
+        const minuto = String(d.getMinutes()).padStart(2, "0");
+        setDataFimIso(iso);
+        setDataFimBr(isoParaBrasileiro(iso));
+        setHoraFim(`${hora}:${minuto}`);
+      } else {
+        setDataFimBr("");
+        setDataFimIso(null);
+        setHoraFim("23:59");
+      }
 
       const fotosFmt: FotoComLabel[] = (campanha.fotos || []).map((f) =>
         typeof f === "string" ? { url: f, label: "" } : f
@@ -123,7 +136,9 @@ export function ModalCampanha({
       setTamanhosSelecionados(["PP", "P", "M", "G", "GG", "XGG"]);
       setPermiteNome(true);
       setPermiteNumero(true);
-      setDataFim("");
+      setDataFimBr("");
+      setDataFimIso(null);
+      setHoraFim("23:59");
       setFotos([]);
     }
   }, [aberto, campanha]);
@@ -199,7 +214,7 @@ export function ModalCampanha({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!titulo.trim() || !precoBase || !dataFim) {
+    if (!titulo.trim() || !precoBase || !dataFimIso) {
       onErro("Preencha título, valor unitário base e data de encerramento.");
       return;
     }
@@ -222,6 +237,16 @@ export function ModalCampanha({
     setSalvando(true);
 
     try {
+      const [horaF, minF] = (horaFim || "23:59").split(":");
+      const [aF, mF, dF] = dataFimIso.split("-");
+      const dataFimFinal = new Date(
+        Number(aF),
+        Number(mF) - 1,
+        Number(dF),
+        Number(horaF || 23),
+        Number(minF || 59)
+      ).toISOString();
+
       const precoBaseNum = parseFloat(precoBase);
       const payload = {
         titulo: titulo.trim(),
@@ -237,7 +262,7 @@ export function ModalCampanha({
         tamanhosDisponiveis: tamanhosSelecionados,
         permiteNome,
         permiteNumero,
-        dataFim,
+        dataFim: dataFimFinal,
         fotos,
       };
 
@@ -477,28 +502,26 @@ export function ModalCampanha({
             {/* Data Limite */}
             <div>
               <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                Data Limite de Pedidos * (DD/MM/AAAA)
+                Data e Horário Limite de Pedidos * (DD/MM/AAAA)
               </label>
               <div className="flex items-center gap-2">
-                <InputDataBr
-                  value={dataFim ? dataFim.slice(0, 10) : ""}
-                  onChange={(br, iso) => {
-                    const hora = dataFim.includes("T") ? dataFim.split("T")[1] : "23:59";
-                    setDataFim(iso ? `${iso}T${hora}` : "");
-                  }}
-                  placeholder="DD/MM/AAAA"
-                  required
-                />
+                <div className="flex-1">
+                  <InputDataBr
+                    value={dataFimBr}
+                    onChange={(br, iso) => {
+                      setDataFimBr(br);
+                      setDataFimIso(iso);
+                    }}
+                    placeholder="DD/MM/AAAA"
+                    required
+                  />
+                </div>
                 <input
                   type="time"
-                  value={dataFim.includes("T") ? dataFim.split("T")[1].slice(0, 5) : "23:59"}
-                  onChange={(e) => {
-                    const dataBase = dataFim.includes("T")
-                      ? dataFim.split("T")[0]
-                      : new Date().toISOString().slice(0, 10);
-                    setDataFim(`${dataBase}T${e.target.value}`);
-                  }}
-                  className="w-24 px-2 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                  value={horaFim}
+                  onChange={(e) => setHoraFim(e.target.value)}
+                  className="w-24 px-2.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-900 dark:text-white"
+                  title="Horário limite de encerramento dos pedidos"
                 />
               </div>
             </div>

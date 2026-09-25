@@ -98,9 +98,14 @@ export async function POST(req: NextRequest) {
     const valorPagoAgora = tipoQuitacao === "PARCELADO_50_50" ? valorTotal / 2 : valorTotal;
     const saldoRestante = tipoQuitacao === "PARCELADO_50_50" ? valorTotal / 2 : 0;
 
-    // Gerar código único do pedido, ex: PED-8492 (CSPRNG)
-    const randomNum = randomInt(1000, 10000);
-    const codigoPedido = `PED-${randomNum}`;
+    // Gerar código único e sequencial do pedido, ex: PED-0001, PED-0002...
+    const totalPedidos = await prisma.pedidoCamiseta.count();
+    let proximoNumero = totalPedidos + 1;
+    let codigoPedido = `PED-${String(proximoNumero).padStart(4, "0")}`;
+    while (await prisma.pedidoCamiseta.findUnique({ where: { codigoPedido } })) {
+      proximoNumero++;
+      codigoPedido = `PED-${String(proximoNumero).padStart(4, "0")}`;
+    }
 
     // Buscar dados do tesoureiro para Pix e WhatsApp
     const config = await prisma.configuracaoGeral.findFirst({ where: { id: 1 } });

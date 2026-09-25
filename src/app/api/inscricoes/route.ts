@@ -291,8 +291,13 @@ export async function POST(req: NextRequest) {
           : await prisma.campanhaCamiseta.findFirst({ where: { ativa: true }, orderBy: { criadoEm: "desc" } });
 
         if (campanhaCamisetaAlvo) {
-          const codPedidoRandom = randomInt(1000, 10000);
-          const codigoPedido = `PED-${codPedidoRandom}`;
+          const totalPedidos = await prisma.pedidoCamiseta.count();
+          let proximoNumeroPedido = totalPedidos + 1;
+          let codigoPedido = `PED-${String(proximoNumeroPedido).padStart(4, "0")}`;
+          while (await prisma.pedidoCamiseta.findUnique({ where: { codigoPedido } })) {
+            proximoNumeroPedido++;
+            codigoPedido = `PED-${String(proximoNumeroPedido).padStart(4, "0")}`;
+          }
 
           const statusPagCamiseta = campanha.camisetaInclusaNoValor
             ? "PAGO_TOTAL"
