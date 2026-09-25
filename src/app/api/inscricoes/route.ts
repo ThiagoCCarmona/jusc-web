@@ -23,18 +23,7 @@ export async function GET(req: NextRequest) {
     const inscricoes = await prisma.inscricaoEvento.findMany({
       where,
       include: {
-        campanha: {
-          select: {
-            id: true,
-            titulo: true,
-            requerPagamento: true,
-            valor: true,
-            fotoUrl: true,
-            dataLimite: true,
-            dataLimitePagamento: true,
-            linkGrupoWhatsapp: true,
-          },
-        },
+        campanha: true,
       },
       orderBy: { criadoEm: "desc" },
     });

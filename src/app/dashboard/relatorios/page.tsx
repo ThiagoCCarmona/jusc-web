@@ -30,7 +30,7 @@ import {
   Shirt,
   ClipboardList,
 } from "lucide-react";
-import { formatarData, formatarTelefone } from "@/lib/utils";
+import { formatarData, formatarTelefone, formatarCpf } from "@/lib/utils";
 import { calcularIdade } from "@/lib/rules";
 import { InputDataBr } from "@/components/ui/input-data-br";
 import jsPDF from "jspdf";
@@ -1018,52 +1018,182 @@ export default function RelatoriosPage() {
   }, [inscricoesFiltradas]);
 
   function exportarInscricoesCSV() {
-    const cabecalho = [
-      "Código",
-      "Data Inscrição",
-      "Participante",
-      "Telefone",
-      "Sexo",
-      "Idade",
-      "Evento",
-      "Nome Responsável",
-      "Tel Responsável",
-      "Possui Alergia",
-      "Glúten",
-      "Lactose",
-      "Remédio Contínuo",
-      "Descrição Remédio",
-      "No Grupo WhatsApp",
-      "Camiseta Pedida",
-      "Valor Total",
-      "Valor Pago",
-      "Status Pagamento",
+    const temCpf = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCpf || i.cpf);
+    });
+
+    const temSexo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoSexo || i.sexo);
+    });
+
+    const temDataNascimento = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoDataNascimento || i.dataNascimento);
+    });
+
+    const temResponsavel = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(
+        c?.campoNomeResponsavel ||
+        c?.campoParentescoResponsavel ||
+        c?.campoTelefoneResponsavel ||
+        i.nomeResponsavel ||
+        i.telefoneResponsavel
+      );
+    });
+
+    const temAlergia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoAlergia || i.possuiAlergia);
+    });
+
+    const temIntolerancia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoIntolerancia || i.intoleranciaGluten || i.intoleranciaLactose);
+    });
+
+    const temRemedio = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoRemedioContinuo || i.usaRemedioContinuo);
+    });
+
+    const temBatismo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoBatismo || i.batismo);
+    });
+
+    const temPrimeiraEucaristia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoPrimeiraEucaristia || i.primeiraEucaristia);
+    });
+
+    const temCrisma = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCrisma || i.crisma);
+    });
+
+    const temGrupo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.linkGrupoWhatsapp || i.entrouNoGrupoWhatsapp);
+    });
+
+    const temCamiseta = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.permiteCamiseta || c?.campanhaCamisetaId || i.pediuCamiseta);
+    });
+
+    const temFinanceiro = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.requerPagamento || i.valorTotal > 0);
+    });
+
+    type ColunaDef = {
+      titulo: string;
+      ativo: boolean;
+      valor: (i: any, camp?: any) => string;
+    };
+
+    const definicaoColunas: ColunaDef[] = [
+      { titulo: "Código", ativo: true, valor: (i) => i.codigoInscricao },
+      { titulo: "Data Inscrição", ativo: true, valor: (i) => formatarData(i.criadoEm) },
+      { titulo: "Participante", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "") },
+      { titulo: "Telefone", ativo: true, valor: (i) => i.telefone },
+      { titulo: "Sexo", ativo: temSexo, valor: (i) => i.sexo || "" },
+      {
+        titulo: "Idade",
+        ativo: temDataNascimento,
+        valor: (i) => (i.dataNascimento ? String(calcularIdade(i.dataNascimento)) : ""),
+      },
+      { titulo: "Evento", ativo: true, valor: (i, c) => c?.titulo || i.campanha?.titulo || "" },
+      { titulo: "Nome Responsável", ativo: temResponsavel, valor: (i) => i.nomeResponsavel || "" },
+      {
+        titulo: "Tel Responsável",
+        ativo: temResponsavel,
+        valor: (i) => (i.telefoneResponsavel ? formatarTelefone(i.telefoneResponsavel) : ""),
+      },
+      {
+        titulo: "Possui Alergia",
+        ativo: temAlergia,
+        valor: (i, c) => (c?.campoAlergia ? (i.possuiAlergia ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "Glúten",
+        ativo: temIntolerancia,
+        valor: (i, c) => (c?.campoIntolerancia ? (i.intoleranciaGluten ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "Lactose",
+        ativo: temIntolerancia,
+        valor: (i, c) => (c?.campoIntolerancia ? (i.intoleranciaLactose ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "Remédio Contínuo",
+        ativo: temRemedio,
+        valor: (i, c) => (c?.campoRemedioContinuo ? (i.usaRemedioContinuo ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "Descrição Remédio",
+        ativo: temRemedio,
+        valor: (i) => i.descricaoRemedioContinuo || "",
+      },
+      {
+        titulo: "Batismo",
+        ativo: temBatismo,
+        valor: (i, c) => (c?.campoBatismo ? (i.batismo ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "Primeira Eucaristia",
+        ativo: temPrimeiraEucaristia,
+        valor: (i, c) => (c?.campoPrimeiraEucaristia ? (i.primeiraEucaristia ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "Crisma",
+        ativo: temCrisma,
+        valor: (i, c) => (c?.campoCrisma ? (i.crisma ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "No Grupo WhatsApp",
+        ativo: temGrupo,
+        valor: (i, c) => (c?.linkGrupoWhatsapp ? (i.entrouNoGrupoWhatsapp ? "Sim" : "Não") : ""),
+      },
+      {
+        titulo: "Camiseta Pedida",
+        ativo: temCamiseta,
+        valor: (i, c) =>
+          c?.permiteCamiseta
+            ? i.pediuCamiseta
+              ? `${i.camisetaModelo || "Camiseta"} (${i.camisetaTamanho || ""})`
+              : "Não"
+            : "",
+      },
+      {
+        titulo: "Valor Total",
+        ativo: temFinanceiro,
+        valor: (i) => Number(i.valorTotal || 0).toFixed(2),
+      },
+      {
+        titulo: "Valor Pago",
+        ativo: temFinanceiro,
+        valor: (i) => Number(i.valorPago || 0).toFixed(2),
+      },
+      {
+        titulo: "Status Pagamento",
+        ativo: temFinanceiro,
+        valor: (i) => i.statusPagamento,
+      },
     ];
 
+    const colunasAtivas = definicaoColunas.filter((col) => col.ativo);
+    const cabecalho = colunasAtivas.map((col) => col.titulo);
+
     const linhas = inscricoesFiltradas.map((i) => {
-      const idade = i.dataNascimento ? calcularIdade(i.dataNascimento) : "";
-      const camiseta = i.pediuCamiseta ? `${i.camisetaModelo || "Camiseta"} (${i.camisetaTamanho || ""})` : "Não";
-      return [
-        `"${i.codigoInscricao}"`,
-        formatarData(i.criadoEm),
-        `"${i.nomeCompleto}"`,
-        `"${i.telefone}"`,
-        i.sexo || "",
-        idade,
-        `"${i.campanha?.titulo || ""}"`,
-        `"${i.nomeResponsavel || ""}"`,
-        `"${i.telefoneResponsavel || ""}"`,
-        i.possuiAlergia ? "Sim" : "Não",
-        i.intoleranciaGluten ? "Sim" : "Não",
-        i.intoleranciaLactose ? "Sim" : "Não",
-        i.usaRemedioContinuo ? "Sim" : "Não",
-        `"${i.descricaoRemedioContinuo || ""}"`,
-        i.entrouNoGrupoWhatsapp ? "Sim" : "Não",
-        `"${camiseta}"`,
-        Number(i.valorTotal || 0).toFixed(2),
-        Number(i.valorPago || 0).toFixed(2),
-        i.statusPagamento,
-      ].join(";");
+      const camp = i.campanha || campanhasInscricao.find((c) => c.id === i.campanhaId);
+      return colunasAtivas
+        .map((col) => `"${col.valor(i, camp).replace(/"/g, '""')}"`)
+        .join(";");
     });
 
     const csvContent = "\uFEFF" + [cabecalho.join(";"), ...linhas].join("\r\n");
@@ -1091,34 +1221,120 @@ export default function RelatoriosPage() {
       21
     );
 
-    const head = [
-      ["Cód.", "Participante", "Sexo", "Idade", "Telefone", "Tel. Resp.", "Nome Resp.", "Evento", "Saúde/Remédio", "Camiseta", "Status Pag."],
+    const temCpf = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCpf || i.cpf);
+    });
+
+    const temSexo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoSexo || i.sexo);
+    });
+
+    const temDataNascimento = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoDataNascimento || i.dataNascimento);
+    });
+
+    const temResponsavel = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(
+        c?.campoNomeResponsavel ||
+        c?.campoTelefoneResponsavel ||
+        i.nomeResponsavel ||
+        i.telefoneResponsavel
+      );
+    });
+
+    const temAlergia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoAlergia || i.possuiAlergia);
+    });
+
+    const temIntolerancia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoIntolerancia || i.intoleranciaGluten || i.intoleranciaLactose);
+    });
+
+    const temRemedio = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoRemedioContinuo || i.usaRemedioContinuo);
+    });
+    const temSaude = temAlergia || temIntolerancia || temRemedio;
+
+    const temCamiseta = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.permiteCamiseta || c?.campanhaCamisetaId || i.pediuCamiseta);
+    });
+
+    const temFinanceiro = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhasInscricao.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.requerPagamento || i.valorTotal > 0);
+    });
+
+    type ColunaPdf = {
+      titulo: string;
+      ativo: boolean;
+      valor: (i: any, camp?: any) => string;
+    };
+
+    const definicaoPdf: ColunaPdf[] = [
+      { titulo: "Cód.", ativo: true, valor: (i) => i.codigoInscricao },
+      { titulo: "Participante", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "-") },
+      {
+        titulo: "Sexo",
+        ativo: temSexo,
+        valor: (i) => (i.sexo === "MASCULINO" ? "M" : i.sexo === "FEMININO" ? "F" : "-"),
+      },
+      {
+        titulo: "Idade",
+        ativo: temDataNascimento,
+        valor: (i) => (i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-"),
+      },
+      { titulo: "Telefone", ativo: true, valor: (i) => i.telefone },
+      { titulo: "Tel. Resp.", ativo: temResponsavel, valor: (i) => i.telefoneResponsavel || "-" },
+      {
+        titulo: "Nome Resp.",
+        ativo: temResponsavel,
+        valor: (i) => (i.nomeResponsavel ? `${i.nomeResponsavel}` : "-"),
+      },
+      { titulo: "Evento", ativo: true, valor: (i, c) => c?.titulo || i.campanha?.titulo || "-" },
+      {
+        titulo: "Saúde/Remédio",
+        ativo: temSaude,
+        valor: (i, c) => {
+          if (!c?.campoAlergia && !c?.campoIntolerancia && !c?.campoRemedioContinuo) {
+            return "-";
+          }
+          const saude = [
+            i.possuiAlergia ? "Alergia" : "",
+            i.intoleranciaGluten ? "Glúten" : "",
+            i.intoleranciaLactose ? "Lactose" : "",
+            i.usaRemedioContinuo ? "Remédio" : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+          return saude || "Sem restrições";
+        },
+      },
+      {
+        titulo: "Camiseta",
+        ativo: temCamiseta,
+        valor: (i) => (i.pediuCamiseta ? `${i.camisetaModelo || "Cam."} (${i.camisetaTamanho || ""})` : "-"),
+      },
+      {
+        titulo: "Status Pag.",
+        ativo: temFinanceiro,
+        valor: (i) => i.statusPagamento,
+      },
     ];
 
+    const colunasPdfAtivas = definicaoPdf.filter((col) => col.ativo);
+    const head = [colunasPdfAtivas.map((c) => c.titulo)];
     const body = inscricoesFiltradas.map((i) => {
-      const idade = i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-";
-      const saude = [
-        i.possuiAlergia ? `Alergia` : "",
-        i.intoleranciaGluten ? "Glúten" : "",
-        i.intoleranciaLactose ? "Lactose" : "",
-        i.usaRemedioContinuo ? "Remédio" : "",
-      ].filter(Boolean).join(", ") || "Sem restrições";
-
-      const camiseta = i.pediuCamiseta ? `${i.camisetaModelo || "Cam."} (${i.camisetaTamanho || ""})` : "-";
-
-      return [
-        i.codigoInscricao,
-        i.nomeCompleto,
-        i.sexo === "MASCULINO" ? "M" : i.sexo === "FEMININO" ? "F" : "-",
-        idade,
-        i.telefone,
-        i.telefoneResponsavel || "-",
-        i.nomeResponsavel ? `${i.nomeResponsavel}` : "-",
-        i.campanha?.titulo || "-",
-        saude,
-        camiseta,
-        i.statusPagamento,
-      ];
+      const camp = i.campanha || campanhasInscricao.find((c) => c.id === i.campanhaId);
+      return colunasPdfAtivas.map((c) => c.valor(i, camp));
     });
 
     autoTable(doc, {

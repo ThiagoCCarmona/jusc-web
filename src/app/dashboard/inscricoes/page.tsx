@@ -45,6 +45,22 @@ interface CampanhaItem {
   fotoUrl?: string | null;
   dataLimite: string;
   linkGrupoWhatsapp?: string | null;
+  campoNomeCompleto?: boolean;
+  campoCpf?: boolean;
+  campoTelefone?: boolean;
+  campoDataNascimento?: boolean;
+  campoNomeResponsavel?: boolean;
+  campoParentescoResponsavel?: boolean;
+  campoTelefoneResponsavel?: boolean;
+  campoAlergia?: boolean;
+  campoIntolerancia?: boolean;
+  campoRemedioContinuo?: boolean;
+  campoSexo?: boolean;
+  campoBatismo?: boolean;
+  campoPrimeiraEucaristia?: boolean;
+  campoCrisma?: boolean;
+  permiteCamiseta?: boolean;
+  campanhaCamisetaId?: string | null;
 }
 
 interface InscricaoItem {
@@ -397,81 +413,231 @@ export default function InscricoesPage() {
   // EXPORTAÇÃO: PLANILHA (EXCEL / CSV COM UTF-8 BOM)
   // ==========================================
   function exportarPlanilha() {
-    const cabecalho = [
-      "Código",
-      "Evento",
-      "Data Inscrição",
-      "Nome Completo",
-      "Sexo",
-      "CPF",
-      "Telefone",
-      "Data Nascimento",
-      "Idade (Anos)",
-      "Nome Responsável",
-      "Parentesco",
-      "Telefone Responsável",
-      "Alergia?",
-      "Descrição da Alergia",
-      "Intolerante a Glúten",
-      "Intolerante a Lactose",
-      "Usa Remédio Contínuo?",
-      "Descrição Remédio Contínuo",
-      "Batismo",
-      "Primeira Eucaristia",
-      "Crisma",
-      "Entrou no Grupo WhatsApp?",
-      "Pediu Camiseta?",
-      "Modelo Camiseta",
-      "Tamanho Camiseta",
-      "Nome na Camiseta",
-      "Número na Camiseta",
-      "Valor Camiseta (R$)",
-      "Forma Pagamento",
-      "Valor Total (R$)",
-      "Valor Pago (R$)",
-      "Status Pagamento",
-      "Status Inscrição",
-      "Observação",
+    // Determinar quais campos foram necessários / presentes no conjunto de inscrições filtradas
+    const temCpf = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCpf || i.cpf);
+    });
+
+    const temSexo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoSexo || i.sexo);
+    });
+
+    const temDataNascimento = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoDataNascimento || i.dataNascimento);
+    });
+
+    const temResponsavel = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(
+        c?.campoNomeResponsavel ||
+        c?.campoParentescoResponsavel ||
+        c?.campoTelefoneResponsavel ||
+        i.nomeResponsavel ||
+        i.telefoneResponsavel
+      );
+    });
+
+    const temAlergia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoAlergia || i.possuiAlergia);
+    });
+
+    const temIntolerancia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoIntolerancia || i.intoleranciaGluten || i.intoleranciaLactose);
+    });
+
+    const temRemedio = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoRemedioContinuo || i.usaRemedioContinuo);
+    });
+
+    const temBatismo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoBatismo || i.batismo);
+    });
+
+    const temPrimeiraEucaristia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoPrimeiraEucaristia || i.primeiraEucaristia);
+    });
+
+    const temCrisma = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCrisma || i.crisma);
+    });
+
+    const temGrupo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.linkGrupoWhatsapp || i.entrouNoGrupoWhatsapp);
+    });
+
+    const temCamiseta = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.permiteCamiseta || c?.campanhaCamisetaId || i.pediuCamiseta);
+    });
+
+    const temFinanceiro = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.requerPagamento || i.valorTotal > 0);
+    });
+
+    const temObservacao = inscricoesFiltradas.some((i) => Boolean(i.observacao && i.observacao.trim()));
+
+    type ColunaDef = {
+      titulo: string;
+      ativo: boolean;
+      valor: (i: InscricaoItem, camp?: CampanhaItem) => string;
+    };
+
+    const definicaoColunas: ColunaDef[] = [
+      { titulo: "Código", ativo: true, valor: (i) => i.codigoInscricao },
+      { titulo: "Evento", ativo: true, valor: (i, c) => c?.titulo || i.campanha?.titulo || "" },
+      { titulo: "Data Inscrição", ativo: true, valor: (i) => formatarData(i.criadoEm) },
+      { titulo: "Nome Completo", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "") },
+      { titulo: "Sexo", ativo: temSexo, valor: (i) => i.sexo || "" },
+      { titulo: "Telefone", ativo: true, valor: (i) => i.telefone },
+      {
+        titulo: "Data Nascimento",
+        ativo: temDataNascimento,
+        valor: (i) => (i.dataNascimento ? formatarData(i.dataNascimento) : ""),
+      },
+      {
+        titulo: "Idade (Anos)",
+        ativo: temDataNascimento,
+        valor: (i) => (i.dataNascimento ? String(calcularIdade(i.dataNascimento)) : ""),
+      },
+      {
+        titulo: "Nome Responsável",
+        ativo: temResponsavel,
+        valor: (i) => i.nomeResponsavel || "",
+      },
+      {
+        titulo: "Parentesco",
+        ativo: temResponsavel,
+        valor: (i) => i.parentescoResponsavel || "",
+      },
+      {
+        titulo: "Telefone Responsável",
+        ativo: temResponsavel,
+        valor: (i) => (i.telefoneResponsavel ? formatarTelefone(i.telefoneResponsavel) : ""),
+      },
+      {
+        titulo: "Alergia?",
+        ativo: temAlergia,
+        valor: (i, c) => (c?.campoAlergia ? (i.possuiAlergia ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Descrição da Alergia",
+        ativo: temAlergia,
+        valor: (i) => i.descricaoAlergia || "",
+      },
+      {
+        titulo: "Intolerante a Glúten",
+        ativo: temIntolerancia,
+        valor: (i, c) => (c?.campoIntolerancia ? (i.intoleranciaGluten ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Intolerante a Lactose",
+        ativo: temIntolerancia,
+        valor: (i, c) => (c?.campoIntolerancia ? (i.intoleranciaLactose ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Usa Remédio Contínuo?",
+        ativo: temRemedio,
+        valor: (i, c) => (c?.campoRemedioContinuo ? (i.usaRemedioContinuo ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Descrição Remédio Contínuo",
+        ativo: temRemedio,
+        valor: (i) => i.descricaoRemedioContinuo || "",
+      },
+      {
+        titulo: "Batismo",
+        ativo: temBatismo,
+        valor: (i, c) => (c?.campoBatismo ? (i.batismo ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Primeira Eucaristia",
+        ativo: temPrimeiraEucaristia,
+        valor: (i, c) => (c?.campoPrimeiraEucaristia ? (i.primeiraEucaristia ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Crisma",
+        ativo: temCrisma,
+        valor: (i, c) => (c?.campoCrisma ? (i.crisma ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Entrou no Grupo WhatsApp?",
+        ativo: temGrupo,
+        valor: (i, c) => (c?.linkGrupoWhatsapp ? (i.entrouNoGrupoWhatsapp ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Pediu Camiseta?",
+        ativo: temCamiseta,
+        valor: (i, c) => (c?.permiteCamiseta ? (i.pediuCamiseta ? "SIM" : "NÃO") : ""),
+      },
+      {
+        titulo: "Modelo Camiseta",
+        ativo: temCamiseta,
+        valor: (i) => (i.pediuCamiseta ? i.camisetaModelo || "" : ""),
+      },
+      {
+        titulo: "Tamanho Camiseta",
+        ativo: temCamiseta,
+        valor: (i) => (i.pediuCamiseta ? i.camisetaTamanho || "" : ""),
+      },
+      {
+        titulo: "Nome na Camiseta",
+        ativo: temCamiseta,
+        valor: (i) => (i.pediuCamiseta ? i.camisetaNomePersonalizado || "" : ""),
+      },
+      {
+        titulo: "Número na Camiseta",
+        ativo: temCamiseta,
+        valor: (i) => (i.pediuCamiseta ? i.camisetaNumeroPersonalizado || "" : ""),
+      },
+      {
+        titulo: "Valor Camiseta (R$)",
+        ativo: temCamiseta,
+        valor: (i) => (i.pediuCamiseta ? Number(i.camisetaValor || 0).toFixed(2).replace(".", ",") : ""),
+      },
+      {
+        titulo: "Forma Pagamento",
+        ativo: temFinanceiro,
+        valor: (i) => i.formaPagamento || (i.valorTotal > 0 ? "PENDENTE" : "ISENTO"),
+      },
+      {
+        titulo: "Valor Total (R$)",
+        ativo: temFinanceiro,
+        valor: (i) => i.valorTotal.toFixed(2).replace(".", ","),
+      },
+      {
+        titulo: "Valor Pago (R$)",
+        ativo: temFinanceiro,
+        valor: (i) => i.valorPago.toFixed(2).replace(".", ","),
+      },
+      {
+        titulo: "Status Pagamento",
+        ativo: temFinanceiro,
+        valor: (i) => i.statusPagamento,
+      },
+      { titulo: "Status Inscrição", ativo: true, valor: (i) => i.status },
+      { titulo: "Observação", ativo: temObservacao, valor: (i) => i.observacao || "" },
     ];
 
+    const colunasAtivas = definicaoColunas.filter((col) => col.ativo);
+    const cabecalho = colunasAtivas.map((col) => col.titulo);
+
     const linhas = inscricoesFiltradas.map((i) => {
-      const idade = i.dataNascimento ? calcularIdade(i.dataNascimento) : "-";
-      return [
-        `"${i.codigoInscricao}"`,
-        `"${i.campanha?.titulo || ""}"`,
-        `"${formatarData(i.criadoEm)}"`,
-        `"${i.nomeCompleto}"`,
-        `"${i.sexo || "-"}"`,
-        `"${i.cpf || ""}"`,
-        `"${i.telefone}"`,
-        `"${i.dataNascimento ? formatarData(i.dataNascimento) : ""}"`,
-        `"${idade}"`,
-        `"${i.nomeResponsavel || ""}"`,
-        `"${i.parentescoResponsavel || ""}"`,
-        `"${i.telefoneResponsavel || ""}"`,
-        `"${i.possuiAlergia ? "SIM" : "NÃO"}"`,
-        `"${i.descricaoAlergia ? i.descricaoAlergia.replace(/"/g, '""') : ""}"`,
-        `"${i.intoleranciaGluten ? "SIM" : "NÃO"}"`,
-        `"${i.intoleranciaLactose ? "SIM" : "NÃO"}"`,
-        `"${i.usaRemedioContinuo ? "SIM" : "NÃO"}"`,
-        `"${i.descricaoRemedioContinuo ? i.descricaoRemedioContinuo.replace(/"/g, '""') : ""}"`,
-        `"${i.batismo ? "SIM" : "NÃO"}"`,
-        `"${i.primeiraEucaristia ? "SIM" : "NÃO"}"`,
-        `"${i.crisma ? "SIM" : "NÃO"}"`,
-        `"${i.entrouNoGrupoWhatsapp ? "SIM" : "NÃO"}"`,
-        `"${i.pediuCamiseta ? "SIM" : "NÃO"}"`,
-        `"${i.pediuCamiseta ? i.camisetaModelo || "" : ""}"`,
-        `"${i.pediuCamiseta ? i.camisetaTamanho || "" : ""}"`,
-        `"${i.pediuCamiseta ? i.camisetaNomePersonalizado || "" : ""}"`,
-        `"${i.pediuCamiseta ? i.camisetaNumeroPersonalizado || "" : ""}"`,
-        `"${i.pediuCamiseta ? Number(i.camisetaValor || 0).toFixed(2).replace(".", ",") : "0,00"}"`,
-        `"${i.formaPagamento || "ISENTO"}"`,
-        `"${i.valorTotal.toFixed(2).replace(".", ",")}"`,
-        `"${i.valorPago.toFixed(2).replace(".", ",")}"`,
-        `"${i.statusPagamento}"`,
-        `"${i.status}"`,
-        `"${i.observacao ? i.observacao.replace(/"/g, '""') : ""}"`,
-      ].join(";");
+      const camp = i.campanha || campanhas.find((c) => c.id === i.campanhaId);
+      return colunasAtivas
+        .map((col) => `"${col.valor(i, camp).replace(/"/g, '""')}"`)
+        .join(";");
     });
 
     const csvContent = "\uFEFF" + [cabecalho.join(";"), ...linhas].join("\r\n");
@@ -502,76 +668,173 @@ export default function InscricoesPage() {
       21
     );
 
-    const head = [
-      [
-        "Cód.",
-        "Participante",
-        "CPF",
-        "Sexo",
-        "Idade",
-        "Telefone",
-        "Camiseta",
-        "Responsável",
-        "Alimentação / Saúde",
-        "Sacramentos",
-        "WhatsApp Grupo",
-        "Financeiro",
-        "Status",
-      ],
+    const temCpf = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCpf || i.cpf);
+    });
+
+    const temSexo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoSexo || i.sexo);
+    });
+
+    const temDataNascimento = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoDataNascimento || i.dataNascimento);
+    });
+
+    const temCamiseta = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.permiteCamiseta || c?.campanhaCamisetaId || i.pediuCamiseta);
+    });
+
+    const temResponsavel = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(
+        c?.campoNomeResponsavel ||
+        c?.campoParentescoResponsavel ||
+        c?.campoTelefoneResponsavel ||
+        i.nomeResponsavel ||
+        i.telefoneResponsavel
+      );
+    });
+
+    const temAlergia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoAlergia || i.possuiAlergia);
+    });
+
+    const temIntolerancia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoIntolerancia || i.intoleranciaGluten || i.intoleranciaLactose);
+    });
+
+    const temRemedio = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoRemedioContinuo || i.usaRemedioContinuo);
+    });
+    const temSaude = temAlergia || temIntolerancia || temRemedio;
+
+    const temBatismo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoBatismo || i.batismo);
+    });
+
+    const temPrimeiraEucaristia = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoPrimeiraEucaristia || i.primeiraEucaristia);
+    });
+
+    const temCrisma = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCrisma || i.crisma);
+    });
+    const temSacramentos = temBatismo || temPrimeiraEucaristia || temCrisma;
+
+    const temGrupo = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.linkGrupoWhatsapp || i.entrouNoGrupoWhatsapp);
+    });
+
+    const temFinanceiro = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.requerPagamento || i.valorTotal > 0);
+    });
+
+    type ColunaPdf = {
+      titulo: string;
+      ativo: boolean;
+      valor: (i: InscricaoItem, camp?: CampanhaItem) => string;
+    };
+
+    const definicaoPdf: ColunaPdf[] = [
+      { titulo: "Cód.", ativo: true, valor: (i) => i.codigoInscricao },
+      { titulo: "Participante", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "-") },
+      { titulo: "Sexo", ativo: temSexo, valor: (i) => i.sexo || "-" },
+      {
+        titulo: "Idade",
+        ativo: temDataNascimento,
+        valor: (i) => (i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-"),
+      },
+      { titulo: "Telefone", ativo: true, valor: (i) => i.telefone },
+      {
+        titulo: "Camiseta",
+        ativo: temCamiseta,
+        valor: (i) =>
+          i.pediuCamiseta
+            ? `${i.camisetaModelo || "Cam."} (${i.camisetaTamanho || ""})${i.camisetaNomePersonalizado ? ` - ${i.camisetaNomePersonalizado}` : ""}`
+            : "-",
+      },
+      {
+        titulo: "Responsável",
+        ativo: temResponsavel,
+        valor: (i) =>
+          i.nomeResponsavel
+            ? `${i.nomeResponsavel} (${i.parentescoResponsavel || "Resp."})`
+            : "-",
+      },
+      {
+        titulo: "Alimentação / Saúde",
+        ativo: temSaude,
+        valor: (i, c) => {
+          if (!c?.campoAlergia && !c?.campoIntolerancia && !c?.campoRemedioContinuo) {
+            return "-";
+          }
+          const saude = [
+            i.possuiAlergia ? `Alergia: ${i.descricaoAlergia || "Sim"}` : "",
+            i.intoleranciaGluten ? "Glúten" : "",
+            i.intoleranciaLactose ? "Lactose" : "",
+            i.usaRemedioContinuo ? `Remédio: ${i.descricaoRemedioContinuo || "Sim"}` : "",
+          ]
+            .filter(Boolean)
+            .join(" | ");
+          return saude || "Sem restrições";
+        },
+      },
+      {
+        titulo: "Sacramentos",
+        ativo: temSacramentos,
+        valor: (i, c) => {
+          if (!c?.campoBatismo && !c?.campoPrimeiraEucaristia && !c?.campoCrisma) {
+            return "-";
+          }
+          const sacramentos = [
+            c?.campoBatismo && i.batismo ? "Bat." : "",
+            c?.campoPrimeiraEucaristia && i.primeiraEucaristia ? "1ª Euc." : "",
+            c?.campoCrisma && i.crisma ? "Crisma" : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+          return sacramentos || "-";
+        },
+      },
+      {
+        titulo: "WhatsApp Grupo",
+        ativo: temGrupo,
+        valor: (i, c) =>
+          c?.linkGrupoWhatsapp
+            ? i.entrouNoGrupoWhatsapp
+              ? "No Grupo"
+              : "Não Entrou"
+            : "-",
+      },
+      {
+        titulo: "Financeiro",
+        ativo: temFinanceiro,
+        valor: (i) =>
+          i.valorTotal > 0
+            ? `R$ ${i.valorPago.toFixed(0)} / ${i.valorTotal.toFixed(0)} (${i.statusPagamento})`
+            : "Isento",
+      },
+      { titulo: "Status", ativo: true, valor: (i) => i.status },
     ];
 
+    const colunasPdfAtivas = definicaoPdf.filter((col) => col.ativo);
+    const head = [colunasPdfAtivas.map((c) => c.titulo)];
     const body = inscricoesFiltradas.map((i) => {
-      const idade = i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-";
-      const cpfFormatado = i.cpf ? formatarCpf(i.cpf) : "-";
-      const saude = [
-        i.possuiAlergia ? `Alergia: ${i.descricaoAlergia || "Sim"}` : "",
-        i.intoleranciaGluten ? "Glúten" : "",
-        i.intoleranciaLactose ? "Lactose" : "",
-        i.usaRemedioContinuo ? `Remédio: ${i.descricaoRemedioContinuo || "Sim"}` : "",
-      ]
-        .filter(Boolean)
-        .join(" | ") || "Sem restrições";
-
-      const sacramentos = [
-        i.batismo ? "Bat." : "",
-        i.primeiraEucaristia ? "1ª Euc." : "",
-        i.crisma ? "Crisma" : "",
-      ]
-        .filter(Boolean)
-        .join(", ") || "-";
-
-      const financeiro =
-        i.valorTotal > 0
-          ? `R$ ${i.valorPago.toFixed(0)} / ${i.valorTotal.toFixed(0)} (${i.statusPagamento})`
-          : "Isento";
-
-      const responsavel = i.nomeResponsavel
-        ? `${i.nomeResponsavel} (${i.parentescoResponsavel || "Resp."})`
-        : "-";
-
-      const camisetaInfo = i.pediuCamiseta
-        ? `${i.camisetaModelo || "Cam."} (${i.camisetaTamanho || ""})${i.camisetaNomePersonalizado ? ` - ${i.camisetaNomePersonalizado}` : ""}`
-        : "-";
-
-      const statusGrupo = i.campanha?.linkGrupoWhatsapp
-        ? (i.entrouNoGrupoWhatsapp ? "No Grupo" : "Não Entrou")
-        : "N/A";
-
-      return [
-        i.codigoInscricao,
-        i.nomeCompleto,
-        cpfFormatado,
-        i.sexo || "-",
-        idade,
-        i.telefone,
-        camisetaInfo,
-        responsavel,
-        saude,
-        sacramentos,
-        statusGrupo,
-        financeiro,
-        i.status,
-      ];
+      const camp = i.campanha || campanhas.find((c) => c.id === i.campanhaId);
+      return colunasPdfAtivas.map((c) => c.valor(i, camp));
     });
 
     autoTable(doc, {
@@ -603,42 +866,72 @@ export default function InscricoesPage() {
       21
     );
 
-    const head = [
-      [
-        "Nº",
-        "Nome do Participante",
-        "CPF",
-        "Idade",
-        "Telefone",
-        "Tel. Responsável",
-        "Nome do Responsável",
-        "Camiseta",
-        "Assinatura do Participante / Responsável",
-      ],
+    const temCpf = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoCpf || i.cpf);
+    });
+
+    const temDataNascimento = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoDataNascimento || i.dataNascimento);
+    });
+
+    const temResponsavel = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(
+        c?.campoNomeResponsavel ||
+        c?.campoParentescoResponsavel ||
+        c?.campoTelefoneResponsavel ||
+        i.nomeResponsavel ||
+        i.telefoneResponsavel
+      );
+    });
+
+    const temCamiseta = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.permiteCamiseta || c?.campanhaCamisetaId || i.pediuCamiseta);
+    });
+
+    type ColunaPresenca = {
+      titulo: string;
+      ativo: boolean;
+      valor: (i: InscricaoItem, idx: number) => string;
+    };
+
+    const definicaoPresenca: ColunaPresenca[] = [
+      { titulo: "Nº", ativo: true, valor: (_, idx) => `${idx + 1}` },
+      { titulo: "Nome do Participante", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "-") },
+      { titulo: "Idade", ativo: temDataNascimento, valor: (i) => (i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-") },
+      { titulo: "Telefone", ativo: true, valor: (i) => i.telefone },
+      { titulo: "Tel. Responsável", ativo: temResponsavel, valor: (i) => i.telefoneResponsavel || "-" },
+      {
+        titulo: "Nome do Responsável",
+        ativo: temResponsavel,
+        valor: (i) =>
+          i.nomeResponsavel
+            ? `${i.nomeResponsavel} (${i.parentescoResponsavel || "Resp."})`
+            : "-",
+      },
+      {
+        titulo: "Camiseta",
+        ativo: temCamiseta,
+        valor: (i) =>
+          i.pediuCamiseta
+            ? `${i.camisetaModelo || "Cam."} (${i.camisetaTamanho || ""})`
+            : "Não pediu",
+      },
+      {
+        titulo: "Assinatura do Participante / Responsável",
+        ativo: true,
+        valor: () => "_______________________________",
+      },
     ];
 
+    const colunasPresencaAtivas = definicaoPresenca.filter((col) => col.ativo);
+    const head = [colunasPresencaAtivas.map((c) => c.titulo)];
     const body = inscricoesFiltradas.map((i, idx) => {
-      const idade = i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-";
-      const cpfFormatado = i.cpf ? formatarCpf(i.cpf) : "-";
-      const telResp = i.telefoneResponsavel || "-";
-      const nomeResp = i.nomeResponsavel
-        ? `${i.nomeResponsavel} (${i.parentescoResponsavel || "Resp."})`
-        : "-";
-      const camisetaTxt = i.pediuCamiseta
-        ? `${i.camisetaModelo || "Cam."} (${i.camisetaTamanho || ""})`
-        : "Não pediu";
-
-      return [
-        `${idx + 1}`,
-        i.nomeCompleto,
-        cpfFormatado,
-        idade,
-        i.telefone,
-        telResp,
-        nomeResp,
-        camisetaTxt,
-        "_______________________________",
-      ];
+      return colunasPresencaAtivas.map((c) => c.valor(i, idx));
     });
 
     autoTable(doc, {
