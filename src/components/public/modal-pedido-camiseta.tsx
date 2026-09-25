@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   X,
@@ -77,6 +77,7 @@ export function ModalPedidoCamiseta({
     saldoRestante: number;
   } | null>(null);
   const [copiadoPix, setCopiadoPix] = useState(false);
+  const containerScrollRef = useRef<HTMLDivElement>(null);
 
   // Travar o scroll do body quando o modal estiver aberto e fechar com Escape
   useEffect(() => {
@@ -98,6 +99,13 @@ export function ModalPedidoCamiseta({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [aberto]);
+
+  // Sempre garantir que o topo da tela seja exibido ao concluir o pedido ou ao abrir o modal
+  useEffect(() => {
+    if (containerScrollRef.current) {
+      containerScrollRef.current.scrollTop = 0;
+    }
+  }, [sucessoData, aberto]);
 
   if (!aberto) return null;
 
@@ -150,6 +158,10 @@ export function ModalPedidoCamiseta({
         valorPagoAgora: data.valorPagoAgora,
         saldoRestante: data.saldoRestante,
       });
+
+      if (containerScrollRef.current) {
+        containerScrollRef.current.scrollTop = 0;
+      }
     } catch {
       setErro("Erro de conexão. Verifique sua internet e tente novamente.");
     } finally {
@@ -206,7 +218,7 @@ export function ModalPedidoCamiseta({
         </div>
 
         {/* Conteúdo com Scroll Suave */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div ref={containerScrollRef} className="flex-1 overflow-y-auto overscroll-contain">
         {sucessoData ? (
           <div className="p-6 sm:p-8 space-y-6">
             <div className="text-center space-y-2">

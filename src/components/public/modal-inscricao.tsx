@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   X,
@@ -169,6 +169,7 @@ export function ModalInscricao({
   } | null>(null);
   const [copiadoPix, setCopiadoPix] = useState(false);
   const [clicouGrupoWhatsapp, setClicouGrupoWhatsapp] = useState(false);
+  const containerScrollRef = useRef<HTMLDivElement>(null);
 
   // Cálculo dinâmico de idade
   const idadeCalculada = dataNascimentoIso ? calcularIdade(dataNascimentoIso) : null;
@@ -192,6 +193,13 @@ export function ModalInscricao({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [aberto]);
+
+  // Sempre garantir que o topo da tela seja exibido ao concluir a inscrição ou ao abrir o modal
+  useEffect(() => {
+    if (containerScrollRef.current) {
+      containerScrollRef.current.scrollTop = 0;
+    }
+  }, [sucessoData, aberto]);
 
   if (!aberto) return null;
 
@@ -318,6 +326,10 @@ export function ModalInscricao({
         valorTotal: data.valorTotal,
         valorPagoAgora: data.valorPagoAgora,
       });
+
+      if (containerScrollRef.current) {
+        containerScrollRef.current.scrollTop = 0;
+      }
     } catch (err) {
       console.error(err);
       setErro("Falha na comunicação com o servidor. Verifique sua conexão e tente novamente.");
@@ -379,7 +391,7 @@ export function ModalInscricao({
         </div>
 
         {/* Conteúdo rolável */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+        <div ref={containerScrollRef} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
           {/* TELA DE SUCESSO */}
           {sucessoData ? (
             <div className="text-center space-y-6 animate-fadeIn py-2">
