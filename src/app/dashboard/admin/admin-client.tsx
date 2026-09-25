@@ -32,7 +32,7 @@ import {
   X,
   ClipboardList,
 } from "lucide-react";
-import { formatarData, formatarDataHora, formatarFaixaPrecos, normalizarModelos } from "@/lib/utils";
+import { formatarData, formatarDataHora, formatarDataHoraLimite, formatarFaixaPrecos, normalizarModelos } from "@/lib/utils";
 import { InputDataBr } from "@/components/ui/input-data-br";
 import { ModalCampanha } from "@/components/dashboard/modal-campanha";
 import { ModalCampanhaInscricao } from "@/components/dashboard/modal-campanha-inscricao";
@@ -1462,7 +1462,9 @@ export function AdminPanelClient() {
               <p className="text-xs text-neutral-500 py-4">Nenhuma campanha de inscrição publicada até o momento.</p>
             ) : (
               <div className="space-y-4">
-                {campanhasInscricao.map((camp) => (
+                {campanhasInscricao.map((camp) => {
+                  const expirada = camp.expirada ?? (camp.dataLimite ? new Date(camp.dataLimite) <= new Date() : false);
+                  return (
                   <div
                     key={camp.id}
                     className="p-5 rounded-2xl bg-neutral-50 dark:bg-[#1a1d26] border border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs"
@@ -1485,12 +1487,14 @@ export function AdminPanelClient() {
                           </h3>
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                              camp.ativa
+                              expirada
+                                ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                                : camp.ativa
                                 ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                                 : "bg-neutral-500/20 text-neutral-500"
                             }`}
                           >
-                            {camp.ativa ? "Ativa na Home" : "Pausada"}
+                            {expirada ? "Expirada (oculta da Home)" : camp.ativa ? "Ativa na Home" : "Pausada"}
                           </span>
                         </div>
 
@@ -1499,7 +1503,9 @@ export function AdminPanelClient() {
                         </p>
 
                         <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-400 pt-0.5">
-                          <span>Data Limite: {formatarData(camp.dataLimite)}</span>
+                          <span className={expirada ? "text-amber-600 dark:text-amber-400 font-bold" : ""}>
+                            Data Limite: {formatarDataHoraLimite(camp.dataLimite)} {expirada ? "(Encerrada)" : ""}
+                          </span>
                           <span>•</span>
                           <span className="font-bold text-neutral-700 dark:text-neutral-300">
                             {camp.requerPagamento
@@ -1555,7 +1561,7 @@ export function AdminPanelClient() {
                       </button>
                     </div>
                   </div>
-                ))}
+                ); })}
               </div>
             )}
           </div>
@@ -1622,17 +1628,22 @@ export function AdminPanelClient() {
 
                         <div className="space-y-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                                camp.expirada
-                                  ? "bg-neutral-200 text-neutral-600"
-                                  : camp.ativa
-                                  ? "bg-emerald-500 text-white"
-                                  : "bg-neutral-200 text-neutral-600"
-                              }`}
-                            >
-                              {camp.expirada ? "Expirada (oculta)" : camp.ativa ? "Ativa na Home" : "Pausada"}
-                            </span>
+                            {(() => {
+                              const expCam = camp.expirada ?? (camp.dataFim ? new Date(camp.dataFim) <= new Date() : false);
+                              return (
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                    expCam
+                                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                                      : camp.ativa
+                                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                                      : "bg-neutral-500/20 text-neutral-500"
+                                  }`}
+                                >
+                                  {expCam ? "Expirada (oculta da Home)" : camp.ativa ? "Ativa na Home" : "Pausada"}
+                                </span>
+                              );
+                            })()}
                             <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
                               {formatarFaixaPrecos(camp.modelos, camp.precoUnitario)}
                             </span>

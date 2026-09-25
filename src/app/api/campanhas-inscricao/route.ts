@@ -22,7 +22,11 @@ export async function GET(req: NextRequest) {
           },
         },
       });
-      return NextResponse.json({ campanhas });
+      const formatadas = campanhas.map((c) => ({
+        ...c,
+        expirada: new Date(c.dataLimite) <= agora,
+      }));
+      return NextResponse.json({ campanhas: formatadas });
     }
 
     // Listagem pública para a homepage

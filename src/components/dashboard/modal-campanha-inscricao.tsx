@@ -494,17 +494,33 @@ export function ModalCampanhaInscricao({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 pt-6">
-                <input
-                  type="checkbox"
-                  id="campanhaAtiva"
-                  checked={ativa}
-                  onChange={(e) => setAtiva(e.target.checked)}
-                  className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
-                />
-                <label htmlFor="campanhaAtiva" className="text-xs font-bold cursor-pointer">
-                  Publicação Ativa no Banner da Home
-                </label>
+              <div className="flex flex-col gap-1 pt-6">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="campanhaAtiva"
+                    checked={ativa}
+                    onChange={(e) => setAtiva(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
+                  />
+                  <label htmlFor="campanhaAtiva" className="text-xs font-bold cursor-pointer">
+                    Publicação Ativa no Banner da Home
+                  </label>
+                </div>
+                {(() => {
+                  if (!dataLimiteIso) return null;
+                  const [hL, mL] = (horaLimite || "23:59").split(":");
+                  const [aL, mesL, dL] = dataLimiteIso.split("-");
+                  const dLimite = new Date(Number(aL), Number(mesL) - 1, Number(dL), Number(hL || 23), Number(mL || 59));
+                  if (dLimite <= new Date()) {
+                    return (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold pl-6">
+                        ⚠️ O prazo decorreu e esta inscrição está oculta da Home. Para voltar a exibi-la, estenda a data e horário limite acima.
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           </div>
