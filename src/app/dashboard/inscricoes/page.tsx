@@ -506,6 +506,7 @@ export default function InscricoesPage() {
       [
         "Cód.",
         "Participante",
+        "CPF",
         "Sexo",
         "Idade",
         "Telefone",
@@ -521,6 +522,7 @@ export default function InscricoesPage() {
 
     const body = inscricoesFiltradas.map((i) => {
       const idade = i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-";
+      const cpfFormatado = i.cpf ? formatarCpf(i.cpf) : "-";
       const saude = [
         i.possuiAlergia ? `Alergia: ${i.descricaoAlergia || "Sim"}` : "",
         i.intoleranciaGluten ? "Glúten" : "",
@@ -558,6 +560,7 @@ export default function InscricoesPage() {
       return [
         i.codigoInscricao,
         i.nomeCompleto,
+        cpfFormatado,
         i.sexo || "-",
         idade,
         i.telefone,
