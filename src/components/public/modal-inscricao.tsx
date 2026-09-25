@@ -21,7 +21,7 @@ import {
   ClipboardList,
   Shirt,
 } from "lucide-react";
-import { formatarCpf, formatarTelefone, normalizarModelos } from "@/lib/utils";
+import { formatarCpf, formatarTelefone, normalizarModelos, formatarDataHoraLimite } from "@/lib/utils";
 import { calcularIdade } from "@/lib/rules";
 import { InputDataBr } from "@/components/ui/input-data-br";
 
@@ -43,6 +43,7 @@ export interface CampanhaInscricaoData {
   descricao?: string | null;
   fotoUrl?: string | null;
   dataLimite: string | Date;
+  dataLimitePagamento?: string | Date | null;
   ativa: boolean;
   requerPagamento: boolean;
   valor: number;
@@ -162,6 +163,7 @@ export function ModalInscricao({
     linkWhatsappSecretario: string;
     linkWhatsappTesoureiro?: string;
     linkGrupoWhatsapp?: string | null;
+    dataLimitePagamento?: string | Date | null;
     valorTotal: number;
     valorPagoAgora: number;
   } | null>(null);
@@ -312,6 +314,7 @@ export function ModalInscricao({
         linkWhatsappSecretario: data.linkWhatsappSecretario,
         linkWhatsappTesoureiro: data.linkWhatsappTesoureiro,
         linkGrupoWhatsapp: data.linkGrupoWhatsapp || campanha.linkGrupoWhatsapp || null,
+        dataLimitePagamento: data.dataLimitePagamento || campanha.dataLimitePagamento || null,
         valorTotal: data.valorTotal,
         valorPagoAgora: data.valorPagoAgora,
       });
@@ -399,122 +402,270 @@ export function ModalInscricao({
                 </div>
               </div>
 
-              {/* Botão de confirmação para o WhatsApp do SECRETÁRIO */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border-2 border-[#FFC72C] text-left space-y-3">
-                <div className="flex items-center gap-2 text-neutral-950 dark:text-amber-300 font-black text-xs sm:text-sm">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>Passo Obrigatório: Confirme com o Secretário</span>
-                </div>
-                <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                  Para validar sua vaga na lista oficial, envie a confirmação instantânea para o WhatsApp do nosso secretário. Já preparamos a mensagem para você!
-                </p>
-                <a
-                  href={sucessoData.linkWhatsappSecretario}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
-                >
-                  <MessageCircle className="w-5 h-5 fill-white" />
-                  <span>Confirmar no WhatsApp do Secretário</span>
-                </a>
-              </div>
+              {/* BLOCOS DE CONCLUSÃO DE INSCRIÇÃO CONFORME A FORMA DE PAGAMENTO E GRUPO DE WHATSAPP */}
+              {(() => {
+                const temGrupo = Boolean(sucessoData.linkGrupoWhatsapp);
+                const isPix = sucessoData.valorTotal > 0 && sucessoData.inscricao?.formaPagamento === "PIX";
+                const isDinheiro = sucessoData.valorTotal > 0 && sucessoData.inscricao?.formaPagamento === "DINHEIRO";
 
-              {/* Botão de Entrada no Grupo Oficial de WhatsApp do Evento */}
-              {sucessoData.linkGrupoWhatsapp && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 text-left space-y-3">
-                  <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-300 font-black text-xs sm:text-sm">
-                    <MessageCircle className="w-4 h-4 text-emerald-500" />
-                    <span>Grupo Oficial de WhatsApp do Evento</span>
-                  </div>
-                  <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
-                    Entre agora no grupo de WhatsApp oficial para não perder comunicados, caronas, programação e orientações deste encontro.
-                  </p>
-                  <a
-                    href={sucessoData.linkGrupoWhatsapp}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={handleEntrarNoGrupoWhatsapp}
-                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
-                  >
-                    <MessageCircle className="w-5 h-5 fill-white" />
-                    <span>{clicouGrupoWhatsapp ? "Acessar Grupo Novamente" : "Entrar no Grupo de WhatsApp"}</span>
-                  </a>
-                  {clicouGrupoWhatsapp && (
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5 pt-0.5">
-                      <Check className="w-3.5 h-3.5" />
-                      Seu acesso ao grupo foi registrado com sucesso!
+                const renderCardSecretario = () => (
+                  <div key="card-secretario" className="p-4 sm:p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border-2 border-[#FFC72C] text-left space-y-3">
+                    <div className="flex items-center gap-2 text-neutral-950 dark:text-amber-300 font-black text-xs sm:text-sm">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Confirme com o Secretário</span>
+                    </div>
+                    <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                      Para validar sua vaga na lista oficial, envie a confirmação instantânea para o WhatsApp do nosso secretário. Já preparamos a mensagem para você!
                     </p>
-                  )}
-                </div>
-              )}
-
-              {/* Seção Financeira / Pix (Se houver valor a pagar) */}
-              {sucessoData.valorTotal > 0 && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 text-left space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs uppercase tracking-wider text-neutral-500">
-                      Pagamento da Inscrição {sucessoData.inscricao.pediuCamiseta ? "+ Camiseta" : ""}
-                    </span>
-                    <span className="text-xs font-black text-neutral-900 dark:text-white">
-                      R$ {sucessoData.valorPagoAgora.toFixed(2).replace(".", ",")}
-                    </span>
+                    <a
+                      href={sucessoData.linkWhatsappSecretario}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+                    >
+                      <MessageCircle className="w-5 h-5 fill-white" />
+                      <span>Confirmar no WhatsApp do Secretário</span>
+                    </a>
                   </div>
+                );
 
-                  {sucessoData.inscricao.pediuCamiseta && (
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-300">
-                      <span className="font-black flex items-center gap-1.5">
-                        <Shirt className="w-3.5 h-3.5 text-purple-500" />
-                        Camiseta incluída no pedido:
-                      </span>
-                      <span className="text-[11px] block mt-0.5">
-                        Modelo: <strong>{sucessoData.inscricao.camisetaModelo}</strong> | Tamanho: <strong>{sucessoData.inscricao.camisetaTamanho}</strong>
-                        {sucessoData.inscricao.camisetaNomePersonalizado && ` | Nome: ${sucessoData.inscricao.camisetaNomePersonalizado}`}
-                        {sucessoData.inscricao.camisetaNumeroPersonalizado && ` | Nº ${sucessoData.inscricao.camisetaNumeroPersonalizado}`}
-                      </span>
-                    </div>
-                  )}
-
-                  {sucessoData.codigoPix && (
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">
-                        Pix Copia e Cola:
-                      </label>
-                      <div className="relative">
-                        <textarea
-                          readOnly
-                          value={sucessoData.codigoPix}
-                          className="w-full text-[11px] font-mono p-2.5 pr-24 rounded-xl bg-white dark:bg-black border border-neutral-300 dark:border-neutral-700 h-16 resize-none focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleCopiarPix}
-                          className="absolute right-2 top-2 px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-black text-xs font-black flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-                        >
-                          {copiadoPix ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                          <span>{copiadoPix ? "Copiado!" : "Copiar"}</span>
-                        </button>
+                const renderCardGrupoWhatsapp = () => {
+                  if (!sucessoData.linkGrupoWhatsapp) return null;
+                  return (
+                    <div key="card-grupo" className="p-4 sm:p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 text-left space-y-3">
+                      <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-300 font-black text-xs sm:text-sm">
+                        <MessageCircle className="w-4 h-4 text-emerald-500" />
+                        <span>Grupo Oficial de WhatsApp do Evento</span>
                       </div>
-                    </div>
-                  )}
-
-                  {sucessoData.linkWhatsappTesoureiro && (
-                    <div>
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-2">
-                        Após pagar, envie o comprovante diretamente para a tesouraria:
+                      <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                        Entre agora no grupo de WhatsApp oficial para não perder comunicados, caronas, programação e orientações deste encontro.
                       </p>
                       <a
-                        href={sucessoData.linkWhatsappTesoureiro}
+                        href={sucessoData.linkGrupoWhatsapp}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full py-2.5 px-4 rounded-xl bg-neutral-900 dark:bg-neutral-800 hover:bg-neutral-800 dark:hover:bg-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors border border-neutral-700"
+                        onClick={handleEntrarNoGrupoWhatsapp}
+                        className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
                       >
-                        <MessageCircle className="w-4 h-4 text-emerald-400" />
-                        <span>Enviar Comprovante ao Tesoureiro</span>
+                        <MessageCircle className="w-5 h-5 fill-white" />
+                        <span>{clicouGrupoWhatsapp ? "Acessar Grupo Novamente" : "Entrar no Grupo de WhatsApp"}</span>
                       </a>
+                      {clicouGrupoWhatsapp && (
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5 pt-0.5">
+                          <Check className="w-3.5 h-3.5" />
+                          Seu acesso ao grupo foi registrado com sucesso!
+                        </p>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+                  );
+                };
+
+                const renderCardPix = () => {
+                  if (sucessoData.valorTotal <= 0) return null;
+                  return (
+                    <div key="card-pix" className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 text-left space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs uppercase tracking-wider text-neutral-500">
+                          Pagamento via PIX {sucessoData.inscricao.pediuCamiseta ? "+ Camiseta" : ""}
+                        </span>
+                        <span className="text-xs font-black text-neutral-900 dark:text-white">
+                          R$ {sucessoData.valorPagoAgora.toFixed(2).replace(".", ",")}
+                        </span>
+                      </div>
+
+                      {sucessoData.dataLimitePagamento && (
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <span>
+                            <strong>Data Limite para Pagamento:</strong> {formatarDataHoraLimite(sucessoData.dataLimitePagamento)}
+                          </span>
+                        </div>
+                      )}
+
+                      {sucessoData.inscricao.pediuCamiseta && (
+                        <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-300">
+                          <span className="font-black flex items-center gap-1.5">
+                            <Shirt className="w-3.5 h-3.5 text-purple-500" />
+                            Camiseta incluída no pedido:
+                          </span>
+                          <span className="text-[11px] block mt-0.5">
+                            Modelo: <strong>{sucessoData.inscricao.camisetaModelo}</strong> | Tamanho: <strong>{sucessoData.inscricao.camisetaTamanho}</strong>
+                            {sucessoData.inscricao.camisetaNomePersonalizado && ` | Nome: ${sucessoData.inscricao.camisetaNomePersonalizado}`}
+                            {sucessoData.inscricao.camisetaNumeroPersonalizado && ` | Nº ${sucessoData.inscricao.camisetaNumeroPersonalizado}`}
+                          </span>
+                        </div>
+                      )}
+
+                      {sucessoData.codigoPix && (
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">
+                            Pix Copia e Cola:
+                          </label>
+                          <div className="relative">
+                            <textarea
+                              readOnly
+                              value={sucessoData.codigoPix}
+                              className="w-full text-[11px] font-mono p-2.5 pr-24 rounded-xl bg-white dark:bg-black border border-neutral-300 dark:border-neutral-700 h-16 resize-none focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleCopiarPix}
+                              className="absolute right-2 top-2 px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-black text-xs font-black flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                            >
+                              {copiadoPix ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{copiadoPix ? "Copiado!" : "Copiar"}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {sucessoData.linkWhatsappTesoureiro && (
+                        <div>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-2">
+                            Após pagar, envie o comprovante diretamente para a tesouraria:
+                          </p>
+                          <a
+                            href={sucessoData.linkWhatsappTesoureiro}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full py-2.5 px-4 rounded-xl bg-neutral-900 dark:bg-neutral-800 hover:bg-neutral-800 dark:hover:bg-neutral-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors border border-neutral-700"
+                          >
+                            <MessageCircle className="w-4 h-4 text-emerald-400" />
+                            <span>Enviar Comprovante ao Tesoureiro</span>
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
+                const renderCardDinheiro = () => {
+                  if (sucessoData.valorTotal <= 0) return null;
+                  return (
+                    <div key="card-dinheiro" className="p-4 sm:p-5 rounded-2xl bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 text-left space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs uppercase tracking-wider text-neutral-500">
+                          Pagamento em Dinheiro {sucessoData.inscricao.pediuCamiseta ? "+ Camiseta" : ""}
+                        </span>
+                        <span className="text-xs font-black text-neutral-900 dark:text-white">
+                          R$ {sucessoData.valorPagoAgora.toFixed(2).replace(".", ",")}
+                        </span>
+                      </div>
+
+                      {sucessoData.dataLimitePagamento && (
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                          <span>
+                            <strong>Data Limite para Pagamento:</strong> {formatarDataHoraLimite(sucessoData.dataLimitePagamento)}
+                          </span>
+                        </div>
+                      )}
+
+                      {sucessoData.inscricao.pediuCamiseta && (
+                        <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-900 dark:text-purple-300">
+                          <span className="font-black flex items-center gap-1.5">
+                            <Shirt className="w-3.5 h-3.5 text-purple-500" />
+                            Camiseta incluída no pedido:
+                          </span>
+                          <span className="text-[11px] block mt-0.5">
+                            Modelo: <strong>{sucessoData.inscricao.camisetaModelo}</strong> | Tamanho: <strong>{sucessoData.inscricao.camisetaTamanho}</strong>
+                            {sucessoData.inscricao.camisetaNomePersonalizado && ` | Nome: ${sucessoData.inscricao.camisetaNomePersonalizado}`}
+                            {sucessoData.inscricao.camisetaNumeroPersonalizado && ` | Nº ${sucessoData.inscricao.camisetaNumeroPersonalizado}`}
+                          </span>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                        Você optou por pagar em dinheiro. Fale com o nosso tesoureiro para acertar o pagamento presencialmente e confirmar sua inscrição.
+                      </p>
+
+                      {sucessoData.linkWhatsappTesoureiro && (
+                        <a
+                          href={sucessoData.linkWhatsappTesoureiro}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+                        >
+                          <MessageCircle className="w-5 h-5 fill-white" />
+                          <span>Falar com o Tesoureiro sobre o Pagamento</span>
+                        </a>
+                      )}
+                    </div>
+                  );
+                };
+
+                // Regra 1: Se grupo no whatsapp e pagamento por pix:
+                // - PIX e enviar comprovante pro tesoureiro
+                // - Grupo do whatsapp
+                // - Confirmação com o secretário
+                if (temGrupo && isPix) {
+                  return (
+                    <>
+                      {renderCardPix()}
+                      {renderCardGrupoWhatsapp()}
+                      {renderCardSecretario()}
+                    </>
+                  );
+                }
+
+                // Regra 2: Se grupo no whatsapp e pagamento por dinheiro:
+                // - Grupo do whatsapp
+                // - Confirmação com secretário
+                // - Falar com o tesoureiro sobre o pagamento
+                if (temGrupo && isDinheiro) {
+                  return (
+                    <>
+                      {renderCardGrupoWhatsapp()}
+                      {renderCardSecretario()}
+                      {renderCardDinheiro()}
+                    </>
+                  );
+                }
+
+                // Regra 3: Se grupo no whatsapp e não pagamento:
+                // - Grupo do whatsapp
+                // - Confirmação com secretário
+                if (temGrupo && !isPix && !isDinheiro) {
+                  return (
+                    <>
+                      {renderCardGrupoWhatsapp()}
+                      {renderCardSecretario()}
+                    </>
+                  );
+                }
+
+                // Regra 4: Se não grupo no Whatsapp e pagamento no PIX:
+                // - PIX e enviar comprovante pro tesoureiro
+                // - Confirmação com o secretário
+                if (!temGrupo && isPix) {
+                  return (
+                    <>
+                      {renderCardPix()}
+                      {renderCardSecretario()}
+                    </>
+                  );
+                }
+
+                // Regra 5: Se não grupo no Whatsapp e pagamento por dinheiro:
+                // - Confirmação com secretário
+                // - Falar com o tesoureiro sobre o pagamento
+                if (!temGrupo && isDinheiro) {
+                  return (
+                    <>
+                      {renderCardSecretario()}
+                      {renderCardDinheiro()}
+                    </>
+                  );
+                }
+
+                // Regra 6: Se não grupo no Whatsapp e não pagamento:
+                // - Confirmação com secretário
+                return (
+                  <>
+                    {renderCardSecretario()}
+                  </>
+                );
+              })()}
 
               <button
                 onClick={handleFechar}

@@ -47,6 +47,21 @@ export function formatarDataHora(data: Date | string | null | undefined): string
   });
 }
 
+export function formatarDataHoraLimite(data: Date | string | null | undefined): string {
+  if (!data) return "-";
+  const d = new Date(data);
+  const dataPt = d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const horaPt = d.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${dataPt} às ${horaPt}`;
+}
+
 /**
  * Aplica máscara instantânea de digitação para DD/MM/AAAA enquanto o usuário digita
  */

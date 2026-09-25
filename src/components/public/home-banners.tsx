@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { AlertTriangle, ChevronDown, ChevronUp, MessageCircle, Sparkles, Shirt, ClipboardList, Calendar, Share2, Check, Copy } from "lucide-react";
-import { normalizarModelos, formatarFaixaPrecos, formatarData } from "@/lib/utils";
+import { normalizarModelos, formatarFaixaPrecos, formatarData, formatarDataHoraLimite } from "@/lib/utils";
 import { ModalPedidoCamiseta, CampanhaModalData } from "@/components/public/modal-pedido-camiseta";
 import { ModalInscricao, CampanhaInscricaoData } from "@/components/public/modal-inscricao";
 
@@ -510,7 +510,7 @@ export function BannerInscricao({ campanha }: BannerInscricaoProps) {
               </span>
               <span className="text-[11px] font-bold text-neutral-800 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-neutral-700" />
-                Limite: {formatarData(campanha.dataLimite)}
+                Limite: {formatarDataHoraLimite(campanha.dataLimite)}
               </span>
             </div>
           </div>

@@ -54,6 +54,7 @@ export async function PUT(
       descricao,
       fotoUrl,
       dataLimite,
+      dataLimitePagamento,
       ativa,
       requerPagamento,
       valor,
@@ -83,6 +84,7 @@ export async function PUT(
     if (descricao !== undefined) data.descricao = descricao ? descricao.trim() : null;
     if (fotoUrl !== undefined) data.fotoUrl = fotoUrl || null;
     if (dataLimite !== undefined) data.dataLimite = new Date(dataLimite);
+    if (dataLimitePagamento !== undefined) data.dataLimitePagamento = dataLimitePagamento ? new Date(dataLimitePagamento) : null;
     if (ativa !== undefined) data.ativa = Boolean(ativa);
     if (requerPagamento !== undefined) data.requerPagamento = Boolean(requerPagamento);
     if (valor !== undefined) data.valor = Number(valor) || 0;

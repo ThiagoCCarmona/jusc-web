@@ -231,6 +231,7 @@ model CampanhaInscricao {
   descricao                  String?
   fotoUrl                    String?
   dataLimite                 DateTime
+  dataLimitePagamento        DateTime?
   ativa                      Boolean           @default(true)
 
   // Financeiro

@@ -23,6 +23,7 @@ export interface CampanhaInscricaoItem {
   descricao?: string | null;
   fotoUrl?: string | null;
   dataLimite: string | Date;
+  dataLimitePagamento?: string | Date | null;
   ativa: boolean;
   requerPagamento: boolean;
   valor: number;
@@ -65,12 +66,16 @@ export function ModalCampanhaInscricao({
   const [fotoUrl, setFotoUrl] = useState("");
   const [dataLimiteBr, setDataLimiteBr] = useState("");
   const [dataLimiteIso, setDataLimiteIso] = useState<string | null>(null);
+  const [horaLimite, setHoraLimite] = useState("23:59");
   const [ativa, setAtiva] = useState(true);
 
   // Financeiro
   const [requerPagamento, setRequerPagamento] = useState(false);
   const [valor, setValor] = useState("0");
   const [permiteParcelamento, setPermiteParcelamento] = useState(false);
+  const [dataLimitePagamentoBr, setDataLimitePagamentoBr] = useState("");
+  const [dataLimitePagamentoIso, setDataLimitePagamentoIso] = useState<string | null>(null);
+  const [horaLimitePagamento, setHoraLimitePagamento] = useState("23:59");
 
   // Pedido de camiseta junto com a inscrição
   const [permiteCamiseta, setPermiteCamiseta] = useState(false);
@@ -121,13 +126,33 @@ export function ModalCampanhaInscricao({
       setDescricao(campanha.descricao || "");
       setFotoUrl(campanha.fotoUrl || "");
       if (campanha.dataLimite) {
-        const iso = new Date(campanha.dataLimite).toISOString().slice(0, 10);
+        const d = new Date(campanha.dataLimite);
+        const iso = d.toISOString().slice(0, 10);
+        const hora = String(d.getHours()).padStart(2, "0");
+        const minuto = String(d.getMinutes()).padStart(2, "0");
         setDataLimiteIso(iso);
         setDataLimiteBr(isoParaBrasileiro(iso));
+        setHoraLimite(`${hora}:${minuto}`);
       } else {
         setDataLimiteBr("");
         setDataLimiteIso(null);
+        setHoraLimite("23:59");
       }
+
+      if (campanha.dataLimitePagamento) {
+        const dPag = new Date(campanha.dataLimitePagamento);
+        const isoPag = dPag.toISOString().slice(0, 10);
+        const horaPag = String(dPag.getHours()).padStart(2, "0");
+        const minutoPag = String(dPag.getMinutes()).padStart(2, "0");
+        setDataLimitePagamentoIso(isoPag);
+        setDataLimitePagamentoBr(isoParaBrasileiro(isoPag));
+        setHoraLimitePagamento(`${horaPag}:${minutoPag}`);
+      } else {
+        setDataLimitePagamentoBr("");
+        setDataLimitePagamentoIso(null);
+        setHoraLimitePagamento("23:59");
+      }
+
       setAtiva(campanha.ativa ?? true);
       setRequerPagamento(campanha.requerPagamento ?? false);
       setValor(String(campanha.valor || 0));
@@ -159,6 +184,10 @@ export function ModalCampanhaInscricao({
       setFotoUrl("");
       setDataLimiteBr("");
       setDataLimiteIso(null);
+      setHoraLimite("23:59");
+      setDataLimitePagamentoBr("");
+      setDataLimitePagamentoIso(null);
+      setHoraLimitePagamento("23:59");
       setAtiva(true);
       setRequerPagamento(false);
       setValor("0");
@@ -229,6 +258,29 @@ export function ModalCampanhaInscricao({
 
     setSalvando(true);
     try {
+      const [horaLim, minLim] = (horaLimite || "23:59").split(":");
+      const [aLim, mLim, dLim] = dataLimiteIso.split("-");
+      const dataLimiteFinal = new Date(
+        Number(aLim),
+        Number(mLim) - 1,
+        Number(dLim),
+        Number(horaLim || 23),
+        Number(minLim || 59)
+      ).toISOString();
+
+      let dataLimitePagamentoFinal: string | null = null;
+      if (requerPagamento && dataLimitePagamentoIso) {
+        const [horaPag, minPag] = (horaLimitePagamento || "23:59").split(":");
+        const [aPag, mPag, dPag] = dataLimitePagamentoIso.split("-");
+        dataLimitePagamentoFinal = new Date(
+          Number(aPag),
+          Number(mPag) - 1,
+          Number(dPag),
+          Number(horaPag || 23),
+          Number(minPag || 59)
+        ).toISOString();
+      }
+
       const url = campanha?.id
         ? `/api/campanhas-inscricao/${campanha.id}`
         : "/api/campanhas-inscricao";
@@ -241,7 +293,8 @@ export function ModalCampanhaInscricao({
           titulo: titulo.trim(),
           descricao: descricao.trim() || null,
           fotoUrl: fotoUrl || null,
-          dataLimite: dataLimiteIso,
+          dataLimite: dataLimiteFinal,
+          dataLimitePagamento: dataLimitePagamentoFinal,
           ativa,
           requerPagamento,
           valor: requerPagamento ? parseFloat(valor.replace(",", ".")) || 0 : 0,
@@ -415,16 +468,30 @@ export function ModalCampanhaInscricao({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">
-                  Data Limite para Inscrições *
+                  Data e Horário de Expiração *
                 </label>
-                <InputDataBr
-                  value={dataLimiteBr}
-                  onChange={(br, iso) => {
-                    setDataLimiteBr(br);
-                    setDataLimiteIso(iso);
-                  }}
-                  placeholder="DD/MM/AAAA"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <InputDataBr
+                      value={dataLimiteBr}
+                      onChange={(br, iso) => {
+                        setDataLimiteBr(br);
+                        setDataLimiteIso(iso);
+                      }}
+                      placeholder="DD/MM/AAAA"
+                    />
+                  </div>
+                  <input
+                    type="time"
+                    value={horaLimite}
+                    onChange={(e) => setHoraLimite(e.target.value)}
+                    className="w-24 px-2.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                    title="Horário de expiração das inscrições"
+                  />
+                </div>
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Aparece no banner da home (ex.: 25/09/2026 às 23:59).
+                </p>
               </div>
 
               <div className="flex items-center gap-2 pt-6">
@@ -463,33 +530,63 @@ export function ModalCampanhaInscricao({
             </div>
 
             {requerPagamento && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-neutral-50 dark:bg-[#16181f] border border-neutral-200 dark:border-neutral-800 animate-fadeIn">
-                <div>
-                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">
-                    Valor da Inscrição (R$) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required={requerPagamento}
-                    value={valor}
-                    onChange={(e) => setValor(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
-                  />
+              <div className="space-y-4 p-4 rounded-2xl bg-neutral-50 dark:bg-[#16181f] border border-neutral-200 dark:border-neutral-800 animate-fadeIn">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">
+                      Valor da Inscrição (R$) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required={requerPagamento}
+                      value={valor}
+                      onChange={(e) => setValor(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-6">
+                    <input
+                      type="checkbox"
+                      id="permiteParcelamento"
+                      checked={permiteParcelamento}
+                      onChange={(e) => setPermiteParcelamento(e.target.checked)}
+                      className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
+                    />
+                    <label htmlFor="permiteParcelamento" className="text-xs font-bold cursor-pointer">
+                      Permitir quitação 50% Entrada + 50% no Evento
+                    </label>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    id="permiteParcelamento"
-                    checked={permiteParcelamento}
-                    onChange={(e) => setPermiteParcelamento(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
-                  />
-                  <label htmlFor="permiteParcelamento" className="text-xs font-bold cursor-pointer">
-                    Permitir quitação 50% Entrada + 50% no Evento
+                <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
+                  <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">
+                    Data e Horário Limite para Pagamento (Opcional)
                   </label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <InputDataBr
+                        value={dataLimitePagamentoBr}
+                        onChange={(br, iso) => {
+                          setDataLimitePagamentoBr(br);
+                          setDataLimitePagamentoIso(iso);
+                        }}
+                        placeholder="DD/MM/AAAA"
+                      />
+                    </div>
+                    <input
+                      type="time"
+                      value={horaLimitePagamento}
+                      onChange={(e) => setHoraLimitePagamento(e.target.value)}
+                      className="w-24 px-2.5 py-2.5 rounded-xl bg-white dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                      title="Horário limite para pagamento"
+                    />
+                  </div>
+                  <p className="text-[10px] text-neutral-500 mt-1">
+                    Se preenchido, será informado nas mensagens de comprovante para o tesoureiro e na confirmação.
+                  </p>
                 </div>
               </div>
             )}

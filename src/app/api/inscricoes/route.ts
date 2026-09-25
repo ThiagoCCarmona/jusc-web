@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
             valor: true,
             fotoUrl: true,
             dataLimite: true,
+            dataLimitePagamento: true,
             linkGrupoWhatsapp: true,
           },
         },
@@ -212,9 +213,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Gerar código único da inscrição, ex: INS-8492
-    const randomNum = randomInt(1000, 10000);
-    const codigoInscricao = `INS-${randomNum}`;
+    // Gerar código único e sequencial da inscrição, ex: INS-0001, INS-0002...
+    const totalInscricoes = await prisma.inscricaoEvento.count();
+    let proximoNumero = totalInscricoes + 1;
+    let codigoInscricao = `INS-${String(proximoNumero).padStart(4, "0")}`;
+    while (await prisma.inscricaoEvento.findUnique({ where: { codigoInscricao } })) {
+      proximoNumero++;
+      codigoInscricao = `INS-${String(proximoNumero).padStart(4, "0")}`;
+    }
 
     // Configurações financeiras (Inscrição + Camiseta se houver)
     const valorInscricao = campanha.requerPagamento ? campanha.valor : 0;
@@ -384,15 +390,29 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const msgTesoureiro =
-        `Olá, ${tesoureiroNome}! Segue o comprovante de pagamento da minha inscrição no evento *${campanha.titulo}*.\n\n` +
-        `📋 *Código da Inscrição:* ${codigoInscricao}\n` +
-        `👤 *Participante:* ${nomeCompleto.trim()}\n` +
-        camisetaTxt +
-        `💳 *Forma:* ${formaPag} (${tipoQuitacao === "PARCELADO_50_50" ? "50% Entrada" : "Valor Integral"})\n` +
-        `💵 *Valor Pago:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}\n` +
-        (tipoQuitacao === "PARCELADO_50_50" ? `⏳ *Saldo Restante no Evento:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}\n` : "") +
-        `\nPor gentileza, confirme o recebimento. Obrigado!`;
+      const dataLimiteTxt = campanha.dataLimitePagamento
+        ? `⏳ *Data Limite para Pagamento:* ${new Date(campanha.dataLimitePagamento).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}\n`
+        : "";
+
+      const msgTesoureiro = formaPag === "DINHEIRO"
+        ? `Olá, ${tesoureiroNome}! Gostaria de combinar o pagamento em dinheiro da minha inscrição no evento *${campanha.titulo}*.\n\n` +
+          `📋 *Código da Inscrição:* ${codigoInscricao}\n` +
+          `👤 *Participante:* ${nomeCompleto.trim()}\n` +
+          camisetaTxt +
+          `💵 *Valor a Pagar:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}` +
+          (tipoQuitacao === "PARCELADO_50_50" ? " (50% Entrada)\n" : "\n") +
+          dataLimiteTxt +
+          (tipoQuitacao === "PARCELADO_50_50" ? `⏳ *Saldo Restante no Evento:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}\n` : "") +
+          `\nPodemos combinar a entrega do valor? Aguardo seu retorno! Obrigado.`
+        : `Olá, ${tesoureiroNome}! Segue o comprovante de pagamento da minha inscrição no evento *${campanha.titulo}*.\n\n` +
+          `📋 *Código da Inscrição:* ${codigoInscricao}\n` +
+          `👤 *Participante:* ${nomeCompleto.trim()}\n` +
+          camisetaTxt +
+          `💳 *Forma:* PIX (${tipoQuitacao === "PARCELADO_50_50" ? "50% Entrada" : "Valor Integral"})\n` +
+          `💵 *Valor Pago:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}\n` +
+          dataLimiteTxt +
+          (tipoQuitacao === "PARCELADO_50_50" ? `⏳ *Saldo Restante no Evento:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}\n` : "") +
+          `\nPor gentileza, confirme o recebimento. Obrigado!`;
 
       linkWhatsappTesoureiro = `https://api.whatsapp.com/send?phone=${telTesoureiroLimpo}&text=${encodeURIComponent(msgTesoureiro)}`;
     }
@@ -404,6 +424,7 @@ export async function POST(req: NextRequest) {
         linkWhatsappSecretario,
         linkWhatsappTesoureiro,
         linkGrupoWhatsapp: campanha.linkGrupoWhatsapp || null,
+        dataLimitePagamento: campanha.dataLimitePagamento || null,
         valorTotal,
         valorPagoAgora,
       },
