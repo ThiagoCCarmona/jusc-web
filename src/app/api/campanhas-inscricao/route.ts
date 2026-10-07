@@ -37,6 +37,13 @@ export async function GET(req: NextRequest) {
       },
       include: {
         campanhaCamiseta: true,
+        _count: {
+          select: {
+            inscricoes: {
+              where: { status: { not: "CANCELADA" } },
+            },
+          },
+        },
       },
       orderBy: { criadoEm: "desc" },
     });
@@ -74,6 +81,8 @@ export async function POST(req: NextRequest) {
       dataLimite,
       dataLimitePagamento,
       ativa = true,
+      ocultoNaHome = false,
+      limiteVagas = null,
       requerPagamento = false,
       valor = 0,
       permiteParcelamento = false,
@@ -112,6 +121,8 @@ export async function POST(req: NextRequest) {
         dataLimite: new Date(dataLimite),
         dataLimitePagamento: dataLimitePagamento ? new Date(dataLimitePagamento) : null,
         ativa: Boolean(ativa),
+        ocultoNaHome: Boolean(ocultoNaHome),
+        limiteVagas: limiteVagas ? Number(limiteVagas) : null,
         requerPagamento: Boolean(requerPagamento),
         valor: Number(valor) || 0,
         permiteParcelamento: Boolean(permiteParcelamento),

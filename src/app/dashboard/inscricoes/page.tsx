@@ -282,10 +282,11 @@ export default function InscricoesPage() {
 
       if (busca.trim()) {
         const termo = busca.toLowerCase();
+        const termoDigitos = busca.replace(/\D/g, "");
         const codMatch = i.codigoInscricao.toLowerCase().includes(termo);
         const nomeMatch = i.nomeCompleto.toLowerCase().includes(termo);
-        const telMatch = i.telefone.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
-        const cpfMatch = i.cpf ? i.cpf.replace(/\D/g, "").includes(termo.replace(/\D/g, "")) : false;
+        const telMatch = termoDigitos.length > 0 && i.telefone.replace(/\D/g, "").includes(termoDigitos);
+        const cpfMatch = termoDigitos.length > 0 && !!i.cpf && i.cpf.replace(/\D/g, "").includes(termoDigitos);
         const respMatch = i.nomeResponsavel ? i.nomeResponsavel.toLowerCase().includes(termo) : false;
         if (!codMatch && !nomeMatch && !telMatch && !cpfMatch && !respMatch) return false;
       }

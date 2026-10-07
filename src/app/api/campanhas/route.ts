@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
       permiteNome,
       permiteNumero,
       dataFim,
+      ocultoNaHome = false,
     } = body;
 
     if (!titulo || !precoUnitario || !dataFim) {
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
         permiteNumero: Boolean(permiteNumero),
         dataFim: new Date(dataFim),
         ativa: true,
+        ocultoNaHome: Boolean(ocultoNaHome),
       },
     });
 

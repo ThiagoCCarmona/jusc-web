@@ -25,6 +25,8 @@ export interface CampanhaInscricaoItem {
   dataLimite: string | Date;
   dataLimitePagamento?: string | Date | null;
   ativa: boolean;
+  ocultoNaHome?: boolean;
+  limiteVagas?: number | null;
   requerPagamento: boolean;
   valor: number;
   permiteParcelamento: boolean;
@@ -68,6 +70,8 @@ export function ModalCampanhaInscricao({
   const [dataLimiteIso, setDataLimiteIso] = useState<string | null>(null);
   const [horaLimite, setHoraLimite] = useState("23:59");
   const [ativa, setAtiva] = useState(true);
+  const [ocultoNaHome, setOcultoNaHome] = useState(false);
+  const [limiteVagas, setLimiteVagas] = useState("");
 
   // Financeiro
   const [requerPagamento, setRequerPagamento] = useState(false);
@@ -154,6 +158,8 @@ export function ModalCampanhaInscricao({
       }
 
       setAtiva(campanha.ativa ?? true);
+      setOcultoNaHome(campanha.ocultoNaHome ?? false);
+      setLimiteVagas(campanha.limiteVagas ? String(campanha.limiteVagas) : "");
       setRequerPagamento(campanha.requerPagamento ?? false);
       setValor(String(campanha.valor || 0));
       setPermiteParcelamento(campanha.permiteParcelamento ?? false);
@@ -189,6 +195,8 @@ export function ModalCampanhaInscricao({
       setDataLimitePagamentoIso(null);
       setHoraLimitePagamento("23:59");
       setAtiva(true);
+      setOcultoNaHome(false);
+      setLimiteVagas("");
       setRequerPagamento(false);
       setValor("0");
       setPermiteParcelamento(false);
@@ -296,6 +304,8 @@ export function ModalCampanhaInscricao({
           dataLimite: dataLimiteFinal,
           dataLimitePagamento: dataLimitePagamentoFinal,
           ativa,
+          ocultoNaHome,
+          limiteVagas: limiteVagas ? parseInt(limiteVagas, 10) : null,
           requerPagamento,
           valor: requerPagamento ? parseFloat(valor.replace(",", ".")) || 0 : 0,
           permiteParcelamento: requerPagamento ? permiteParcelamento : false,
@@ -521,6 +531,44 @@ export function ModalCampanhaInscricao({
                   }
                   return null;
                 })()}
+              </div>
+            </div>
+
+            {/* Limite de Vagas e Visibilidade */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              <div>
+                <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">
+                  Limite Máximo de Vagas (opcional)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={limiteVagas}
+                  onChange={(e) => setLimiteVagas(e.target.value)}
+                  placeholder="Ex.: 50 (deixe vazio para vagas ilimitadas)"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  Se informado, o banner mostrará as vagas restantes e travará novas inscrições ao esgotar.
+                </p>
+              </div>
+
+              <div className="flex flex-col justify-center pt-2 sm:pt-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="ocultoNaHome"
+                    checked={ocultoNaHome}
+                    onChange={(e) => setOcultoNaHome(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
+                  />
+                  <label htmlFor="ocultoNaHome" className="text-xs font-bold cursor-pointer text-neutral-800 dark:text-neutral-200">
+                    Ocultar do banner da Home (Disponível apenas por link direto)
+                  </label>
+                </div>
+                <p className="text-[10px] text-neutral-500 mt-1 pl-6">
+                  Se marcado, o evento não aparece na página inicial, mas quem tiver o link pode se inscrever normalmente.
+                </p>
               </div>
             </div>
           </div>

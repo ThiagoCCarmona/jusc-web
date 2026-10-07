@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
     const {
       nomeCompleto,
       apelido,
+      cpf,
       sexo,
       telefone,
       dataNascimento,
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
       data: {
         nomeCompleto: nomeCompleto.trim(),
         apelido: apelido?.trim() || null,
+        cpf: cpf?.trim() || null,
         sexo: sexo === "FEMININO" ? "FEMININO" : "MASCULINO",
         telefone: telefone.trim(),
         dataNascimento: new Date(dataNascimento),

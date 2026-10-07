@@ -35,6 +35,7 @@ model Integrante {
   nomeResponsavel        String
   telefoneResponsavel    String
   fotoUrl                String?
+  cpf                    String?
   sexo                   String?   @default("MASCULINO") // "MASCULINO" | "FEMININO"
 
   // Lógica de tempo de grupo com 3 níveis de precisão
@@ -136,6 +137,7 @@ model CampanhaCamiseta {
   permiteNumero       Boolean          @default(false)
   dataFim             DateTime
   ativa               Boolean          @default(true)
+  ocultoNaHome        Boolean          @default(false)
   criadoEm            DateTime         @default(now())
   atualizadoEm        DateTime         @updatedAt
 
@@ -233,6 +235,8 @@ model CampanhaInscricao {
   dataLimite                 DateTime
   dataLimitePagamento        DateTime?
   ativa                      Boolean           @default(true)
+  ocultoNaHome               Boolean           @default(false)
+  limiteVagas                Int?
 
   // Financeiro
   requerPagamento            Boolean           @default(false)

@@ -198,9 +198,10 @@ export default function PedidosPage() {
       }
       if (busca.trim()) {
         const termo = busca.toLowerCase();
+        const termoDigitos = busca.replace(/\D/g, "");
         const codMatch = p.codigoPedido.toLowerCase().includes(termo);
         const nomeMatch = p.nomeComprador.toLowerCase().includes(termo);
-        const telMatch = p.telefoneComprador.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const telMatch = termoDigitos.length > 0 && p.telefoneComprador.replace(/\D/g, "").includes(termoDigitos);
         const modMatch = p.modelo.toLowerCase().includes(termo);
         const persMatch =
           p.personalizacaoNome?.toLowerCase().includes(termo) ||

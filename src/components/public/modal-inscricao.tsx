@@ -67,6 +67,10 @@ export interface CampanhaInscricaoData {
   campoBatismo: boolean;
   campoPrimeiraEucaristia: boolean;
   campoCrisma: boolean;
+  limiteVagas?: number | null;
+  totalInscricoes?: number;
+  vagasRestantes?: number | null;
+  _count?: { inscricoes: number };
 }
 
 interface ModalInscricaoProps {
@@ -80,6 +84,11 @@ export function ModalInscricao({
   aberto,
   onFechar,
 }: ModalInscricaoProps) {
+  const totalInscritos = (campanha as any)._count?.inscricoes ?? (campanha as any).totalInscritos ?? 0;
+  const temLimiteVagas = typeof campanha.limiteVagas === "number" && campanha.limiteVagas > 0;
+  const vagasRestantes = temLimiteVagas ? Math.max(0, (campanha.limiteVagas ?? 0) - totalInscritos) : null;
+  const vagasEsgotadas = temLimiteVagas && vagasRestantes === 0;
+
   // Form State
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [sexo, setSexo] = useState<"MASCULINO" | "FEMININO" | "">("");
@@ -689,6 +698,12 @@ export function ModalInscricao({
           ) : (
             /* FORMULÁRIO DE INSCRIÇÃO */
             <form onSubmit={handleEnviarInscricao} className="space-y-5">
+              {vagasEsgotadas && (
+                <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 font-bold text-xs flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600" />
+                  <span>As vagas para esta inscrição foram esgotadas. Novas inscrições estão encerradas.</span>
+                </div>
+              )}
               {/* Foto ou Capa da Inscrição (se houver) */}
               {campanha.fotoUrl && (
                 <div className="relative w-full rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-800 shadow-lg bg-neutral-950 flex items-center justify-center min-h-[190px] max-h-[380px]">
@@ -1300,13 +1315,18 @@ export function ModalInscricao({
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={enviando}
+                  disabled={enviando || vagasEsgotadas}
                   className="w-full py-4 rounded-2xl bg-[#FFC72C] hover:bg-amber-400 active:scale-98 text-neutral-950 font-black text-sm shadow-xl shadow-[#FFC72C]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {enviando ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                       <span>Registrando sua Inscrição...</span>
+                    </>
+                  ) : vagasEsgotadas ? (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-red-700" />
+                      <span>Vagas Esgotadas</span>
                     </>
                   ) : (
                     <>

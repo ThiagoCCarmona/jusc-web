@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import {
   formatarTelefone,
+  formatarCpf,
   formatarDataDigitacao,
   formatarNumeroClj,
   isoParaBrasileiro,
@@ -45,6 +46,7 @@ export default function EditarIntegrantePage({
 
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [apelido, setApelido] = useState("");
+  const [cpf, setCpf] = useState("");
   const [sexo, setSexo] = useState<"MASCULINO" | "FEMININO">("MASCULINO");
   const [telefone, setTelefone] = useState("");
   const [dataNascimento, setDataNascimento] = useState(""); // Formato DD/MM/AAAA
@@ -103,6 +105,7 @@ export default function EditarIntegrantePage({
 
         setNomeCompleto(int.nomeCompleto || "");
         setApelido(int.apelido || "");
+        setCpf(formatarCpf(int.cpf || ""));
         setSexo(int.sexo === "FEMININO" ? "FEMININO" : "MASCULINO");
         setTelefone(formatarTelefone(int.telefone || ""));
         setDataNascimento(isoParaBrasileiro(int.dataNascimento));
@@ -211,6 +214,7 @@ export default function EditarIntegrantePage({
         body: JSON.stringify({
           nomeCompleto,
           apelido,
+          cpf,
           sexo,
           telefone,
           dataNascimento: dataNascIso,
@@ -380,6 +384,20 @@ export default function EditarIntegrantePage({
                   value={apelido}
                   onChange={(e) => setApelido(e.target.value)}
                   placeholder="Ex.: Biel"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  CPF (opcional)
+                </label>
+                <input
+                  type="text"
+                  value={cpf}
+                  onChange={(e) => setCpf(formatarCpf(e.target.value))}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
                 />
               </div>

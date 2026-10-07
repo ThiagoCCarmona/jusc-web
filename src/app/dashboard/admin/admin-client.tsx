@@ -1489,12 +1489,20 @@ export function AdminPanelClient() {
                             className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
                               expirada
                                 ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                                : camp.ocultoNaHome
+                                ? "bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30"
                                 : camp.ativa
                                 ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                                 : "bg-neutral-500/20 text-neutral-500"
                             }`}
                           >
-                            {expirada ? "Expirada (oculta da Home)" : camp.ativa ? "Ativa na Home" : "Pausada"}
+                            {expirada
+                              ? "Expirada (oculta da Home)"
+                              : camp.ocultoNaHome
+                              ? "Oculta da Home (Apenas por Link)"
+                              : camp.ativa
+                              ? "Ativa na Home"
+                              : "Pausada"}
                           </span>
                         </div>
 
@@ -1515,7 +1523,16 @@ export function AdminPanelClient() {
                           <span>•</span>
                           <span className="text-amber-600 dark:text-amber-400 font-bold">
                             {camp._count?.inscricoes ?? 0} inscrito(s)
+                            {camp.limiteVagas && camp.limiteVagas > 0 ? ` (Limite: ${camp.limiteVagas})` : ""}
                           </span>
+                          {camp.limiteVagas && camp.limiteVagas > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="text-blue-600 dark:text-blue-400 font-bold">
+                                {Math.max(0, camp.limiteVagas - (camp._count?.inscricoes ?? 0))} vaga(s) restante(s)
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1635,12 +1652,20 @@ export function AdminPanelClient() {
                                   className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
                                     expCam
                                       ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+                                      : camp.ocultoNaHome
+                                      ? "bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30"
                                       : camp.ativa
                                       ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                                       : "bg-neutral-500/20 text-neutral-500"
                                   }`}
                                 >
-                                  {expCam ? "Expirada (oculta da Home)" : camp.ativa ? "Ativa na Home" : "Pausada"}
+                                  {expCam
+                                    ? "Expirada (oculta da Home)"
+                                    : camp.ocultoNaHome
+                                    ? "Oculta da Home (Apenas por Link)"
+                                    : camp.ativa
+                                    ? "Ativa na Home"
+                                    : "Pausada"}
                                 </span>
                               );
                             })()}

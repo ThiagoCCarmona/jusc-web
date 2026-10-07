@@ -437,6 +437,11 @@ export function BannerInscricao({ campanha }: BannerInscricaoProps) {
   const [copiadoLink, setCopiadoLink] = useState(false);
   const fotoCapa = campanha.fotoUrl || "/assets/logo-jusc.jpeg";
 
+  const totalInscritos = (campanha as any)._count?.inscricoes ?? (campanha as any).totalInscritos ?? 0;
+  const temLimiteVagas = typeof campanha.limiteVagas === "number" && campanha.limiteVagas > 0;
+  const vagasRestantes = temLimiteVagas ? Math.max(0, (campanha.limiteVagas ?? 0) - totalInscritos) : null;
+  const vagasEsgotadas = temLimiteVagas && vagasRestantes === 0;
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -495,9 +500,11 @@ export function BannerInscricao({ campanha }: BannerInscricaoProps) {
           </div>
 
           <div className="flex-1 text-center md:text-left space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-neutral-950 text-[#FFC72C] text-[10px] font-black uppercase tracking-wider">
+            <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+              vagasEsgotadas ? "bg-red-600 text-white" : "bg-neutral-950 text-[#FFC72C]"
+            }`}>
               <ClipboardList className="w-3.5 h-3.5" />
-              Inscrições Abertas
+              {vagasEsgotadas ? "Vagas Esgotadas" : "Inscrições Abertas"}
             </div>
 
             <h3 className="text-xl sm:text-2xl font-black tracking-tight text-neutral-950">
@@ -514,6 +521,19 @@ export function BannerInscricao({ campanha }: BannerInscricaoProps) {
                   ? `R$ ${Number(campanha.valor || 0).toFixed(2).replace(".", ",")}`
                   : "Inscrição Gratuita"}
               </span>
+
+              {temLimiteVagas && (
+                vagasEsgotadas ? (
+                  <span className="px-2.5 py-1 rounded-lg bg-red-600 text-white font-black text-xs shadow-xs">
+                    Vagas Esgotadas
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-lg bg-neutral-950 text-[#FFC72C] font-black text-xs shadow-xs">
+                    {vagasRestantes} {vagasRestantes === 1 ? "vaga restante" : "vagas restantes"}
+                  </span>
+                )
+              )}
+
               <span className="text-[11px] font-bold text-neutral-800 flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-neutral-700" />
                 Limite: {formatarDataHoraLimite(campanha.dataLimite)}
@@ -525,10 +545,15 @@ export function BannerInscricao({ campanha }: BannerInscricaoProps) {
           <div className="flex-shrink-0 w-full sm:w-auto md:w-56 pt-2 md:pt-0 flex flex-col gap-2">
             <button
               onClick={() => setModalAberto(true)}
-              className="w-full px-5 py-3.5 rounded-2xl bg-neutral-950 hover:bg-neutral-800 active:scale-95 text-[#FFC72C] font-black text-xs sm:text-sm shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+              disabled={vagasEsgotadas}
+              className={`w-full px-5 py-3.5 rounded-2xl font-black text-xs sm:text-sm shadow-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap ${
+                vagasEsgotadas
+                  ? "bg-neutral-800 text-neutral-400 cursor-not-allowed opacity-90"
+                  : "bg-neutral-950 hover:bg-neutral-800 active:scale-95 text-[#FFC72C] cursor-pointer"
+              }`}
             >
               <ClipboardList className="w-4 h-4 flex-shrink-0" />
-              <span>Fazer Inscrição Online</span>
+              <span>{vagasEsgotadas ? "Vagas Esgotadas" : "Fazer Inscrição Online"}</span>
             </button>
 
             <div className="flex items-center gap-1.5 w-full">

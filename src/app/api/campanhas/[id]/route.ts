@@ -54,6 +54,7 @@ export async function PUT(
     if (body.permiteNumero !== undefined) dataUpdate.permiteNumero = Boolean(body.permiteNumero);
     if (body.dataFim !== undefined) dataUpdate.dataFim = new Date(body.dataFim);
     if (body.ativa !== undefined) dataUpdate.ativa = Boolean(body.ativa);
+    if (body.ocultoNaHome !== undefined) dataUpdate.ocultoNaHome = Boolean(body.ocultoNaHome);
     if (Array.isArray(body.fotos)) dataUpdate.fotos = JSON.stringify(body.fotos);
     if (body.modelos !== undefined) {
       const precoRef = dataUpdate.precoUnitario !== undefined ? dataUpdate.precoUnitario : 0;

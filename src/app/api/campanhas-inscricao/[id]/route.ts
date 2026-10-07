@@ -56,6 +56,8 @@ export async function PUT(
       dataLimite,
       dataLimitePagamento,
       ativa,
+      ocultoNaHome,
+      limiteVagas,
       requerPagamento,
       valor,
       permiteParcelamento,
@@ -86,6 +88,8 @@ export async function PUT(
     if (dataLimite !== undefined) data.dataLimite = new Date(dataLimite);
     if (dataLimitePagamento !== undefined) data.dataLimitePagamento = dataLimitePagamento ? new Date(dataLimitePagamento) : null;
     if (ativa !== undefined) data.ativa = Boolean(ativa);
+    if (ocultoNaHome !== undefined) data.ocultoNaHome = Boolean(ocultoNaHome);
+    if (limiteVagas !== undefined) data.limiteVagas = limiteVagas ? Number(limiteVagas) : null;
     if (requerPagamento !== undefined) data.requerPagamento = Boolean(requerPagamento);
     if (valor !== undefined) data.valor = Number(valor) || 0;
     if (permiteParcelamento !== undefined) data.permiteParcelamento = Boolean(permiteParcelamento);

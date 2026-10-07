@@ -199,9 +199,10 @@ export default function RelatoriosPage() {
       // Busca textual por nome, apelido, telefone ou CLJ
       if (busca.trim()) {
         const termo = busca.toLowerCase();
+        const termoDigitos = busca.replace(/\D/g, "");
         const nomeMatch = int.nomeCompleto.toLowerCase().includes(termo);
         const apelidoMatch = int.apelido?.toLowerCase().includes(termo);
-        const telMatch = int.telefone.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const telMatch = termoDigitos.length > 0 && int.telefone.replace(/\D/g, "").includes(termoDigitos);
         const respMatch = int.nomeResponsavel?.toLowerCase().includes(termo);
         const cljMatch = int.qualClj?.toLowerCase().includes(termo);
         if (!nomeMatch && !apelidoMatch && !telMatch && !respMatch && !cljMatch) return false;
@@ -255,12 +256,12 @@ export default function RelatoriosPage() {
       }
       if (!busca.trim()) return true;
       const termo = busca.toLowerCase();
-      return (
-        r.nomeResponsavel.toLowerCase().includes(termo) ||
-        r.integranteNome.toLowerCase().includes(termo) ||
-        r.telefoneResponsavel.replace(/\D/g, "").includes(termo.replace(/\D/g, "")) ||
-        r.integranteTelefone.replace(/\D/g, "").includes(termo.replace(/\D/g, ""))
-      );
+      const termoDigitos = busca.replace(/\D/g, "");
+      const nomeRespMatch = r.nomeResponsavel.toLowerCase().includes(termo);
+      const nomeIntMatch = r.integranteNome.toLowerCase().includes(termo);
+      const telRespMatch = termoDigitos.length > 0 && r.telefoneResponsavel.replace(/\D/g, "").includes(termoDigitos);
+      const telIntMatch = termoDigitos.length > 0 && r.integranteTelefone.replace(/\D/g, "").includes(termoDigitos);
+      return nomeRespMatch || nomeIntMatch || telRespMatch || telIntMatch;
     });
   }, [relatorioResponsaveis, busca, filtroSexo]);
 
@@ -275,9 +276,10 @@ export default function RelatoriosPage() {
       // Busca textual
       if (busca.trim()) {
         const termo = busca.toLowerCase();
+        const termoDigitos = busca.replace(/\D/g, "");
         const nomeMatch = int.nomeCompleto.toLowerCase().includes(termo);
         const apelidoMatch = int.apelido?.toLowerCase().includes(termo);
-        const telMatch = int.telefone.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const telMatch = termoDigitos.length > 0 && int.telefone.replace(/\D/g, "").includes(termoDigitos);
         const descAlergiaMatch = int.descricaoAlergia?.toLowerCase().includes(termo);
         if (!nomeMatch && !apelidoMatch && !telMatch && !descAlergiaMatch) return false;
       }
@@ -310,9 +312,10 @@ export default function RelatoriosPage() {
       // Busca textual
       if (busca.trim()) {
         const termo = busca.toLowerCase();
+        const termoDigitos = busca.replace(/\D/g, "");
         const nomeMatch = int.nomeCompleto.toLowerCase().includes(termo);
         const apelidoMatch = int.apelido?.toLowerCase().includes(termo);
-        const telMatch = int.telefone.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const telMatch = termoDigitos.length > 0 && int.telefone.replace(/\D/g, "").includes(termoDigitos);
         if (!nomeMatch && !apelidoMatch && !telMatch) return false;
       }
 
@@ -858,9 +861,10 @@ export default function RelatoriosPage() {
       }
       if (busca.trim()) {
         const termo = busca.toLowerCase();
+        const termoDigitos = busca.replace(/\D/g, "");
         const codMatch = p.codigoPedido.toLowerCase().includes(termo);
         const nomeMatch = p.nomeComprador.toLowerCase().includes(termo);
-        const telMatch = p.telefoneComprador.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const telMatch = termoDigitos.length > 0 && p.telefoneComprador.replace(/\D/g, "").includes(termoDigitos);
         const modMatch = p.modelo.toLowerCase().includes(termo);
         if (!codMatch && !nomeMatch && !telMatch && !modMatch) return false;
       }
@@ -981,9 +985,10 @@ export default function RelatoriosPage() {
       }
       if (busca.trim()) {
         const termo = busca.toLowerCase();
+        const termoDigitos = busca.replace(/\D/g, "");
         const codMatch = i.codigoInscricao?.toLowerCase().includes(termo);
         const nomeMatch = i.nomeCompleto?.toLowerCase().includes(termo);
-        const telMatch = i.telefone?.replace(/\D/g, "").includes(termo.replace(/\D/g, ""));
+        const telMatch = termoDigitos.length > 0 && !!i.telefone && i.telefone.replace(/\D/g, "").includes(termoDigitos);
         const respMatch = i.nomeResponsavel?.toLowerCase().includes(termo);
         if (!codMatch && !nomeMatch && !telMatch && !respMatch) return false;
       }

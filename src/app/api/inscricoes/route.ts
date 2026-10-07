@@ -121,6 +121,22 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+
+      // Validação de limite de vagas
+      if (campanha.limiteVagas && campanha.limiteVagas > 0) {
+        const totalInscricoes = await prisma.inscricaoEvento.count({
+          where: {
+            campanhaId,
+            status: { not: "CANCELADA" },
+          },
+        });
+        if (totalInscricoes >= campanha.limiteVagas) {
+          return NextResponse.json(
+            { error: "As vagas para este evento já foram esgotadas." },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // Validação de campos obrigatórios conforme o admin marcou como preenchíveis

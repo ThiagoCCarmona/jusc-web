@@ -14,7 +14,19 @@ import { Heart, Users, Flame, CalendarCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    inscricao?: string;
+    camiseta?: string;
+    campanha?: string;
+  }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const linkInscricaoId = resolvedSearchParams.inscricao;
+  const linkCamisetaId = resolvedSearchParams.camiseta || resolvedSearchParams.campanha;
+
   const usuario = await getCurrentUser();
 
   // Buscar configurações gerais e branding personalizável
@@ -77,26 +89,73 @@ export default async function HomePage() {
     orderBy: { criadoEm: "desc" },
   });
 
-  // Buscar Campanhas de Inscrição Ativas e NÃO expiradas
+  // Buscar Campanhas de Inscrição Ativas, NÃO expiradas e NÃO ocultas da Home
   const campanhasInscricao = await prisma.campanhaInscricao.findMany({
     where: {
       ativa: true,
       dataLimite: { gt: agora },
+      ocultoNaHome: false,
     },
     include: {
       campanhaCamiseta: true,
+      _count: {
+        select: {
+          inscricoes: {
+            where: { status: { not: "CANCELADA" } },
+          },
+        },
+      },
     },
     orderBy: { criadoEm: "desc" },
   });
 
-  // Buscar Campanhas de Camisetas Ativas e NÃO expiradas (suporte a múltiplas campanhas)
+  // Se o usuário acessou por link direto (?inscricao=ID) de campanha oculta da home
+  if (linkInscricaoId && !campanhasInscricao.some((c) => c.id === linkInscricaoId)) {
+    const campanhaPorLink = await prisma.campanhaInscricao.findFirst({
+      where: {
+        id: linkInscricaoId,
+        ativa: true,
+        dataLimite: { gt: agora },
+      },
+      include: {
+        campanhaCamiseta: true,
+        _count: {
+          select: {
+            inscricoes: {
+              where: { status: { not: "CANCELADA" } },
+            },
+          },
+        },
+      },
+    });
+    if (campanhaPorLink) {
+      campanhasInscricao.unshift(campanhaPorLink);
+    }
+  }
+
+  // Buscar Campanhas de Camisetas Ativas, NÃO expiradas e NÃO ocultas da Home
   const campanhasCamisetasRaw = await prisma.campanhaCamiseta.findMany({
     where: {
       ativa: true,
       dataFim: { gt: agora },
+      ocultoNaHome: false,
     },
     orderBy: { criadoEm: "desc" },
   });
+
+  // Se o usuário acessou por link direto (?camiseta=ID ou ?campanha=ID) de campanha oculta da home
+  if (linkCamisetaId && !campanhasCamisetasRaw.some((c) => c.id === linkCamisetaId)) {
+    const campanhaPorLink = await prisma.campanhaCamiseta.findFirst({
+      where: {
+        id: linkCamisetaId,
+        ativa: true,
+        dataFim: { gt: agora },
+      },
+    });
+    if (campanhaPorLink) {
+      campanhasCamisetasRaw.unshift(campanhaPorLink);
+    }
+  }
 
   const campanhasCamisetas = campanhasCamisetasRaw.map((c) => {
     let fotosArr: any[] = [];

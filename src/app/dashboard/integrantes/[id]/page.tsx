@@ -274,6 +274,13 @@ export default function DetalhesIntegrantePage({
               </div>
 
               <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#1a1d26]">
+                <span className="text-xs text-neutral-500">CPF</span>
+                <span className="font-bold text-neutral-900 dark:text-white">
+                  {integrante.cpf || "Não informado"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-50 dark:bg-[#1a1d26]">
                 <span className="text-xs text-neutral-500">Sexo</span>
                 <span className="font-bold text-neutral-900 dark:text-white">
                   {integrante.sexo === "FEMININO" ? "Feminino" : "Masculino"}

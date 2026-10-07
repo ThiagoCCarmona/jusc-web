@@ -33,6 +33,7 @@ export interface CampanhaModalInput {
   dataFim: string | Date;
   fotos: (string | FotoComLabel)[];
   ativa?: boolean;
+  ocultoNaHome?: boolean;
 }
 
 interface ModalCampanhaProps {
@@ -55,6 +56,7 @@ export function ModalCampanha({
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [precoBase, setPrecoBase] = useState("");
+  const [ocultoNaHome, setOcultoNaHome] = useState(false);
   const [modelos, setModelos] = useState<ModeloPrecoItem[]>([
     { nome: "Tradicional" },
     { nome: "Baby Look" },
@@ -102,6 +104,7 @@ export function ModalCampanha({
 
       setPermiteNome(Boolean(campanha.permiteNome));
       setPermiteNumero(Boolean(campanha.permiteNumero));
+      setOcultoNaHome(Boolean(campanha.ocultoNaHome));
 
       if (campanha.dataFim) {
         const d = new Date(campanha.dataFim);
@@ -126,6 +129,7 @@ export function ModalCampanha({
       setTitulo("");
       setDescricao("");
       setPrecoBase("");
+      setOcultoNaHome(false);
       setModelos([
         { nome: "Tradicional" },
         { nome: "Baby Look" },
@@ -262,6 +266,7 @@ export function ModalCampanha({
         tamanhosDisponiveis: tamanhosSelecionados,
         permiteNome,
         permiteNumero,
+        ocultoNaHome,
         dataFim: dataFimFinal,
         fotos,
       };
@@ -526,26 +531,43 @@ export function ModalCampanha({
               </div>
             </div>
 
-            {/* Opções de Personalização */}
-            <div className="flex items-center gap-6 p-3 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700">
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-neutral-800 dark:text-neutral-200">
-                <input
-                  type="checkbox"
-                  checked={permiteNome}
-                  onChange={(e) => setPermiteNome(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
-                />
-                <span>Permitir Nome</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer font-bold text-neutral-800 dark:text-neutral-200">
-                <input
-                  type="checkbox"
-                  checked={permiteNumero}
-                  onChange={(e) => setPermiteNumero(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
-                />
-                <span>Permitir Número</span>
-              </label>
+            {/* Opções de Personalização e Visibilidade */}
+            <div className="space-y-3 p-3 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700">
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-neutral-800 dark:text-neutral-200 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={permiteNome}
+                    onChange={(e) => setPermiteNome(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                  />
+                  <span>Permitir Nome</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-neutral-800 dark:text-neutral-200 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={permiteNumero}
+                    onChange={(e) => setPermiteNumero(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#FFC72C] focus:ring-[#FFC72C]"
+                  />
+                  <span>Permitir Número</span>
+                </label>
+              </div>
+
+              <div className="pt-2 border-t border-neutral-200 dark:border-neutral-800">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-neutral-800 dark:text-neutral-200 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={ocultoNaHome}
+                    onChange={(e) => setOcultoNaHome(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
+                  />
+                  <span>Ocultar do banner da Home (Disponível apenas por link direto)</span>
+                </label>
+                <p className="text-[10px] text-neutral-500 mt-0.5 pl-6">
+                  Se marcado, o banner não aparece na página inicial, mas quem acessar pelo link direto faz o pedido normalmente.
+                </p>
+              </div>
             </div>
 
             {/* Gestão Dinâmica de Tamanhos (Criar, Editar e Selecionar) */}
