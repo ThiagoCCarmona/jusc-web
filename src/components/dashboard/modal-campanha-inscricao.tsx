@@ -39,6 +39,7 @@ export interface CampanhaInscricaoItem {
   campoNomeCompleto: boolean;
   campoCpf: boolean;
   campoTelefone: boolean;
+  campoGrupo?: boolean;
   campoDataNascimento: boolean;
   campoNomeResponsavel: boolean;
   campoParentescoResponsavel: boolean;
@@ -94,6 +95,7 @@ export function ModalCampanhaInscricao({
   const [campoNomeCompleto, setCampoNomeCompleto] = useState(true);
   const [campoCpf, setCampoCpf] = useState(false);
   const [campoTelefone, setCampoTelefone] = useState(true);
+  const [campoGrupo, setCampoGrupo] = useState(true);
   const [campoDataNascimento, setCampoDataNascimento] = useState(true);
   const [campoNomeResponsavel, setCampoNomeResponsavel] = useState(false);
   const [campoParentescoResponsavel, setCampoParentescoResponsavel] = useState(false);
@@ -176,6 +178,7 @@ export function ModalCampanhaInscricao({
       setCampoNomeCompleto(campanha.campoNomeCompleto ?? true);
       setCampoCpf(campanha.campoCpf ?? false);
       setCampoTelefone(campanha.campoTelefone ?? true);
+      setCampoGrupo(campanha.campoGrupo ?? true);
       setCampoDataNascimento(campanha.campoDataNascimento ?? true);
       setCampoNomeResponsavel(campanha.campoNomeResponsavel ?? false);
       setCampoParentescoResponsavel(campanha.campoParentescoResponsavel ?? false);
@@ -213,6 +216,7 @@ export function ModalCampanhaInscricao({
       setCampoNomeCompleto(true);
       setCampoCpf(false);
       setCampoTelefone(true);
+      setCampoGrupo(true);
       setCampoDataNascimento(true);
       setCampoNomeResponsavel(false);
       setCampoParentescoResponsavel(false);
@@ -326,6 +330,7 @@ export function ModalCampanhaInscricao({
           campoNomeCompleto,
           campoCpf,
           campoTelefone,
+          campoGrupo,
           campoDataNascimento,
           campoNomeResponsavel,
           campoParentescoResponsavel,
@@ -836,6 +841,16 @@ export function ModalCampanhaInscricao({
                   className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
                 />
                 <span className="text-xs font-bold">Telefone / WhatsApp</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 p-3 rounded-xl bg-neutral-50 dark:bg-[#16181f] border border-neutral-200 dark:border-neutral-800 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800/60 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={campoGrupo}
+                  onChange={(e) => setCampoGrupo(e.target.checked)}
+                  className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
+                />
+                <span className="text-xs font-bold">Grupo / Movimento (JUSC ou Outro)</span>
               </label>
 
               <label className="flex items-center gap-2.5 p-3 rounded-xl bg-neutral-50 dark:bg-[#16181f] border border-neutral-200 dark:border-neutral-800 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800/60 transition-colors">

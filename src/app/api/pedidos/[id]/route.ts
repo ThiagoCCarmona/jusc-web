@@ -55,6 +55,7 @@ export async function PUT(
         valorPago,
         statusPagamento,
         entregue,
+        grupo: body.grupo !== undefined ? (body.grupo ? String(body.grupo).trim() : "JUSC") : pedidoAtual.grupo,
         observacao: observacao !== undefined ? observacao : pedidoAtual.observacao,
       },
     });

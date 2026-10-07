@@ -64,6 +64,7 @@ export async function PUT(
       campoNomeCompleto,
       campoCpf,
       campoTelefone,
+      campoGrupo,
       campoDataNascimento,
       campoNomeResponsavel,
       campoParentescoResponsavel,
@@ -96,6 +97,7 @@ export async function PUT(
     if (campoNomeCompleto !== undefined) data.campoNomeCompleto = Boolean(campoNomeCompleto);
     if (campoCpf !== undefined) data.campoCpf = Boolean(campoCpf);
     if (campoTelefone !== undefined) data.campoTelefone = Boolean(campoTelefone);
+    if (campoGrupo !== undefined) data.campoGrupo = Boolean(campoGrupo);
     if (campoDataNascimento !== undefined) data.campoDataNascimento = Boolean(campoDataNascimento);
     if (campoNomeResponsavel !== undefined) data.campoNomeResponsavel = Boolean(campoNomeResponsavel);
     if (campoParentescoResponsavel !== undefined) data.campoParentescoResponsavel = Boolean(campoParentescoResponsavel);

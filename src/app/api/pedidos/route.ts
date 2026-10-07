@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
           (p) =>
             p.codigoPedido.toLowerCase().includes(busca) ||
             p.nomeComprador.toLowerCase().includes(busca) ||
+            (p.grupo && p.grupo.toLowerCase().includes(busca)) ||
             p.telefoneComprador.includes(busca) ||
             p.modelo.toLowerCase().includes(busca)
         )
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
       campanhaId,
       nomeComprador,
       telefoneComprador,
+      grupo = "JUSC",
       modelo,
       tamanho,
       quantidade = 1,
@@ -141,6 +143,7 @@ export async function POST(req: NextRequest) {
       modelo,
       tamanho,
       quantidade: qtd,
+      grupo: grupo ? String(grupo).trim() : "JUSC",
       personalizacaoNome,
       personalizacaoNum,
       formaPagamento,
@@ -156,6 +159,7 @@ export async function POST(req: NextRequest) {
         codigoPedido,
         nomeComprador: nomeComprador.trim(),
         telefoneComprador: telefoneComprador.trim(),
+        grupo: grupo ? String(grupo).trim() : "JUSC",
         modelo: modelo.trim(),
         tamanho: tamanho.trim(),
         quantidade: qtd,

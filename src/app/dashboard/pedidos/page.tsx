@@ -59,6 +59,7 @@ interface PedidoItem {
   codigoPedido: string;
   nomeComprador: string;
   telefoneComprador: string;
+  grupo?: string | null;
   modelo: string;
   tamanho: string;
   quantidade: number;
@@ -202,11 +203,12 @@ export default function PedidosPage() {
         const codMatch = p.codigoPedido.toLowerCase().includes(termo);
         const nomeMatch = p.nomeComprador.toLowerCase().includes(termo);
         const telMatch = termoDigitos.length > 0 && p.telefoneComprador.replace(/\D/g, "").includes(termoDigitos);
+        const grupoMatch = p.grupo ? p.grupo.toLowerCase().includes(termo) : false;
         const modMatch = p.modelo.toLowerCase().includes(termo);
         const persMatch =
           p.personalizacaoNome?.toLowerCase().includes(termo) ||
           p.personalizacaoNum?.toLowerCase().includes(termo);
-        if (!codMatch && !nomeMatch && !telMatch && !modMatch && !persMatch) return false;
+        if (!codMatch && !nomeMatch && !telMatch && !grupoMatch && !modMatch && !persMatch) return false;
       }
       return true;
     });
@@ -345,7 +347,7 @@ export default function PedidosPage() {
     );
 
     const tableHead = [
-      ["Cód.", "Data", "Comprador", "Telefone", "Item/Tam.", "Personalização", "Total", "Pago", "Status", "Entregue"],
+      ["Cód.", "Data", "Comprador", "Grupo", "Telefone", "Item/Tam.", "Personalização", "Total", "Pago", "Status", "Entregue"],
     ];
 
     const tableBody = pedidosFiltrados.map((p) => {
@@ -354,6 +356,7 @@ export default function PedidosPage() {
         p.codigoPedido,
         new Date(p.criadoEm).toLocaleDateString("pt-BR"),
         p.nomeComprador,
+        p.grupo || "JUSC",
         p.telefoneComprador,
         `${p.quantidade}x ${p.modelo} (${p.tamanho})`,
         pers,
@@ -644,9 +647,14 @@ export default function PedidosPage() {
 
                       {/* Comprador & WhatsApp */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className="font-bold text-neutral-900 dark:text-white block">
-                          {p.nomeComprador}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-neutral-900 dark:text-white block">
+                            {p.nomeComprador}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
+                            {p.grupo || "JUSC"}
+                          </span>
+                        </div>
                         <a
                           href={`https://api.whatsapp.com/send?phone=${telLimpo}`}
                           target="_blank"

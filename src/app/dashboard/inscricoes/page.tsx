@@ -49,6 +49,7 @@ interface CampanhaItem {
   campoNomeCompleto?: boolean;
   campoCpf?: boolean;
   campoTelefone?: boolean;
+  campoGrupo?: boolean;
   campoDataNascimento?: boolean;
   campoNomeResponsavel?: boolean;
   campoParentescoResponsavel?: boolean;
@@ -71,6 +72,7 @@ interface InscricaoItem {
   nomeCompleto: string;
   cpf?: string | null;
   telefone: string;
+  grupo?: string | null;
   dataNascimento?: string | null;
   sexo?: string | null;
   nomeResponsavel?: string | null;
@@ -289,8 +291,9 @@ export default function InscricoesPage() {
         const nomeMatch = i.nomeCompleto.toLowerCase().includes(termo);
         const telMatch = termoDigitos.length > 0 && i.telefone.replace(/\D/g, "").includes(termoDigitos);
         const cpfMatch = termoDigitos.length > 0 && !!i.cpf && i.cpf.replace(/\D/g, "").includes(termoDigitos);
+        const grupoMatch = i.grupo ? i.grupo.toLowerCase().includes(termo) : false;
         const respMatch = i.nomeResponsavel ? i.nomeResponsavel.toLowerCase().includes(termo) : false;
-        if (!codMatch && !nomeMatch && !telMatch && !cpfMatch && !respMatch) return false;
+        if (!codMatch && !nomeMatch && !telMatch && !cpfMatch && !grupoMatch && !respMatch) return false;
       }
       return true;
     });
@@ -478,6 +481,11 @@ export default function InscricoesPage() {
       return Boolean(c?.linkGrupoWhatsapp || i.entrouNoGrupoWhatsapp);
     });
 
+    const temGrupoJovens = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoGrupo || i.grupo);
+    });
+
     const temCamiseta = inscricoesFiltradas.some((i) => {
       const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
       return Boolean(c?.permiteCamiseta || c?.campanhaCamisetaId || i.pediuCamiseta);
@@ -501,6 +509,7 @@ export default function InscricoesPage() {
       { titulo: "Evento", ativo: true, valor: (i, c) => c?.titulo || i.campanha?.titulo || "" },
       { titulo: "Data Inscrição", ativo: true, valor: (i) => formatarData(i.criadoEm) },
       { titulo: "Nome Completo", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "Grupo / Movimento", ativo: temGrupoJovens, valor: (i) => i.grupo || "JUSC" },
       { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "") },
       { titulo: "Sexo", ativo: temSexo, valor: (i) => i.sexo || "" },
       { titulo: "Telefone", ativo: true, valor: (i) => i.telefone },
@@ -739,6 +748,11 @@ export default function InscricoesPage() {
       return Boolean(c?.linkGrupoWhatsapp || i.entrouNoGrupoWhatsapp);
     });
 
+    const temGrupoJovens = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoGrupo || i.grupo);
+    });
+
     const temFinanceiro = inscricoesFiltradas.some((i) => {
       const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
       return Boolean(c?.requerPagamento || i.valorTotal > 0);
@@ -753,6 +767,7 @@ export default function InscricoesPage() {
     const definicaoPdf: ColunaPdf[] = [
       { titulo: "Cód.", ativo: true, valor: (i) => i.codigoInscricao },
       { titulo: "Participante", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "Grupo", ativo: temGrupoJovens, valor: (i) => i.grupo || "JUSC" },
       { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "-") },
       { titulo: "Sexo", ativo: temSexo, valor: (i) => i.sexo || "-" },
       {
@@ -895,6 +910,11 @@ export default function InscricoesPage() {
       return Boolean(c?.permiteCamiseta || c?.campanhaCamisetaId || i.pediuCamiseta);
     });
 
+    const temGrupoJovens = inscricoesFiltradas.some((i) => {
+      const c = i.campanha || campanhas.find((camp) => camp.id === i.campanhaId);
+      return Boolean(c?.campoGrupo || i.grupo);
+    });
+
     type ColunaPresenca = {
       titulo: string;
       ativo: boolean;
@@ -904,6 +924,7 @@ export default function InscricoesPage() {
     const definicaoPresenca: ColunaPresenca[] = [
       { titulo: "Nº", ativo: true, valor: (_, idx) => `${idx + 1}` },
       { titulo: "Nome do Participante", ativo: true, valor: (i) => i.nomeCompleto },
+      { titulo: "Grupo", ativo: temGrupoJovens, valor: (i) => i.grupo || "JUSC" },
       { titulo: "CPF", ativo: temCpf, valor: (i) => (i.cpf ? formatarCpf(i.cpf) : "-") },
       { titulo: "Idade", ativo: temDataNascimento, valor: (i) => (i.dataNascimento ? `${calcularIdade(i.dataNascimento)} anos` : "-") },
       { titulo: "Telefone", ativo: true, valor: (i) => i.telefone },
@@ -1443,6 +1464,9 @@ export default function InscricoesPage() {
                           <span className="font-bold text-neutral-900 dark:text-white">
                             {i.nomeCompleto}
                           </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold border border-neutral-200 dark:border-neutral-700">
+                            {i.grupo || "JUSC"}
+                          </span>
                           {i.sexo && (
                             <span className="text-[10px] px-1.5 py-0.2 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold">
                               {i.sexo === "MASCULINO" ? "Masc" : "Fem"}
@@ -1662,6 +1686,10 @@ export default function InscricoesPage() {
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Evento:</span>
                   <span className="font-bold">{inscricaoDetalhes.campanha?.titulo}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Grupo / Movimento:</span>
+                  <span className="font-bold">{inscricaoDetalhes.grupo || "JUSC"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-500">Telefone:</span>
@@ -1997,6 +2025,37 @@ export default function InscricoesPage() {
                   }
                   className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-semibold"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold block mb-1">Grupo / Movimento</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={inscricaoEditando.grupo === "JUSC" || !inscricaoEditando.grupo ? "JUSC" : "OUTRO"}
+                    onChange={(e) => {
+                      if (e.target.value === "JUSC") {
+                        setInscricaoEditando({ ...inscricaoEditando, grupo: "JUSC" });
+                      } else {
+                        setInscricaoEditando({ ...inscricaoEditando, grupo: "" });
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 font-semibold"
+                  >
+                    <option value="JUSC">JUSC</option>
+                    <option value="OUTRO">Outro Grupo / Paróquia</option>
+                  </select>
+                  {inscricaoEditando.grupo !== "JUSC" && (
+                    <input
+                      type="text"
+                      placeholder="Ex: JLJ, JUASC, PJ..."
+                      value={inscricaoEditando.grupo || ""}
+                      onChange={(e) =>
+                        setInscricaoEditando({ ...inscricaoEditando, grupo: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700"
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -2612,6 +2671,8 @@ function ModalCadastroManualInscricao({
 }) {
   const [campanhaId, setCampanhaId] = useState(campanhas[0]?.id || "");
   const [nomeCompleto, setNomeCompleto] = useState("");
+  const [grupoTipo, setGrupoTipo] = useState<"JUSC" | "OUTRO">("JUSC");
+  const [outroGrupo, setOutroGrupo] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cpf, setCpf] = useState("");
   const [dataNascBr, setDataNascBr] = useState("");
@@ -2640,6 +2701,7 @@ function ModalCadastroManualInscricao({
     e.preventDefault();
     setSalvando(true);
     try {
+      const grupoFinal = grupoTipo === "OUTRO" ? (outroGrupo.trim() || "Outro") : "JUSC";
       const res = await fetch("/api/inscricoes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2649,6 +2711,7 @@ function ModalCadastroManualInscricao({
           nomeCompleto,
           telefone,
           cpf,
+          grupo: grupoFinal,
           dataNascimento: dataNascIso,
           sexo: sexo || null,
           nomeResponsavel: nomeResponsavel || null,
@@ -2716,6 +2779,30 @@ function ModalCadastroManualInscricao({
               onChange={(e) => setNomeCompleto(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-semibold"
             />
+          </div>
+
+          <div>
+            <label className="font-bold block mb-1">Grupo / Movimento *</label>
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={grupoTipo}
+                onChange={(e) => setGrupoTipo(e.target.value as "JUSC" | "OUTRO")}
+                className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-bold"
+              >
+                <option value="JUSC">JUSC</option>
+                <option value="OUTRO">Outro Grupo / Paróquia</option>
+              </select>
+              {grupoTipo === "OUTRO" && (
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: JLJ, JUASC, PJ..."
+                  value={outroGrupo}
+                  onChange={(e) => setOutroGrupo(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border font-semibold"
+                />
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">

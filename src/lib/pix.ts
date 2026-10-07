@@ -135,6 +135,7 @@ export function gerarLinkComprovanteWhatsapp({
   modelo,
   tamanho,
   quantidade,
+  grupo,
   personalizacaoNome,
   personalizacaoNum,
   formaPagamento,
@@ -150,6 +151,7 @@ export function gerarLinkComprovanteWhatsapp({
   modelo: string;
   tamanho: string;
   quantidade: number;
+  grupo?: string | null;
   personalizacaoNome?: string | null;
   personalizacaoNum?: string | null;
   formaPagamento: string;
@@ -159,6 +161,8 @@ export function gerarLinkComprovanteWhatsapp({
   saldoRestante: number;
 }): string {
   const telLimpo = telefoneTesoureiro.replace(/\D/g, "");
+
+  const grupoTxt = grupo ? `\n👥 *Grupo:* ${grupo}` : "";
 
   const personalizacaoTxt =
     personalizacaoNome || personalizacaoNum
@@ -173,7 +177,7 @@ export function gerarLinkComprovanteWhatsapp({
   const mensagem = `Olá! Acabei de fazer meu pedido de camiseta pelo site do grupo:
 
 📋 *Pedido:* ${codigoPedido}
-👤 *Comprador:* ${nomeComprador}
+👤 *Comprador:* ${nomeComprador}${grupoTxt}
 👕 *Campanha:* ${tituloCampanha}
 ✨ *Modelo:* ${modelo}
 📏 *Tamanho:* ${tamanho}

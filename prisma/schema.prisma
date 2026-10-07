@@ -152,6 +152,7 @@ model PedidoCamiseta {
   codigoPedido       String           @unique
   nomeComprador      String
   telefoneComprador  String
+  grupo              String?          @default("JUSC")
   modelo             String
   tamanho            String
   quantidade         Int              @default(1)
@@ -247,6 +248,7 @@ model CampanhaInscricao {
   campoNomeCompleto          Boolean           @default(true)
   campoCpf                   Boolean           @default(false)
   campoTelefone              Boolean           @default(true)
+  campoGrupo                 Boolean           @default(true)
   campoDataNascimento        Boolean           @default(true)
   campoNomeResponsavel       Boolean           @default(false)
   campoParentescoResponsavel Boolean           @default(false)
@@ -284,6 +286,7 @@ model InscricaoEvento {
   nomeCompleto          String
   cpf                   String?
   telefone              String
+  grupo                 String?           @default("JUSC")
   dataNascimento        DateTime?
   sexo                  String?           // "MASCULINO" | "FEMININO"
 

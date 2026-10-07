@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
           (i) =>
             i.codigoInscricao.toLowerCase().includes(busca) ||
             i.nomeCompleto.toLowerCase().includes(busca) ||
+            (i.grupo && i.grupo.toLowerCase().includes(busca)) ||
             i.telefone.includes(busca) ||
             (i.cpf && i.cpf.includes(busca)) ||
             (i.nomeResponsavel && i.nomeResponsavel.toLowerCase().includes(busca))
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
       nomeCompleto,
       cpf,
       telefone,
+      grupo = "JUSC",
       dataNascimento,
       nomeResponsavel,
       parentescoResponsavel,
@@ -150,6 +152,13 @@ export async function POST(req: NextRequest) {
     if (campanha.campoTelefone && !telefone?.trim()) {
       return NextResponse.json(
         { error: "O Telefone/WhatsApp é obrigatório para a inscrição neste evento." },
+        { status: 400 }
+      );
+    }
+
+    if (campanha.campoGrupo && !grupo?.trim()) {
+      return NextResponse.json(
+        { error: "O Grupo de Jovens / Pastoral é obrigatório para a inscrição neste evento." },
         { status: 400 }
       );
     }
@@ -253,6 +262,7 @@ export async function POST(req: NextRequest) {
         nomeCompleto: nomeCompleto.trim(),
         cpf: cpf ? cpf.trim() : null,
         telefone: telefone.trim(),
+        grupo: grupo ? String(grupo).trim() : "JUSC",
         dataNascimento: dataNascimento ? new Date(dataNascimento) : null,
         sexo: sexo || null,
         nomeResponsavel: nomeResponsavel ? nomeResponsavel.trim() : null,
@@ -321,6 +331,7 @@ export async function POST(req: NextRequest) {
               codigoPedido,
               nomeComprador: nomeCompleto.trim(),
               telefoneComprador: telefone.trim(),
+              grupo: grupo ? String(grupo).trim() : "JUSC",
               modelo: camisetaModelo.trim(),
               tamanho: camisetaTamanho.trim(),
               quantidade: 1,
@@ -353,6 +364,7 @@ export async function POST(req: NextRequest) {
 
     // Calcular idade para a mensagem
     const idadeTxt = dataNascimento ? ` (${calcularIdade(dataNascimento)} anos)` : "";
+    const grupoTxt = grupo ? `\n👥 *Grupo / Pastoral:* ${String(grupo).trim()}` : "";
 
     // Informações de Camiseta (se pediu)
     const camisetaTxt = pediuCamiseta
@@ -367,7 +379,8 @@ export async function POST(req: NextRequest) {
     const msgSecretario =
       `Olá, ${secretarioNome}! Meu nome é *${nomeCompleto.trim()}*${idadeTxt} e confirmo minha inscrição para o evento *${campanha.titulo}*.\n\n` +
       `📋 *Código da Inscrição:* ${codigoInscricao}\n` +
-      `📱 *Telefone/WhatsApp:* ${telefone.trim()}\n` +
+      `📱 *Telefone/WhatsApp:* ${telefone.trim()}` +
+      grupoTxt + "\n" +
       (nomeResponsavel ? `👨‍👩‍👧 *Responsável:* ${nomeResponsavel} (${parentescoResponsavel || "Responsável"})\n` : "") +
       camisetaTxt +
       (requerPagamento ? `💰 *Valor:* R$ ${valorTotal.toFixed(2).replace(".", ",")} (${formaPag})\n` : `✨ *Inscrição Gratuita*\n`) +
@@ -407,7 +420,8 @@ export async function POST(req: NextRequest) {
       const msgTesoureiro = formaPag === "DINHEIRO"
         ? `Olá, ${tesoureiroNome}! Gostaria de combinar o pagamento em dinheiro da minha inscrição no evento *${campanha.titulo}*.\n\n` +
           `📋 *Código da Inscrição:* ${codigoInscricao}\n` +
-          `👤 *Participante:* ${nomeCompleto.trim()}\n` +
+          `👤 *Participante:* ${nomeCompleto.trim()}` +
+          grupoTxt + "\n" +
           camisetaTxt +
           `💵 *Valor a Pagar:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}` +
           (tipoQuitacao === "PARCELADO_50_50" ? " (50% Entrada)\n" : "\n") +
@@ -416,7 +430,8 @@ export async function POST(req: NextRequest) {
           `\nPodemos combinar a entrega do valor? Aguardo seu retorno! Obrigado.`
         : `Olá, ${tesoureiroNome}! Segue o comprovante de pagamento da minha inscrição no evento *${campanha.titulo}*.\n\n` +
           `📋 *Código da Inscrição:* ${codigoInscricao}\n` +
-          `👤 *Participante:* ${nomeCompleto.trim()}\n` +
+          `👤 *Participante:* ${nomeCompleto.trim()}` +
+          grupoTxt + "\n" +
           camisetaTxt +
           `💳 *Forma:* PIX (${tipoQuitacao === "PARCELADO_50_50" ? "50% Entrada" : "Valor Integral"})\n` +
           `💵 *Valor Pago:* R$ ${valorPagoAgora.toFixed(2).replace(".", ",")}\n` +

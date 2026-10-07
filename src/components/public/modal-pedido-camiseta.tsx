@@ -57,6 +57,8 @@ export function ModalPedidoCamiseta({
   // Form State
   const [nomeComprador, setNomeComprador] = useState("");
   const [telefoneComprador, setTelefoneComprador] = useState("");
+  const [grupoTipo, setGrupoTipo] = useState<"JUSC" | "OUTRO">("JUSC");
+  const [outroGrupo, setOutroGrupo] = useState("");
   const [modelo, setModelo] = useState(modelosNormalizados[0]?.nome || "Padrão");
   const [tamanho, setTamanho] = useState(campanha.tamanhosDisponiveis[0] || "M");
   const [quantidade, setQuantidade] = useState(1);
@@ -125,6 +127,13 @@ export function ModalPedidoCamiseta({
       return;
     }
 
+    if (grupoTipo === "OUTRO" && !outroGrupo.trim()) {
+      setErro("Por favor, informe o nome do seu grupo (ex: JLJ, JUASC, PJ...).");
+      return;
+    }
+
+    const grupoFinal = grupoTipo === "OUTRO" ? outroGrupo.trim() : "JUSC";
+
     setEnviando(true);
     try {
       const res = await fetch("/api/pedidos", {
@@ -134,6 +143,7 @@ export function ModalPedidoCamiseta({
           campanhaId: campanha.id,
           nomeComprador: nomeComprador.trim(),
           telefoneComprador: telefoneComprador.trim(),
+          grupo: grupoFinal,
           modelo,
           tamanho,
           quantidade,
@@ -179,6 +189,8 @@ export function ModalPedidoCamiseta({
   function handleFechar() {
     setSucessoData(null);
     setErro("");
+    setGrupoTipo("JUSC");
+    setOutroGrupo("");
     onFechar();
   }
 
@@ -446,6 +458,43 @@ export function ModalPedidoCamiseta({
                   className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
                 />
               </div>
+            </div>
+
+            {/* Grupo / Movimento */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Grupo / Movimento *
+                </label>
+                <select
+                  value={grupoTipo}
+                  onChange={(e) => setGrupoTipo(e.target.value as "JUSC" | "OUTRO")}
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+                >
+                  <option value="JUSC">JUSC</option>
+                  <option value="OUTRO">Outro Grupo / Paróquia</option>
+                </select>
+              </div>
+
+              {grupoTipo === "OUTRO" ? (
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Nome do seu Grupo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={outroGrupo}
+                    onChange={(e) => setOutroGrupo(e.target.value)}
+                    placeholder="Ex: JLJ, JUASC, JUCASFA, PJ..."
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+                  />
+                </div>
+              ) : (
+                <div className="hidden sm:flex items-center text-xs text-neutral-500 dark:text-neutral-400 italic pt-5">
+                  Grupo JUSC selecionado
+                </div>
+              )}
             </div>
 
             {/* Escolha de Modelo, Tamanho e Quantidade */}

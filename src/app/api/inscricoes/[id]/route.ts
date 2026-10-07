@@ -50,6 +50,7 @@ export async function PUT(
       nomeCompleto,
       cpf,
       telefone,
+      grupo,
       dataNascimento,
       sexo,
       nomeResponsavel,
@@ -81,6 +82,7 @@ export async function PUT(
     if (nomeCompleto !== undefined) data.nomeCompleto = nomeCompleto.trim();
     if (cpf !== undefined) data.cpf = cpf ? cpf.trim() : null;
     if (telefone !== undefined) data.telefone = telefone.trim();
+    if (grupo !== undefined) data.grupo = grupo ? grupo.trim() : "JUSC";
     if (dataNascimento !== undefined) {
       data.dataNascimento = dataNascimento ? new Date(dataNascimento) : null;
     }

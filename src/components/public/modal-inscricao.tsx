@@ -56,6 +56,7 @@ export interface CampanhaInscricaoData {
   campoNomeCompleto: boolean;
   campoCpf: boolean;
   campoTelefone: boolean;
+  campoGrupo?: boolean;
   campoDataNascimento: boolean;
   campoNomeResponsavel: boolean;
   campoParentescoResponsavel: boolean;
@@ -94,6 +95,8 @@ export function ModalInscricao({
   const [sexo, setSexo] = useState<"MASCULINO" | "FEMININO" | "">("");
   const [cpf, setCpf] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [grupoTipo, setGrupoTipo] = useState<"JUSC" | "OUTRO">("JUSC");
+  const [outroGrupo, setOutroGrupo] = useState("");
   const [dataNascimentoBr, setDataNascimentoBr] = useState("");
   const [dataNascimentoIso, setDataNascimentoIso] = useState<string | null>(null);
 
@@ -244,6 +247,11 @@ export function ModalInscricao({
       return;
     }
 
+    if (campanha.campoGrupo && grupoTipo === "OUTRO" && !outroGrupo.trim()) {
+      setErro("Por favor, informe o nome do seu grupo (ex: JLJ, JUASC, PJ...).");
+      return;
+    }
+
     if (campanha.campoCpf && !cpf.trim()) {
       setErro("Por favor, preencha seu CPF.");
       return;
@@ -284,6 +292,10 @@ export function ModalInscricao({
       return;
     }
 
+    const grupoFinal = campanha.campoGrupo
+      ? (grupoTipo === "OUTRO" ? outroGrupo.trim() : "JUSC")
+      : "JUSC";
+
     setEnviando(true);
     try {
       const res = await fetch("/api/inscricoes", {
@@ -295,6 +307,7 @@ export function ModalInscricao({
           sexo: campanha.campoSexo ? sexo : null,
           cpf: campanha.campoCpf ? cpf.trim() : null,
           telefone: telefone.trim(),
+          grupo: grupoFinal,
           dataNascimento: campanha.campoDataNascimento ? dataNascimentoIso : null,
           nomeResponsavel: campanha.campoNomeResponsavel ? nomeResponsavel.trim() : null,
           parentescoResponsavel: campanha.campoParentescoResponsavel ? parentescoResponsavel.trim() : null,
@@ -367,6 +380,8 @@ export function ModalInscricao({
     setSucessoData(null);
     setClicouGrupoWhatsapp(false);
     setErro("");
+    setGrupoTipo("JUSC");
+    setOutroGrupo("");
     onFechar();
   }
 
@@ -841,6 +856,45 @@ export function ModalInscricao({
                     </div>
                   )}
                 </div>
+
+                {/* Grupo de Jovens / Movimento */}
+                {campanha.campoGrupo && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">
+                        Grupo / Movimento *
+                      </label>
+                      <select
+                        value={grupoTipo}
+                        onChange={(e) => setGrupoTipo(e.target.value as "JUSC" | "OUTRO")}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                      >
+                        <option value="JUSC">JUSC</option>
+                        <option value="OUTRO">Outro Grupo / Paróquia</option>
+                      </select>
+                    </div>
+
+                    {grupoTipo === "OUTRO" ? (
+                      <div>
+                        <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1">
+                          Nome do seu Grupo *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ex.: JLJ, JUASC, JUCASFA, PJ..."
+                          value={outroGrupo}
+                          onChange={(e) => setOutroGrupo(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-medium text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#FFC72C]"
+                        />
+                      </div>
+                    ) : (
+                      <div className="hidden sm:flex items-center text-xs text-neutral-500 dark:text-neutral-400 italic pt-6">
+                        Grupo JUSC selecionado
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Data de Nascimento com CÁLCULO DE IDADE EM TEMPO REAL */}
                 {campanha.campoDataNascimento && (
