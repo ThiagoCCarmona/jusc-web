@@ -1483,8 +1483,9 @@ export function AdminPanelClient() {
                   >
                     <div className="flex items-center gap-4 min-w-0">
                       {camp.fotoUrl ? (
-                        <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-amber-400 flex-shrink-0">
-                          <Image src={camp.fotoUrl} alt={camp.titulo} fill unoptimized className="object-cover" />
+                        <div className="relative w-20 h-16 rounded-xl overflow-hidden border border-amber-400 flex-shrink-0 bg-neutral-950 flex items-center justify-center">
+                          <Image src={camp.fotoUrl} alt="" fill unoptimized className="object-cover opacity-25 blur-xs pointer-events-none" />
+                          <Image src={camp.fotoUrl} alt={camp.titulo} fill unoptimized className="object-contain p-0.5 z-10" />
                         </div>
                       ) : (
                         <div className="w-16 h-16 rounded-xl bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-neutral-400 flex-shrink-0">

@@ -56,14 +56,23 @@ export function BannerAlerta({
       {expandido && (
         <div className="px-6 pb-6 pt-3 border-t border-red-500/60 bg-red-700/40 animate-fadeIn space-y-4">
           {imagemUrl && (
-            <div className="relative w-full h-64 sm:h-80 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg bg-black/20">
+            <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden border-2 border-white/20 shadow-lg bg-black/40 flex items-center justify-center">
               <Image
                 src={imagemUrl}
-                alt={titulo}
+                alt=""
                 fill
                 unoptimized
-                className="object-cover hover:scale-105 transition-transform duration-500"
+                className="object-cover opacity-25 blur-md scale-105 pointer-events-none"
               />
+              <div className="relative z-10 w-full h-full flex items-center justify-center p-2">
+                <Image
+                  src={imagemUrl}
+                  alt={titulo}
+                  fill
+                  unoptimized
+                  className="object-contain drop-shadow-md hover:scale-[1.02] transition-transform duration-300"
+                />
+              </div>
             </div>
           )}
           <div className="text-sm text-white/95 whitespace-pre-line leading-relaxed mb-5">
@@ -140,6 +149,7 @@ export function BannerContato({
                   src={fotoUrl}
                   alt={`${cargo} ${nome}`}
                   fill
+                  unoptimized
                   sizes="(max-width: 640px) 144px, 192px"
                   className="object-cover object-top filter brightness-[1.03] contrast-[1.03]"
                   priority
@@ -258,14 +268,23 @@ export function BannerEvento({
       {expandido && (
         <div className="px-6 pb-6 pt-4 border-t border-[#FFC72C]/30 bg-white/80 dark:bg-black/40 backdrop-blur-sm animate-fadeIn space-y-5">
           {imagemUrl && (
-            <div className="relative w-full h-64 sm:h-80 rounded-2xl overflow-hidden border-2 border-[#FFC72C]/40 shadow-lg bg-neutral-100 dark:bg-neutral-900">
+            <div className="relative w-full h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden border-2 border-[#FFC72C]/40 shadow-lg bg-neutral-900/60 flex items-center justify-center">
               <Image
                 src={imagemUrl}
-                alt={titulo}
+                alt=""
                 fill
                 unoptimized
-                className="object-cover hover:scale-105 transition-transform duration-500"
+                className="object-cover opacity-25 blur-md scale-105 pointer-events-none"
               />
+              <div className="relative z-10 w-full h-full flex items-center justify-center p-2">
+                <Image
+                  src={imagemUrl}
+                  alt={titulo}
+                  fill
+                  unoptimized
+                  className="object-contain drop-shadow-md hover:scale-[1.02] transition-transform duration-300"
+                />
+              </div>
             </div>
           )}
           <p className="text-sm text-neutral-800 dark:text-neutral-200 whitespace-pre-line leading-relaxed font-normal">
@@ -341,13 +360,13 @@ export function BannerCamiseta({ campanha }: BannerCamisetaProps) {
 
         <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-5 relative z-10">
           {/* Miniatura Foto da Camiseta */}
-          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-2 border-neutral-950 shadow-md bg-white flex-shrink-0 group-hover:scale-105 transition-transform">
+          <div className="relative w-32 h-28 sm:w-36 sm:h-32 md:w-40 md:h-36 rounded-2xl overflow-hidden border-2 border-neutral-950 shadow-md bg-white flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
             <Image
               src={fotoCapa}
               alt={campanha.titulo}
               fill
               unoptimized
-              className="object-contain p-1"
+              className="object-contain p-1.5"
             />
             <span className="absolute bottom-1 right-1 bg-neutral-950 text-[#FFC72C] text-[10px] font-black px-1.5 py-0.5 rounded-md">
               {campanha.fotos.length} fotos
@@ -486,15 +505,26 @@ export function BannerInscricao({ campanha }: BannerInscricaoProps) {
 
         <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-5 relative z-10">
           {/* Miniatura com Foto da Inscrição */}
-          <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden border-2 border-neutral-950 shadow-md bg-white flex-shrink-0 group-hover:scale-105 transition-transform">
+          <div className="relative w-36 h-28 sm:w-44 sm:h-32 md:w-52 md:h-36 rounded-2xl overflow-hidden border-2 border-neutral-950 shadow-md bg-neutral-950 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+            {/* Fundo desfocado para preenchimento harmônico de proporção sem bordas duras */}
             <Image
               src={fotoCapa}
-              alt={campanha.titulo}
+              alt=""
               fill
               unoptimized
-              className="object-cover"
+              className="object-cover opacity-35 blur-md scale-110 pointer-events-none"
             />
-            <span className="absolute bottom-1 right-1 bg-neutral-950 text-[#FFC72C] text-[9px] font-black px-1.5 py-0.5 rounded-md">
+            {/* Foto real 100% visível, nítida e sem cortes */}
+            <div className="relative z-10 w-full h-full flex items-center justify-center p-1.5">
+              <Image
+                src={fotoCapa}
+                alt={campanha.titulo}
+                fill
+                unoptimized
+                className="object-contain drop-shadow-sm"
+              />
+            </div>
+            <span className="absolute bottom-1 right-1 bg-neutral-950 text-[#FFC72C] text-[9px] font-black px-1.5 py-0.5 rounded-md z-20 shadow-sm">
               Oficial
             </span>
           </div>

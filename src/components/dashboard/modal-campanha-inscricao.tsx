@@ -437,18 +437,27 @@ export function ModalCampanhaInscricao({
               </label>
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 {fotoUrl ? (
-                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-neutral-300 dark:border-neutral-700 flex-shrink-0 shadow-sm">
+                  <div className="relative w-36 h-24 rounded-2xl overflow-hidden border-2 border-neutral-300 dark:border-neutral-700 flex-shrink-0 shadow-sm bg-neutral-950 flex items-center justify-center">
                     <Image
                       src={fotoUrl}
-                      alt="Banner"
+                      alt=""
                       fill
                       unoptimized
-                      className="object-cover"
+                      className="object-cover opacity-25 blur-sm pointer-events-none"
                     />
+                    <div className="relative z-10 w-full h-full flex items-center justify-center p-1">
+                      <Image
+                        src={fotoUrl}
+                        alt="Banner"
+                        fill
+                        unoptimized
+                        className="object-contain"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => setFotoUrl("")}
-                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/75 text-white hover:bg-black transition-colors"
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/75 text-white hover:bg-black transition-colors z-20"
                       title="Remover foto"
                     >
                       <X className="w-3.5 h-3.5" />
