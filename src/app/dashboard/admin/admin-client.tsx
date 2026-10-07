@@ -31,6 +31,8 @@ import {
   Tag,
   X,
   ClipboardList,
+  Link2,
+  Copy,
 } from "lucide-react";
 import { formatarData, formatarDataHora, formatarDataHoraLimite, formatarFaixaPrecos, normalizarModelos } from "@/lib/utils";
 import { InputDataBr } from "@/components/ui/input-data-br";
@@ -130,6 +132,7 @@ export function AdminPanelClient() {
   const [campanhas, setCampanhas] = useState<any[]>([]);
   const [modalCampanhaAberto, setModalCampanhaAberto] = useState(false);
   const [campanhaSelecionada, setCampanhaSelecionada] = useState<any | null>(null);
+  const [copiadoLinkId, setCopiadoLinkId] = useState<string | null>(null);
 
   // Estados de Pausas / Férias
   const [pausas, setPausas] = useState<any[]>([]);
@@ -338,6 +341,15 @@ export function AdminPanelClient() {
     } finally {
       setProcessandoPausa(false);
     }
+  }
+
+  function handleCopiarLink(tipo: "inscricao" | "camiseta", id: string) {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}/?${tipo}=${id}`;
+    navigator.clipboard.writeText(url);
+    setCopiadoLinkId(id);
+    dispararSucesso(`Link direto ${tipo === "inscricao" ? "da inscrição" : "da campanha"} copiado para a área de transferência!`);
+    setTimeout(() => setCopiadoLinkId(null), 2500);
   }
 
   // Ações de Campanhas de Inscrição
@@ -1538,6 +1550,25 @@ export function AdminPanelClient() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0">
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarLink("inscricao", camp.id)}
+                        className="px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        title="Copiar link direto para inscrição"
+                      >
+                        {copiadoLinkId === camp.id ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-emerald-700 dark:text-emerald-300">Copiado!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Link2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>Copiar Link</span>
+                          </>
+                        )}
+                      </button>
+
                       <a
                         href={`/dashboard/inscricoes?campanhaId=${camp.id}`}
                         className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold text-xs transition-colors"
@@ -1689,6 +1720,25 @@ export function AdminPanelClient() {
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => handleCopiarLink("camiseta", camp.id)}
+                          className="px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                          title="Copiar link direto para pedidos"
+                        >
+                          {copiadoLinkId === camp.id ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span className="text-emerald-700 dark:text-emerald-300">Copiado!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Link2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>Copiar Link</span>
+                            </>
+                          )}
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => abrirEdicaoCampanha(camp)}

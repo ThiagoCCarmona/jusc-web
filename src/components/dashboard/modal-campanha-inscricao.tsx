@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   Check,
   Shirt,
+  Link2,
+  Copy,
 } from "lucide-react";
 import { InputDataBr } from "@/components/ui/input-data-br";
 import { isoParaBrasileiro, brasileiroParaIso } from "@/lib/utils";
@@ -72,6 +74,7 @@ export function ModalCampanhaInscricao({
   const [ativa, setAtiva] = useState(true);
   const [ocultoNaHome, setOcultoNaHome] = useState(false);
   const [limiteVagas, setLimiteVagas] = useState("");
+  const [copiadoLink, setCopiadoLink] = useState(false);
 
   // Financeiro
   const [requerPagamento, setRequerPagamento] = useState(false);
@@ -248,6 +251,14 @@ export function ModalCampanhaInscricao({
     } finally {
       setUploadingFoto(false);
     }
+  }
+
+  function handleCopiarLinkDireto() {
+    if (!campanha?.id) return;
+    const url = `${window.location.origin}/?inscricao=${campanha.id}`;
+    navigator.clipboard.writeText(url);
+    setCopiadoLink(true);
+    setTimeout(() => setCopiadoLink(false), 2500);
   }
 
   async function handleSalvar(e: React.FormEvent) {
@@ -514,7 +525,7 @@ export function ModalCampanhaInscricao({
                     className="w-4 h-4 rounded text-amber-500 focus:ring-[#FFC72C]"
                   />
                   <label htmlFor="campanhaAtiva" className="text-xs font-bold cursor-pointer">
-                    Publicação Ativa no Banner da Home
+                    Inscrições abertas
                   </label>
                 </div>
                 {(() => {
@@ -571,6 +582,38 @@ export function ModalCampanhaInscricao({
                 </p>
               </div>
             </div>
+
+            {/* Bloco de Link Direto (quando a campanha já existe) */}
+            {campanha?.id && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                    <Link2 className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <span>Link Direto para Inscrições</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-600 dark:text-neutral-400 truncate font-mono select-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/?inscricao=${campanha.id}` : `/?inscricao=${campanha.id}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopiarLinkDireto}
+                  className="px-3.5 py-2 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors flex-shrink-0 cursor-pointer"
+                >
+                  {copiadoLink ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+                      <span>Link Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar Link Direto</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* SUPORTE FINANCEIRO E PAGAMENTO */}

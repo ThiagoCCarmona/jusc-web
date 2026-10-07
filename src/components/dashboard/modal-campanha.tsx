@@ -12,6 +12,9 @@ import {
   Check,
   Edit2,
   RotateCcw,
+  Link2,
+  Copy,
+  CheckCircle2,
 } from "lucide-react";
 import { InputDataBr } from "@/components/ui/input-data-br";
 import { normalizarModelos, ModeloPrecoItem, isoParaBrasileiro } from "@/lib/utils";
@@ -57,6 +60,7 @@ export function ModalCampanha({
   const [descricao, setDescricao] = useState("");
   const [precoBase, setPrecoBase] = useState("");
   const [ocultoNaHome, setOcultoNaHome] = useState(false);
+  const [copiadoLink, setCopiadoLink] = useState(false);
   const [modelos, setModelos] = useState<ModeloPrecoItem[]>([
     { nome: "Tradicional" },
     { nome: "Baby Look" },
@@ -213,6 +217,14 @@ export function ModalCampanha({
     } else {
       setTamanhosSelecionados([...tamanhosSelecionados, tam]);
     }
+  }
+
+  function handleCopiarLinkDireto() {
+    if (!campanha?.id) return;
+    const url = `${window.location.origin}/?camiseta=${campanha.id}`;
+    navigator.clipboard.writeText(url);
+    setCopiadoLink(true);
+    setTimeout(() => setCopiadoLink(false), 2500);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -569,6 +581,38 @@ export function ModalCampanha({
                 </p>
               </div>
             </div>
+
+            {/* Bloco de Link Direto (quando a campanha já existe) */}
+            {campanha?.id && (
+              <div className="sm:col-span-2 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-neutral-900 dark:text-neutral-100">
+                    <Link2 className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <span>Link Direto para Pedidos de Camisetas</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-600 dark:text-neutral-400 truncate font-mono select-all">
+                    {typeof window !== "undefined" ? `${window.location.origin}/?camiseta=${campanha.id}` : `/?camiseta=${campanha.id}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopiarLinkDireto}
+                  className="px-3.5 py-2 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors flex-shrink-0 cursor-pointer"
+                >
+                  {copiadoLink ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+                      <span>Link Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar Link Direto</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* Gestão Dinâmica de Tamanhos (Criar, Editar e Selecionar) */}
             <div className="sm:col-span-2 space-y-3 p-3.5 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-800">

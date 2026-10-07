@@ -29,6 +29,7 @@ import {
   RotateCcw,
   Shirt,
   Copy,
+  Link2,
   AlertTriangle,
 } from "lucide-react";
 import { formatarData, formatarTelefone, formatarCpf } from "@/lib/utils";
@@ -129,6 +130,7 @@ export default function InscricoesPage() {
   const [abaTelefone, setAbaTelefone] = useState<"INSCRITOS" | "RESPONSAVEIS" | "MENORES">("INSCRITOS");
   const [apenasDigitosTelefone, setApenasDigitosTelefone] = useState(false);
   const [copiadoTelefones, setCopiadoTelefones] = useState(false);
+  const [copiadoLinkEvento, setCopiadoLinkEvento] = useState(false);
 
   // Modais de Ação
   const [inscricaoDetalhes, setInscricaoDetalhes] = useState<InscricaoItem | null>(null);
@@ -1122,6 +1124,37 @@ export default function InscricoesPage() {
                 </option>
               ))}
             </select>
+
+            {filtroCampanha !== "TODAS" && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window === "undefined") return;
+                  const url = `${window.location.origin}/?inscricao=${filtroCampanha}`;
+                  navigator.clipboard.writeText(url);
+                  setCopiadoLinkEvento(true);
+                  setMensagemSucesso("Link direto da inscrição copiado com sucesso!");
+                  setTimeout(() => {
+                    setCopiadoLinkEvento(false);
+                    setMensagemSucesso("");
+                  }, 2500);
+                }}
+                className="px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Copiar link direto para este evento"
+              >
+                {copiadoLinkEvento ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-emerald-700 dark:text-emerald-300">Link Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Link2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Copiar Link do Evento</span>
+                  </>
+                )}
+              </button>
+            )}
 
             <select
               value={filtroStatusPag}
