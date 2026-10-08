@@ -251,7 +251,7 @@ export default function PedidosPage() {
 
   // ==========================================
   // RELATÓRIO DO FORNECEDOR (SEM VALORES / PAGAMENTO)
-  // Agrupado por Modelo & Tamanho + Relação com Personalizações
+  // Grade Consolidada + Grade Separada (Camiseta e Short) + Personalizações (se houver)
   // ==========================================
   function exportarFornecedorPDF() {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -259,33 +259,83 @@ export default function PedidosPage() {
 
     const pedidosValidos = pedidosFiltrados.filter((p) => p.statusPagamento !== "CANCELADO");
 
-    // 1. Agrupamento por Modelo e Tamanho
-    const grade: Record<string, number> = {};
-    let totalPecas = 0;
+    const campanhaAtual = campanhas.find((c) => c.id === filtroCampanha);
+    const tituloCampanha = campanhaAtual ? ` - Campanha: ${campanhaAtual.titulo}` : "";
+
+    // 1. Agrupamento Consolidado por Modelo e Tamanho do Pedido
+    const gradeConsolidada: Record<string, number> = {};
+    let totalPecasConsolidadas = 0;
+
+    // 2. Agrupamento Separado de Peças de Roupa (Camisetas e Shorts Individuais)
+    const gradeCamisetas: Record<string, number> = {};
+    let totalCamisetasPecas = 0;
+    const gradeShorts: Record<string, number> = {};
+    let totalShortsPecas = 0;
+
+    const ordemTamanhosPadrao = [
+      "PPP", "PP", "P", "M", "G", "GG", "XG", "XGG", "XXG", "XXGG", "XXXG",
+      "1", "2", "4", "6", "8", "10", "12", "14", "16"
+    ];
+
+    function compararTamanhos(a: string, b: string) {
+      const idxA = ordemTamanhosPadrao.indexOf(a.toUpperCase());
+      const idxB = ordemTamanhosPadrao.indexOf(b.toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b, "pt-BR");
+    }
 
     pedidosValidos.forEach((p) => {
+      // Consolidado
       const chave = `${p.modelo} — Tam. ${p.tamanho}`;
-      grade[chave] = (grade[chave] || 0) + p.quantidade;
-      totalPecas += p.quantidade;
+      gradeConsolidada[chave] = (gradeConsolidada[chave] || 0) + p.quantidade;
+      totalPecasConsolidadas += p.quantidade;
+
+      // Separado
+      const ehConjunto = p.tamanho.includes("Camiseta:") || p.tamanho.includes("Short:");
+      if (ehConjunto) {
+        const matchCam = p.tamanho.match(/Camiseta:\s*([^|]+)/i);
+        const matchShort = p.tamanho.match(/Short:\s*(.+)/i);
+        const tamCam = matchCam ? matchCam[1].trim() : p.tamanho;
+        const tamSho = matchShort ? matchShort[1].trim() : "-";
+
+        gradeCamisetas[tamCam] = (gradeCamisetas[tamCam] || 0) + p.quantidade;
+        totalCamisetasPecas += p.quantidade;
+
+        if (tamSho && tamSho !== "-") {
+          gradeShorts[tamSho] = (gradeShorts[tamSho] || 0) + p.quantidade;
+          totalShortsPecas += p.quantidade;
+        }
+      } else {
+        const tam = p.tamanho.trim() || "-";
+        gradeCamisetas[tam] = (gradeCamisetas[tam] || 0) + p.quantidade;
+        totalCamisetasPecas += p.quantidade;
+      }
     });
 
-    doc.setFontSize(14);
-    doc.text("Relatório de Produção para Fornecedor / Estamparia", 14, 15);
+    // Cabeçalho do PDF
+    doc.setFontSize(13);
+    doc.setTextColor(20, 20, 20);
+    doc.text(`Relatório de Produção para Fornecedor / Estamparia${tituloCampanha}`, 14, 15);
     doc.setFontSize(8);
     doc.setTextColor(100);
-    doc.text(
-      `Gerado em: ${dataHora} | Total Geral de Camisetas: ${totalPecas} peça(s) | Pedidos: ${pedidosValidos.length}`,
-      14,
-      21
-    );
 
-    // Tabela 1: Resumo da Grade
-    doc.setFontSize(11);
-    doc.setTextColor(20);
-    doc.text("1. Resumo da Grade de Confecção (Quantidades por Modelo e Tamanho)", 14, 28);
+    const resumoTopo = totalShortsPecas > 0
+      ? `Gerado em: ${dataHora} | Pedidos: ${pedidosValidos.length} | Peças Totais: ${totalCamisetasPecas + totalShortsPecas} (${totalCamisetasPecas} camisetas, ${totalShortsPecas} shorts)`
+      : `Gerado em: ${dataHora} | Total Geral de Camisetas: ${totalCamisetasPecas} peça(s) | Pedidos: ${pedidosValidos.length}`;
 
-    const gradeHead = [["Modelo / Especificação", "Tamanho", "Quantidade (Peças)"]];
-    const gradeBody = Object.entries(grade).map(([chave, qtd]) => {
+    doc.text(resumoTopo, 14, 21);
+
+    // ========================================================
+    // TABELA 1: Resumo Consolidado (Modelos e Tamanhos Fechados)
+    // ========================================================
+    doc.setFontSize(10.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text("1. Resumo da Grade Consolidada (Por Modelo e Opção do Pedido)", 14, 28);
+
+    const gradeHead = [["Modelo / Especificação", "Tamanho Fechado", "Quantidade (Pedidos)"]];
+    const gradeBody = Object.entries(gradeConsolidada).map(([chave, qtd]) => {
       const [mod, tam] = chave.split(" — Tam. ");
       return [mod, tam || "-", `${qtd} un.`];
     });
@@ -294,62 +344,161 @@ export default function PedidosPage() {
       head: gradeHead,
       body: gradeBody,
       startY: 32,
-      styles: { fontSize: 8.5, cellPadding: 2.5 },
+      styles: { fontSize: 8.5, cellPadding: 2.2 },
       headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: "bold" },
       alternateRowStyles: { fillColor: [248, 250, 252] },
     });
 
-    // Tabela 2: Relação Nominal & Personalizações
-    const finalYGrade = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : 90;
+    // ========================================================
+    // TABELA 2: Grade Separada de Peças (Camisetas e Shorts Individuais)
+    // ========================================================
+    let finalYConsolidada = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : 90;
+    if (finalYConsolidada > 230) {
+      doc.addPage();
+      finalYConsolidada = 20;
+    }
 
-    doc.setFontSize(11);
-    doc.setTextColor(20);
-    doc.text("2. Detalhamento de Itens e Personalizações de Nome/Número", 14, finalYGrade);
+    doc.setFontSize(10.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text("2. Grade Separada de Confecção (Corte e Produção Individual de Peças)", 14, finalYConsolidada);
 
-    const itensHead = [["Cód. Pedido", "Modelo", "Tam.", "Qtd", "Nome na Camiseta", "Nº na Camiseta"]];
-    const itensBody = pedidosValidos.map((p) => [
-      p.codigoPedido,
-      p.modelo,
-      p.tamanho,
-      `${p.quantidade}`,
-      p.personalizacaoNome ? p.personalizacaoNome.toUpperCase() : "—",
-      p.personalizacaoNum ? `${p.personalizacaoNum}` : "—",
-    ]);
+    const gradeSeparadaHead = [["Tipo de Peça", "Tamanho", "Quantidade (Peças)"]];
+    const gradeSeparadaBody: string[][] = [];
+
+    // Linhas de Camisetas
+    Object.keys(gradeCamisetas)
+      .sort(compararTamanhos)
+      .forEach((tam) => {
+        gradeSeparadaBody.push(["Camiseta", tam, `${gradeCamisetas[tam]} un.`]);
+      });
+    gradeSeparadaBody.push(["SUBTOTAL CAMISETAS", "Todos os tamanhos", `${totalCamisetasPecas} peças`]);
+
+    // Linhas de Shorts (se houver)
+    if (totalShortsPecas > 0) {
+      Object.keys(gradeShorts)
+        .sort(compararTamanhos)
+        .forEach((tam) => {
+          gradeSeparadaBody.push(["Short", tam, `${gradeShorts[tam]} un.`]);
+        });
+      gradeSeparadaBody.push(["SUBTOTAL SHORTS", "Todos os tamanhos", `${totalShortsPecas} peças`]);
+      gradeSeparadaBody.push([
+        "TOTAL GERAL DE PEÇAS",
+        "Camisetas + Shorts",
+        `${totalCamisetasPecas + totalShortsPecas} peças`,
+      ]);
+    }
 
     autoTable(doc, {
-      head: itensHead,
-      body: itensBody,
-      startY: finalYGrade + 4,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: "bold" },
+      head: gradeSeparadaHead,
+      body: gradeSeparadaBody,
+      startY: finalYConsolidada + 4,
+      styles: { fontSize: 8.5, cellPadding: 2.2 },
+      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: "bold" },
       alternateRowStyles: { fillColor: [248, 250, 252] },
+      didParseCell: (data) => {
+        if (data.section === "body") {
+          const texto = String(data.cell.raw || "");
+          if (texto.includes("SUBTOTAL") || texto.includes("TOTAL GERAL")) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [241, 245, 249];
+          }
+        }
+      },
     });
 
-    doc.save(`fornecedor-camisetas-${new Date().toISOString().slice(0, 10)}.pdf`);
+    // ========================================================
+    // TABELA 3: Relação Nominal & Personalizações
+    // Só é exibida se houver pelo menos um pedido com personalização
+    // ========================================================
+    const pedidosComPersonalizacao = pedidosValidos.filter(
+      (p) => Boolean(p.personalizacaoNome?.trim()) || Boolean(p.personalizacaoNum?.trim())
+    );
+
+    if (pedidosComPersonalizacao.length > 0) {
+      let finalYSeparada = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 10 : 160;
+      if (finalYSeparada > 230) {
+        doc.addPage();
+        finalYSeparada = 20;
+      }
+
+      doc.setFontSize(10.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text(
+        `3. Detalhamento de Peças com Personalização (${pedidosComPersonalizacao.length} itens a estampar)`,
+        14,
+        finalYSeparada
+      );
+
+      const itensHead = [["Cód. Pedido", "Modelo", "Tam.", "Qtd", "Nome a Estampar", "Nº a Estampar"]];
+      const itensBody = pedidosComPersonalizacao.map((p) => [
+        p.codigoPedido,
+        p.modelo,
+        p.tamanho,
+        `${p.quantidade}`,
+        p.personalizacaoNome ? p.personalizacaoNome.toUpperCase() : "—",
+        p.personalizacaoNum ? `${p.personalizacaoNum}` : "—",
+      ]);
+
+      autoTable(doc, {
+        head: itensHead,
+        body: itensBody,
+        startY: finalYSeparada + 4,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
+    }
+
+    const sufixoNome = campanhaAtual ? `-${campanhaAtual.titulo.toLowerCase().replace(/[^a-z0-9]/g, "-")}` : "";
+    doc.save(`fornecedor-camisetas${sufixoNome}-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   function exportarFornecedorCSV() {
     const pedidosValidos = pedidosFiltrados.filter((p) => p.statusPagamento !== "CANCELADO");
+    const temPersonalizacao = pedidosValidos.some(
+      (p) => Boolean(p.personalizacaoNome?.trim()) || Boolean(p.personalizacaoNum?.trim())
+    );
 
     const cabecalho = [
       "Código do Pedido",
       "Modelo",
-      "Tamanho",
+      "Tamanho Completo",
+      "Tam. Camiseta",
+      "Tam. Short",
       "Quantidade",
-      "Nome Estampado",
-      "Número Estampado",
+      ...(temPersonalizacao ? ["Nome Estampado", "Número Estampado"] : []),
       "Data do Pedido",
     ];
 
-    const linhas = pedidosValidos.map((p) => [
-      `"${p.codigoPedido}"`,
-      `"${p.modelo}"`,
-      `"${p.tamanho}"`,
-      p.quantidade,
-      `"${p.personalizacaoNome ? p.personalizacaoNome.toUpperCase() : ""}"`,
-      `"${p.personalizacaoNum || ""}"`,
-      formatarData(p.criadoEm),
-    ]);
+    const linhas = pedidosValidos.map((p) => {
+      let tamCam = p.tamanho;
+      let tamSho = "-";
+      if (p.tamanho.includes("Camiseta:") || p.tamanho.includes("Short:")) {
+        const matchCam = p.tamanho.match(/Camiseta:\s*([^|]+)/i);
+        const matchShort = p.tamanho.match(/Short:\s*(.+)/i);
+        tamCam = matchCam ? matchCam[1].trim() : p.tamanho;
+        tamSho = matchShort ? matchShort[1].trim() : "-";
+      }
+
+      const cols = [
+        `"${p.codigoPedido}"`,
+        `"${p.modelo}"`,
+        `"${p.tamanho}"`,
+        `"${tamCam}"`,
+        `"${tamSho}"`,
+        p.quantidade,
+      ];
+
+      if (temPersonalizacao) {
+        cols.push(
+          `"${p.personalizacaoNome ? p.personalizacaoNome.toUpperCase() : ""}"`,
+          `"${p.personalizacaoNum || ""}"`
+        );
+      }
+
+      cols.push(formatarData(p.criadoEm));
+      return cols;
+    });
 
     const csvContent =
       "data:text/csv;charset=utf-8,\uFEFF" +
