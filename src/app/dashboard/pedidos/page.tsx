@@ -95,9 +95,14 @@ export default function PedidosPage() {
   const [pedidoEstorno, setPedidoEstorno] = useState<PedidoItem | null>(null);
   const [processandoEstorno, setProcessandoEstorno] = useState(false);
 
+  // Modal de Exclusão de Pedido
+  const [pedidoExclusao, setPedidoExclusao] = useState<PedidoItem | null>(null);
+  const [processandoExclusao, setProcessandoExclusao] = useState(false);
+
   // Modal de Criar / Editar Campanha
   const [modalCampanhaAberto, setModalCampanhaAberto] = useState(false);
   const [campanhaSelecionada, setCampanhaSelecionada] = useState<CampanhaItem | null>(null);
+
 
   async function carregarDados() {
     setCarregando(true);
@@ -188,6 +193,31 @@ export default function PedidosPage() {
       setMensagemErro("Erro de conexão ao desfazer baixa.");
     } finally {
       setProcessandoEstorno(false);
+    }
+  }
+
+  // Ação de Excluir Pedido
+  async function handleConfirmarExclusao() {
+    if (!pedidoExclusao) return;
+    setProcessandoExclusao(true);
+    try {
+      const res = await fetch(`/api/pedidos/${pedidoExclusao.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setMensagemSucesso(`Pedido ${pedidoExclusao.codigoPedido} excluído com sucesso!`);
+        setTimeout(() => setMensagemSucesso(""), 4000);
+        setPedidoExclusao(null);
+        await carregarDados();
+      } else {
+        const data = await res.json();
+        setMensagemErro(data.error || "Erro ao excluir pedido.");
+      }
+    } catch {
+      setMensagemErro("Erro de conexão ao excluir pedido.");
+    } finally {
+      setProcessandoExclusao(false);
     }
   }
 
@@ -748,11 +778,11 @@ export default function PedidosPage() {
                       <td className="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5">
                         {p.statusPagamento !== "PAGO_TOTAL" && p.statusPagamento !== "CANCELADO" && (
                           <>
-                            {p.tipoQuitacao === "PARCELADO_50_50" && p.statusPagamento === "PENDENTE" && (
+                            {p.statusPagamento === "PENDENTE" && (
                               <button
                                 disabled={isProcessing}
                                 onClick={() => executarAcao(p.id, "BAIXA_50")}
-                                title="Confirmar recebimento do sinal de 50%"
+                                title="Confirmar recebimento de 50% (Sinal)"
                                 className="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] shadow-sm transition-all"
                               >
                                 Baixa 50%
@@ -762,10 +792,14 @@ export default function PedidosPage() {
                             <button
                               disabled={isProcessing}
                               onClick={() => executarAcao(p.id, "BAIXA_100")}
-                              title="Confirmar quitação total do pedido"
+                              title={
+                                p.statusPagamento === "PAGO_PARCIAL"
+                                  ? "Confirmar quitação do saldo restante de 50%"
+                                  : "Confirmar quitação total do pedido"
+                              }
                               className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-sm transition-all"
                             >
-                              Baixa 100%
+                              {p.statusPagamento === "PAGO_PARCIAL" ? "Quitar 50%" : "Baixa 100%"}
                             </button>
                           </>
                         )}
@@ -794,6 +828,17 @@ export default function PedidosPage() {
                           }`}
                         >
                           {p.entregue ? "Desfazer Entrega" : "Entregue"}
+                        </button>
+
+                        {/* Botão APAGAR PEDIDO */}
+                        <button
+                          disabled={isProcessing}
+                          onClick={() => setPedidoExclusao(p)}
+                          title="Apagar pedido permanentemente"
+                          className="px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/60 font-bold text-[11px] transition-all inline-flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Excluir</span>
                         </button>
                       </td>
                     </tr>
@@ -828,7 +873,7 @@ export default function PedidosPage() {
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              {pedidoEstorno.statusPagamento === "PAGO_TOTAL" && pedidoEstorno.tipoQuitacao === "PARCELADO_50_50" && (
+              {pedidoEstorno.statusPagamento === "PAGO_TOTAL" && (
                 <button
                   type="button"
                   disabled={processandoEstorno}
@@ -859,6 +904,82 @@ export default function PedidosPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Confirmar Exclusão de Pedido */}
+      {pedidoExclusao && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#15171e] rounded-3xl p-6 max-w-md w-full border border-neutral-200 dark:border-neutral-800 shadow-2xl space-y-4 animate-fadeIn">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-neutral-900 dark:text-white">
+                  Apagar Pedido
+                </h3>
+                <p className="text-[11px] text-neutral-500">
+                  Esta ação é irreversível
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
+              Tem certeza de que deseja apagar permanentemente o pedido{" "}
+              <strong className="text-neutral-900 dark:text-white">{pedidoExclusao.codigoPedido}</strong> de{" "}
+              <strong className="text-neutral-900 dark:text-white">{pedidoExclusao.nomeComprador}</strong>?
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-neutral-100 dark:bg-neutral-900 text-xs space-y-1.5 border border-neutral-200 dark:border-neutral-800">
+              <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
+                <span>Item:</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  {pedidoExclusao.quantidade}x {pedidoExclusao.modelo} ({pedidoExclusao.tamanho})
+                </span>
+              </div>
+              <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
+                <span>Valor Total:</span>
+                <span className="font-semibold text-neutral-900 dark:text-white">
+                  R$ {pedidoExclusao.valorTotal.toFixed(2).replace(".", ",")}
+                </span>
+              </div>
+              <div className="flex justify-between text-neutral-600 dark:text-neutral-400">
+                <span>Status de Pagamento:</span>
+                <span className="font-bold text-neutral-900 dark:text-white">
+                  {pedidoExclusao.statusPagamento}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={processandoExclusao}
+                onClick={handleConfirmarExclusao}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {processandoExclusao ? (
+                  <span>Apagando...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirmar Exclusão</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                disabled={processandoExclusao}
+                onClick={() => setPedidoExclusao(null)}
+                className="py-2.5 px-4 rounded-xl border border-neutral-300 dark:border-neutral-700 font-bold text-xs text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Modal Iniciar / Editar Campanha */}
       <ModalCampanha

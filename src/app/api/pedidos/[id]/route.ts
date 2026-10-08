@@ -22,10 +22,12 @@ export async function PUT(
     let valorPago = pedidoAtual.valorPago;
     let statusPagamento = pedidoAtual.statusPagamento;
     let entregue = pedidoAtual.entregue;
+    let tipoQuitacao = pedidoAtual.tipoQuitacao;
 
     if (acao === "BAIXA_50") {
       valorPago = pedidoAtual.valorTotal / 2;
       statusPagamento = "PAGO_PARCIAL";
+      tipoQuitacao = "PARCELADO_50_50";
     } else if (acao === "BAIXA_100") {
       valorPago = pedidoAtual.valorTotal;
       statusPagamento = "PAGO_TOTAL";
@@ -34,10 +36,11 @@ export async function PUT(
     } else if (acao === "CANCELAR") {
       statusPagamento = "CANCELADO";
     } else if (acao === "DESFAZER_BAIXA") {
-      // Se estava em PAGO_TOTAL com 50/50 e foi pedido para voltar um nível, ou se quer estorno completo
-      if (body.reverterPara === "PAGO_PARCIAL" && pedidoAtual.tipoQuitacao === "PARCELADO_50_50") {
+      // Se foi pedido para voltar para PAGO_PARCIAL (50%), ou se quer estorno completo
+      if (body.reverterPara === "PAGO_PARCIAL") {
         valorPago = pedidoAtual.valorTotal / 2;
         statusPagamento = "PAGO_PARCIAL";
+        tipoQuitacao = "PARCELADO_50_50";
       } else {
         // Volta para PENDENTE com valorPago = 0
         valorPago = 0;
@@ -46,6 +49,7 @@ export async function PUT(
     } else if (acao === "EDITAR") {
       if (body.valorPago !== undefined) valorPago = parseFloat(body.valorPago);
       if (body.statusPagamento !== undefined) statusPagamento = body.statusPagamento;
+      if (body.tipoQuitacao !== undefined) tipoQuitacao = body.tipoQuitacao;
       if (body.entregue !== undefined) entregue = Boolean(body.entregue);
     }
 
@@ -54,11 +58,13 @@ export async function PUT(
       data: {
         valorPago,
         statusPagamento,
+        tipoQuitacao,
         entregue,
         grupo: body.grupo !== undefined ? (body.grupo ? String(body.grupo).trim() : "JUSC") : pedidoAtual.grupo,
         observacao: observacao !== undefined ? observacao : pedidoAtual.observacao,
       },
     });
+
 
     await prisma.logAuditoria.create({
       data: {
