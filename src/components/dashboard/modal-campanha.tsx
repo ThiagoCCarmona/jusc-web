@@ -274,6 +274,9 @@ export function ModalCampanha({
             m.preco !== undefined && !isNaN(m.preco) && m.preco > 0
               ? m.preco
               : precoBaseNum,
+          tamanhos: m.tamanhos && m.tamanhos.length > 0 ? m.tamanhos : undefined,
+          ehConjunto: Boolean(m.ehConjunto),
+          tamanhosShort: m.tamanhosShort && m.tamanhosShort.length > 0 ? m.tamanhosShort : undefined,
         })),
         tamanhosDisponiveis: tamanhosSelecionados,
         permiteNome,
@@ -282,6 +285,7 @@ export function ModalCampanha({
         dataFim: dataFimFinal,
         fotos,
       };
+
 
       const url = campanha?.id ? `/api/campanhas/${campanha.id}` : "/api/campanhas";
       const method = campanha?.id ? "PUT" : "POST";
@@ -391,63 +395,144 @@ export function ModalCampanha({
               </div>
 
               {/* Lista de Modelos */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {modelos.map((mod, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 bg-white dark:bg-[#15171e] p-2 rounded-xl border border-neutral-200 dark:border-neutral-700"
+                    className="p-3 bg-white dark:bg-[#15171e] rounded-2xl border border-neutral-200 dark:border-neutral-700 space-y-2.5 shadow-sm"
                   >
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        required
-                        placeholder="Nome do Modelo (ex: Tradicional)"
-                        value={mod.nome}
-                        onChange={(e) => {
-                          const novos = [...modelos];
-                          novos[idx] = { ...novos[idx], nome: e.target.value };
-                          setModelos(novos);
-                        }}
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
-                      />
-                    </div>
-
-                    <div className="w-32">
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 font-bold">
-                          R$
-                        </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
                         <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder={precoBase || "45.00"}
-                          value={mod.preco !== undefined ? mod.preco : ""}
+                          type="text"
+                          required
+                          placeholder="Nome do Modelo (ex: Tradicional, Conjunto Short e Camiseta)"
+                          value={mod.nome}
                           onChange={(e) => {
                             const novos = [...modelos];
-                            const val = e.target.value ? parseFloat(e.target.value) : undefined;
-                            novos[idx] = { ...novos[idx], preco: val };
+                            novos[idx] = { ...novos[idx], nome: e.target.value };
                             setModelos(novos);
                           }}
-                          className="w-full pl-7 pr-2 py-1.5 rounded-lg bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold"
                         />
                       </div>
+
+                      <div className="w-32">
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 font-bold">
+                            R$
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder={precoBase || "45.00"}
+                            value={mod.preco !== undefined ? mod.preco : ""}
+                            onChange={(e) => {
+                              const novos = [...modelos];
+                              const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                              novos[idx] = { ...novos[idx], preco: val };
+                              setModelos(novos);
+                            }}
+                            className="w-full pl-7 pr-2 py-1.5 rounded-lg bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (modelos.length <= 1) {
+                            onErro("A campanha deve conter pelo menos um modelo.");
+                            return;
+                          }
+                          setModelos(modelos.filter((_, i) => i !== idx));
+                        }}
+                        className="p-1.5 text-neutral-400 hover:text-red-500 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                        title="Remover modelo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (modelos.length <= 1) {
-                          onErro("A campanha deve conter pelo menos um modelo.");
-                          return;
-                        }
-                        setModelos(modelos.filter((_, i) => i !== idx));
-                      }}
-                      className="p-1.5 text-neutral-400 hover:text-red-500 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                      title="Remover modelo"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* Opções Avançadas do Modelo: Conjunto e Tamanhos Específicos */}
+                    <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] border-t border-neutral-100 dark:border-neutral-800/80">
+                      <label className="flex items-center gap-1.5 cursor-pointer font-bold text-neutral-700 dark:text-neutral-300 select-none">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(mod.ehConjunto)}
+                          onChange={(e) => {
+                            const novos = [...modelos];
+                            novos[idx] = { ...novos[idx], ehConjunto: e.target.checked };
+                            setModelos(novos);
+                          }}
+                          className="rounded border-neutral-300 text-amber-500 focus:ring-[#FFC72C]"
+                        />
+                        <span>🩳 É Conjunto (Camiseta + Short)</span>
+                      </label>
+
+                      <label className="flex items-center gap-1.5 cursor-pointer font-bold text-neutral-700 dark:text-neutral-300 select-none">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(mod.tamanhos && mod.tamanhos.length > 0)}
+                          onChange={(e) => {
+                            const novos = [...modelos];
+                            if (e.target.checked) {
+                              novos[idx] = { ...novos[idx], tamanhos: [...tamanhosSelecionados] };
+                            } else {
+                              const { tamanhos, ...resto } = novos[idx];
+                              novos[idx] = resto;
+                            }
+                            setModelos(novos);
+                          }}
+                          className="rounded border-neutral-300 text-amber-500 focus:ring-[#FFC72C]"
+                        />
+                        <span>📏 Tamanhos específicos deste modelo</span>
+                      </label>
+                    </div>
+
+                    {/* Se tiver tamanhos específicos ou se for conjunto */}
+                    {(Boolean(mod.tamanhos && mod.tamanhos.length > 0) || mod.ehConjunto) && (
+                      <div className="space-y-2 p-2.5 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-800 text-[11px]">
+                        <div>
+                          <label className="block font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                            {mod.ehConjunto ? "Tamanhos da Camiseta (separados por vírgula):" : "Tamanhos deste modelo (ex: PPP, PP, P, M, G, GG, XGG, XXXG):"}
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ex: PPP, PP, P, M, G, GG, XGG, XXXG"
+                            value={(mod.tamanhos || tamanhosSelecionados).join(", ")}
+                            onChange={(e) => {
+                              const arr = e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+                              const novos = [...modelos];
+                              novos[idx] = { ...novos[idx], tamanhos: arr };
+                              setModelos(novos);
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-mono"
+                          />
+                        </div>
+
+                        {mod.ehConjunto && (
+                          <div>
+                            <label className="block font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                              Tamanhos do Short (separados por vírgula):
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: PP, P, M, G, GG, XGG"
+                              value={(mod.tamanhosShort || ["PP", "P", "M", "G", "GG", "XGG"]).join(", ")}
+                              onChange={(e) => {
+                                const arr = e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+                                const novos = [...modelos];
+                                novos[idx] = { ...novos[idx], tamanhosShort: arr };
+                                setModelos(novos);
+                              }}
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-mono"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -456,7 +541,7 @@ export function ModalCampanha({
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="text"
-                  placeholder="Novo modelo (ex: Regata, Moletom, Infantil)"
+                  placeholder="Novo modelo (ex: Regata, Moletom, Conjunto)"
                   value={novoModeloNome}
                   onChange={(e) => setNovoModeloNome(e.target.value)}
                   onKeyDown={(e) => {
@@ -468,7 +553,8 @@ export function ModalCampanha({
                           : precoBase
                           ? parseFloat(precoBase)
                           : undefined;
-                        setModelos([...modelos, { nome: novoModeloNome.trim(), preco: p }]);
+                        const ehConj = novoModeloNome.toLowerCase().includes("conjunto");
+                        setModelos([...modelos, { nome: novoModeloNome.trim(), preco: p, ehConjunto: ehConj }]);
                         setNovoModeloNome("");
                         setNovoModeloPreco("");
                       }
@@ -504,7 +590,8 @@ export function ModalCampanha({
                       : precoBase
                       ? parseFloat(precoBase)
                       : undefined;
-                    setModelos([...modelos, { nome: novoModeloNome.trim(), preco: p }]);
+                    const ehConj = novoModeloNome.toLowerCase().includes("conjunto");
+                    setModelos([...modelos, { nome: novoModeloNome.trim(), preco: p, ehConjunto: ehConj }]);
                     setNovoModeloNome("");
                     setNovoModeloPreco("");
                   }}
@@ -514,6 +601,7 @@ export function ModalCampanha({
                   <span>Adicionar</span>
                 </button>
               </div>
+
             </div>
 
             {/* Data Limite */}

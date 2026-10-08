@@ -18,7 +18,14 @@ import {
   QrCode,
 } from "lucide-react";
 
-import { normalizarModelos, ModeloPrecoItem } from "@/lib/utils";
+import {
+  normalizarModelos,
+  ModeloPrecoItem,
+  modeloEhConjunto,
+  obterTamanhosModelo,
+  obterTamanhosShort,
+} from "@/lib/utils";
+
 
 export interface FotoItemCampanha {
   url: string;
@@ -62,7 +69,11 @@ export function ModalPedidoCamiseta({
   const [grupoTipo, setGrupoTipo] = useState<"JUSC" | "OUTRO">("JUSC");
   const [outroGrupo, setOutroGrupo] = useState("");
   const [modelo, setModelo] = useState(modelosNormalizados[0]?.nome || "Padrão");
-  const [tamanho, setTamanho] = useState(campanha.tamanhosDisponiveis[0] || "M");
+  const [tamanho, setTamanho] = useState(
+    obterTamanhosModelo(modelosNormalizados[0]?.nome || "Padrão", campanha.modelos, campanha.tamanhosDisponiveis)[0] || "M"
+  );
+  const [tamanhoCamiseta, setTamanhoCamiseta] = useState("M");
+  const [tamanhoShort, setTamanhoShort] = useState("M");
   const [quantidade, setQuantidade] = useState(1);
   const [personalizacaoNome, setPersonalizacaoNome] = useState("");
   const [personalizacaoNum, setPersonalizacaoNum] = useState("");
@@ -85,6 +96,26 @@ export function ModalPedidoCamiseta({
   const [exibirQrCode, setExibirQrCode] = useState(false);
   const containerScrollRef = useRef<HTMLDivElement>(null);
 
+  // Tamanhos e modelo dinâmicos
+  const ehConjunto = modeloEhConjunto(modelo, campanha.modelos);
+  const tamanhosDisponiveisModelo = obterTamanhosModelo(modelo, campanha.modelos, campanha.tamanhosDisponiveis);
+  const tamanhosDisponiveisShort = obterTamanhosShort(modelo, campanha.modelos, campanha.tamanhosDisponiveis);
+
+  function handleTrocarModelo(novoModeloNome: string) {
+    setModelo(novoModeloNome);
+    const novosTamsModelo = obterTamanhosModelo(novoModeloNome, campanha.modelos, campanha.tamanhosDisponiveis);
+    const novosTamsShort = obterTamanhosShort(novoModeloNome, campanha.modelos, campanha.tamanhosDisponiveis);
+
+    if (!novosTamsModelo.includes(tamanho)) {
+      setTamanho(novosTamsModelo[0] || "M");
+    }
+    if (!novosTamsModelo.includes(tamanhoCamiseta)) {
+      setTamanhoCamiseta(novosTamsModelo[0] || "M");
+    }
+    if (!novosTamsShort.includes(tamanhoShort)) {
+      setTamanhoShort(novosTamsShort[0] || "M");
+    }
+  }
 
   // Travar o scroll do body quando o modal estiver aberto e fechar com Escape
   useEffect(() => {
@@ -138,6 +169,9 @@ export function ModalPedidoCamiseta({
     }
 
     const grupoFinal = grupoTipo === "OUTRO" ? outroGrupo.trim() : "JUSC";
+    const tamanhoFinal = ehConjunto
+      ? `Camiseta: ${tamanhoCamiseta} | Short: ${tamanhoShort}`
+      : tamanho;
 
     setEnviando(true);
     try {
@@ -150,7 +184,9 @@ export function ModalPedidoCamiseta({
           telefoneComprador: telefoneComprador.trim(),
           grupo: grupoFinal,
           modelo,
-          tamanho,
+          tamanho: tamanhoFinal,
+          tamanhoCamiseta: ehConjunto ? tamanhoCamiseta : undefined,
+          tamanhoShort: ehConjunto ? tamanhoShort : undefined,
           quantidade,
           personalizacaoNome: campanha.permiteNome ? personalizacaoNome.trim() : null,
           personalizacaoNum: campanha.permiteNumero ? personalizacaoNum.trim() : null,
@@ -158,6 +194,7 @@ export function ModalPedidoCamiseta({
           tipoQuitacao,
         }),
       });
+
 
       const data = await res.json();
       if (!res.ok) {
@@ -559,55 +596,106 @@ export function ModalPedidoCamiseta({
             </div>
 
             {/* Escolha de Modelo, Tamanho e Quantidade */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Modelo *
-                </label>
-                <select
-                  value={modelo}
-                  onChange={(e) => setModelo(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
-                >
-                  {modelosNormalizados.map((m) => (
-                    <option key={m.nome} value={m.nome}>
-                      {m.nome} {m.preco !== undefined ? `(R$ ${m.preco.toFixed(2).replace(".", ",")})` : ""}
-                    </option>
-                  ))}
-                </select>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Modelo *
+                  </label>
+                  <select
+                    value={modelo}
+                    onChange={(e) => handleTrocarModelo(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+                  >
+                    {modelosNormalizados.map((m) => (
+                      <option key={m.nome} value={m.nome}>
+                        {m.nome} {m.ehConjunto ? "🩳 (Conjunto Short + Camiseta)" : ""} {m.preco !== undefined ? `— R$ ${m.preco.toFixed(2).replace(".", ",")}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Quantidade *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={quantidade}
+                    onChange={(e) => setQuantidade(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Tamanho *
-                </label>
-                <select
-                  value={tamanho}
-                  onChange={(e) => setTamanho(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
-                >
-                  {campanha.tamanhosDisponiveis.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Se for CONJUNTO: Dois campos específicos (Camiseta e Short) */}
+              {ehConjunto ? (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-2">
+                  <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                    <span>🩳 Este modelo é um Conjunto Completo!</span>
+                    <span className="text-[10px] font-normal text-neutral-500 dark:text-neutral-400">
+                      Escolha os tamanhos de cada peça:
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                        👕 Tamanho da Camiseta *
+                      </label>
+                      <select
+                        value={tamanhoCamiseta}
+                        onChange={(e) => setTamanhoCamiseta(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+                      >
+                        {tamanhosDisponiveisModelo.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div>
-                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                  Quantidade *
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={quantidade}
-                  onChange={(e) => setQuantidade(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
-                />
-              </div>
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                        🩳 Tamanho do Short *
+                      </label>
+                      <select
+                        value={tamanhoShort}
+                        onChange={(e) => setTamanhoShort(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+                      >
+                        {tamanhosDisponiveisShort.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Se for Modelo Normal: Seleção única de tamanho do modelo */
+                <div>
+                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Tamanho *
+                  </label>
+                  <select
+                    value={tamanho}
+                    onChange={(e) => setTamanho(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+                  >
+                    {tamanhosDisponiveisModelo.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
 
             {/* Personalização (Nome e/ou Número nas costas) */}
             {(campanha.permiteNome || campanha.permiteNumero) && (

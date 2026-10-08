@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
       grupo = "JUSC",
       modelo,
       tamanho,
+      tamanhoCamiseta,
+      tamanhoShort,
       quantidade = 1,
       personalizacaoNome,
       personalizacaoNum,
@@ -72,12 +74,19 @@ export async function POST(req: NextRequest) {
       tipoQuitacao = "INTEGRAL",
     } = body;
 
-    if (!campanhaId || !nomeComprador || !telefoneComprador || !modelo || !tamanho) {
+    const tamanhoFinal =
+      tamanho ||
+      (tamanhoCamiseta && tamanhoShort
+        ? `Camiseta: ${tamanhoCamiseta} | Short: ${tamanhoShort}`
+        : "");
+
+    if (!campanhaId || !nomeComprador || !telefoneComprador || !modelo || !tamanhoFinal) {
       return NextResponse.json(
         { error: "Por favor, preencha todos os campos obrigatórios do pedido." },
         { status: 400 }
       );
     }
+
 
     const campanha = await prisma.campanhaCamiseta.findUnique({
       where: { id: campanhaId },
@@ -145,7 +154,7 @@ export async function POST(req: NextRequest) {
       nomeComprador: nomeComprador.trim(),
       tituloCampanha: campanha.titulo,
       modelo,
-      tamanho,
+      tamanho: tamanhoFinal.trim(),
       quantidade: qtd,
       grupo: grupo ? String(grupo).trim() : "JUSC",
       personalizacaoNome,
@@ -165,10 +174,11 @@ export async function POST(req: NextRequest) {
         telefoneComprador: telefoneComprador.trim(),
         grupo: grupo ? String(grupo).trim() : "JUSC",
         modelo: modelo.trim(),
-        tamanho: tamanho.trim(),
+        tamanho: tamanhoFinal.trim(),
         quantidade: qtd,
         personalizacaoNome: personalizacaoNome?.trim() || null,
         personalizacaoNum: personalizacaoNum?.trim() || null,
+
         formaPagamento,
         tipoQuitacao,
         valorTotal,

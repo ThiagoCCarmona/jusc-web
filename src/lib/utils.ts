@@ -127,12 +127,15 @@ export function formatarNumeroClj(valor: string): string {
 export interface ModeloPrecoItem {
   nome: string;
   preco?: number;
+  tamanhos?: string[]; // Tamanhos específicos para este modelo (ex: ["PPP", "PP", "P", "M", "G", "GG", "XGG", "XXG", "XXXG"])
+  ehConjunto?: boolean; // Se true, modelo é um conjunto (Short + Camiseta)
+  tamanhosShort?: string[]; // Tamanhos específicos para o short do conjunto
 }
 
 /**
  * Normaliza qualquer formato de modelos:
  * Array de strings ["Branca", "Preta"]
- * Ou array de objetos [{ nome: "Tradicional", preco: 40 }, { nome: "Moletom", preco: 80 }]
+ * Ou array de objetos [{ nome: "Tradicional", preco: 40, tamanhos: ["P", "M"] }, { nome: "Conjunto", preco: 80, ehConjunto: true }]
  */
 export function normalizarModelos(
   modelos: any,
@@ -170,11 +173,97 @@ export function normalizarModelos(
         item.preco !== undefined && !isNaN(parseFloat(item.preco))
           ? parseFloat(item.preco)
           : precoPadrao;
-      return { nome, preco };
+
+      // Tamanhos específicos do modelo
+      let tamanhos: string[] | undefined = undefined;
+      if (Array.isArray(item.tamanhos) && item.tamanhos.length > 0) {
+        tamanhos = item.tamanhos.map((t: any) => String(t).trim().toUpperCase()).filter(Boolean);
+      } else if (typeof item.tamanhos === "string" && item.tamanhos.trim()) {
+        tamanhos = item.tamanhos.split(",").map((t: string) => t.trim().toUpperCase()).filter(Boolean);
+      }
+
+      // Configuração de conjunto
+      const ehConjunto = Boolean(
+        item.ehConjunto ||
+        nome.toLowerCase().includes("conjunto") ||
+        (nome.toLowerCase().includes("short") && nome.toLowerCase().includes("camis"))
+      );
+
+      let tamanhosShort: string[] | undefined = undefined;
+      if (Array.isArray(item.tamanhosShort) && item.tamanhosShort.length > 0) {
+        tamanhosShort = item.tamanhosShort.map((t: any) => String(t).trim().toUpperCase()).filter(Boolean);
+      } else if (typeof item.tamanhosShort === "string" && item.tamanhosShort.trim()) {
+        tamanhosShort = item.tamanhosShort.split(",").map((t: string) => t.trim().toUpperCase()).filter(Boolean);
+      }
+
+      return {
+        nome,
+        preco,
+        tamanhos: tamanhos && tamanhos.length > 0 ? tamanhos : undefined,
+        ehConjunto,
+        tamanhosShort: tamanhosShort && tamanhosShort.length > 0 ? tamanhosShort : undefined,
+      };
     }
     return { nome: "Padrão", preco: precoPadrao };
   });
 }
+
+/**
+ * Retorna se o modelo selecionado é um conjunto (short + camiseta)
+ */
+export function modeloEhConjunto(modeloNome: string, modelos: any): boolean {
+  const norm = normalizarModelos(modelos);
+  const encontrado = norm.find(
+    (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
+  );
+  if (encontrado?.ehConjunto !== undefined) return encontrado.ehConjunto;
+  const lower = modeloNome.toLowerCase();
+  return lower.includes("conjunto") || (lower.includes("short") && lower.includes("camis"));
+}
+
+/**
+ * Retorna os tamanhos disponíveis para um modelo específico da camiseta/conjunto
+ */
+export function obterTamanhosModelo(
+  modeloNome: string,
+  modelos: any,
+  tamanhosPadraoCampanha: string[] = []
+): string[] {
+  const norm = normalizarModelos(modelos);
+  const encontrado = norm.find(
+    (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
+  );
+  if (encontrado?.tamanhos && encontrado.tamanhos.length > 0) {
+    return encontrado.tamanhos;
+  }
+  return tamanhosPadraoCampanha && tamanhosPadraoCampanha.length > 0
+    ? tamanhosPadraoCampanha
+    : ["PP", "P", "M", "G", "GG", "XGG"];
+}
+
+/**
+ * Retorna os tamanhos disponíveis para o short do conjunto
+ */
+export function obterTamanhosShort(
+  modeloNome: string,
+  modelos: any,
+  tamanhosPadraoCampanha: string[] = []
+): string[] {
+  const norm = normalizarModelos(modelos);
+  const encontrado = norm.find(
+    (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
+  );
+  if (encontrado?.tamanhosShort && encontrado.tamanhosShort.length > 0) {
+    return encontrado.tamanhosShort;
+  }
+  if (encontrado?.tamanhos && encontrado.tamanhos.length > 0) {
+    return encontrado.tamanhos;
+  }
+  return tamanhosPadraoCampanha && tamanhosPadraoCampanha.length > 0
+    ? tamanhosPadraoCampanha
+    : ["PP", "P", "M", "G", "GG", "XGG"];
+}
+
 
 /**
  * Retorna o preço de um modelo específico

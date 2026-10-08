@@ -27,6 +27,7 @@ import {
   RotateCcw,
   Edit3,
   Tag,
+  ClipboardCheck,
 } from "lucide-react";
 import { formatarData, normalizarModelos, ModeloPrecoItem, formatarFaixaPrecos } from "@/lib/utils";
 import { InputDataBr } from "@/components/ui/input-data-br";
@@ -87,6 +88,7 @@ export default function PedidosPage() {
   const [carregando, setCarregando] = useState(true);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("TODOS");
+  const [filtroCampanha, setFiltroCampanha] = useState("TODAS");
   const [processandoId, setProcessandoId] = useState<string | null>(null);
   const [mensagemSucesso, setMensagemSucesso] = useState("");
   const [mensagemErro, setMensagemErro] = useState("");
@@ -224,6 +226,9 @@ export default function PedidosPage() {
   // Filtragem dos pedidos
   const pedidosFiltrados = useMemo(() => {
     return pedidos.filter((p) => {
+      if (filtroCampanha !== "TODAS" && p.campanha?.id !== filtroCampanha) {
+        return false;
+      }
       if (filtroStatus !== "TODOS" && p.statusPagamento !== filtroStatus) {
         return false;
       }
@@ -242,7 +247,7 @@ export default function PedidosPage() {
       }
       return true;
     });
-  }, [pedidos, busca, filtroStatus]);
+  }, [pedidos, busca, filtroStatus, filtroCampanha]);
 
   // ==========================================
   // RELATÓRIO DO FORNECEDOR (SEM VALORES / PAGAMENTO)
@@ -409,24 +414,150 @@ export default function PedidosPage() {
     doc.save(`pedidos-financeiro-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
+  // ==========================================
+  // RELATÓRIO DE ENTREGA (PARA IMPRIMIR E CONTABILIZAR NO DIA DA ENTREGA)
+  // ==========================================
+  function exportarRelatorioEntregaPDF() {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const dataHora = new Date().toLocaleString("pt-BR");
+
+    // Considera apenas pedidos não cancelados dos que estão filtrados na tela
+    const pedidosValidos = pedidosFiltrados
+      .filter((p) => p.statusPagamento !== "CANCELADO")
+      .slice()
+      .sort((a, b) => a.nomeComprador.localeCompare(b.nomeComprador, "pt-BR"));
+
+    const campanhaAtual = campanhas.find((c) => c.id === filtroCampanha);
+    const tituloCampanha = campanhaAtual ? `Campanha: ${campanhaAtual.titulo}` : "Todas as Campanhas";
+
+    const totalPecas = pedidosValidos.reduce((acc, p) => acc + p.quantidade, 0);
+    const totalJaEntregues = pedidosValidos.filter((p) => p.entregue).reduce((acc, p) => acc + p.quantidade, 0);
+    const totalPendentesEntrega = totalPecas - totalJaEntregues;
+
+    // Cabeçalho do Documento
+    doc.setFontSize(14);
+    doc.setTextColor(20, 20, 20);
+    doc.text(`Lista de Conferência e Entrega de Camisetas - ${tituloCampanha}`, 14, 14);
+
+    doc.setFontSize(8.5);
+    doc.setTextColor(90, 90, 90);
+    doc.text(
+      `Emissão: ${dataHora} | Total de Pedidos: ${pedidosValidos.length} | Peças Totais: ${totalPecas} | Já Entregues: ${totalJaEntregues} | Pendentes de Retirada: ${totalPendentesEntrega}`,
+      14,
+      20
+    );
+
+    const tableHead = [
+      [
+        "Conf.",
+        "Cód.",
+        "Comprador (Grupo)",
+        "WhatsApp / Contato",
+        "Modelo e Tamanho",
+        "Personalização",
+        "Situação / A Cobrar",
+        "Rubrica / Assinatura do Recebedor",
+      ],
+    ];
+
+    const tableBody = pedidosValidos.map((p) => {
+      const saldoAPagar = Math.max(0, p.valorTotal - p.valorPago);
+      let statusFinanceiro = "QUITADO (100%)";
+      if (saldoAPagar > 0) {
+        statusFinanceiro = `A COBRAR: R$ ${saldoAPagar.toFixed(2).replace(".", ",")}`;
+      } else if (p.statusPagamento === "PENDENTE") {
+        statusFinanceiro = `A COBRAR: R$ ${p.valorTotal.toFixed(2).replace(".", ",")}`;
+      }
+
+      const pers = [
+        p.personalizacaoNome ? `Nome: ${p.personalizacaoNome.toUpperCase()}` : "",
+        p.personalizacaoNum ? `Nº ${p.personalizacaoNum}` : "",
+      ]
+        .filter(Boolean)
+        .join(" | ") || "—";
+
+      return [
+        p.entregue ? "[ X ]" : "[   ]",
+        p.codigoPedido,
+        `${p.nomeComprador}\n(${p.grupo || "JUSC"})`,
+        p.telefoneComprador,
+        `${p.quantidade}x ${p.modelo}\n${p.tamanho}`,
+        pers,
+        statusFinanceiro,
+        "", // Coluna ampla para a assinatura manual com caneta
+      ];
+    });
+
+    autoTable(doc, {
+      head: tableHead,
+      body: tableBody,
+      startY: 24,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2.5,
+        valign: "middle",
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        halign: "center",
+      },
+      columnStyles: {
+        0: { cellWidth: 14, halign: "center", fontStyle: "bold" },
+        1: { cellWidth: 20, fontStyle: "bold" },
+        2: { cellWidth: 44 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 46 },
+        5: { cellWidth: 32 },
+        6: { cellWidth: 34, fontStyle: "bold" },
+        7: { cellWidth: "auto" },
+      },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.column.index === 6) {
+          const texto = String(data.cell.raw || "");
+          if (texto.includes("A COBRAR")) {
+            data.cell.styles.textColor = [185, 28, 28];
+          } else {
+            data.cell.styles.textColor = [22, 101, 52];
+          }
+        }
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+    });
+
+    const sufixoNome = campanhaAtual ? `-${campanhaAtual.titulo.toLowerCase().replace(/[^a-z0-9]/g, "-")}` : "";
+    doc.save(`entrega-camisetas${sufixoNome}-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
+  // Pedidos considerados nas métricas (respeita a campanha selecionada)
+  const pedidosMetricas = useMemo(() => {
+    if (filtroCampanha === "TODAS") return pedidos;
+    return pedidos.filter((p) => p.campanha?.id === filtroCampanha);
+  }, [pedidos, filtroCampanha]);
+
   // Estatísticas
   const totalArrecadado = useMemo(() => {
-    return pedidos
+    return pedidosMetricas
       .filter((p) => p.statusPagamento !== "CANCELADO")
       .reduce((acc, p) => acc + (p.valorPago || 0), 0);
-  }, [pedidos]);
+  }, [pedidosMetricas]);
 
   const totalPendente = useMemo(() => {
-    return pedidos
+    return pedidosMetricas
       .filter((p) => p.statusPagamento !== "CANCELADO")
       .reduce((acc, p) => acc + Math.max(0, p.valorTotal - p.valorPago), 0);
-  }, [pedidos]);
+  }, [pedidosMetricas]);
 
   const totalCamisetas = useMemo(() => {
-    return pedidos
+    return pedidosMetricas
       .filter((p) => p.statusPagamento !== "CANCELADO")
       .reduce((acc, p) => acc + p.quantidade, 0);
-  }, [pedidos]);
+  }, [pedidosMetricas]);
 
   return (
     <div className="space-y-6 w-full pb-12">
@@ -502,7 +633,11 @@ export default function PedidosPage() {
           <p className="text-2xl font-black text-neutral-900 dark:text-white">
             {totalCamisetas} <span className="text-xs font-normal text-neutral-500">peças</span>
           </p>
-          <p className="text-[11px] text-neutral-400">Em {pedidos.length} pedido(s) ativos</p>
+          <p className="text-[11px] text-neutral-400">
+            {filtroCampanha === "TODAS"
+              ? `Em ${pedidos.length} pedido(s) ativos`
+              : `Na campanha selecionada (${pedidosMetricas.length} pedido(s))`}
+          </p>
         </div>
       </div>
 
@@ -562,7 +697,7 @@ export default function PedidosPage() {
 
       {/* Barra de Filtros e Exportação de Relatórios */}
       <div className="bg-white dark:bg-[#13151c] rounded-3xl p-4 border border-neutral-200 dark:border-neutral-800 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col md:flex-row items-center gap-3">
           <div className="relative flex-1 w-full">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
@@ -574,12 +709,30 @@ export default function PedidosPage() {
             />
           </div>
 
+          {/* Filtro por Campanha */}
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            <Shirt className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+            <select
+              value={filtroCampanha}
+              onChange={(e) => setFiltroCampanha(e.target.value)}
+              className="w-full sm:w-56 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+            >
+              <option value="TODAS">Todas as Campanhas</option>
+              {campanhas.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.titulo}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro por Status */}
           <div className="w-full sm:w-auto flex items-center gap-2">
             <Filter className="w-4 h-4 text-neutral-400 flex-shrink-0" />
             <select
               value={filtroStatus}
               onChange={(e) => setFiltroStatus(e.target.value)}
-              className="w-full sm:w-48 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
+              className="w-full sm:w-44 px-3 py-2 rounded-xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-300 dark:border-neutral-700 text-xs font-bold focus:ring-2 focus:ring-[#FFC72C] focus:outline-none"
             >
               <option value="TODOS">Todos os Status</option>
               <option value="PENDENTE">Pendentes</option>
@@ -597,6 +750,17 @@ export default function PedidosPage() {
           </span>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Relatório de Entrega (Novo - Para imprimir e conferir no dia da entrega) */}
+            <button
+              type="button"
+              onClick={exportarRelatorioEntregaPDF}
+              title="Gera lista em PDF com conferência, valores a cobrar na retirada e espaço para assinatura"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 text-white font-black text-xs hover:bg-blue-700 shadow-sm transition-all"
+            >
+              <ClipboardCheck className="w-3.5 h-3.5 text-blue-200" />
+              <span>Lista de Entrega (PDF)</span>
+            </button>
+
             {/* Relatório Fornecedor (Sem Valores) */}
             <button
               type="button"
@@ -698,11 +862,25 @@ export default function PedidosPage() {
 
                       {/* Item & Personalização */}
                       <td className="py-3.5 px-4">
-                        <span className="font-bold text-neutral-800 dark:text-neutral-200 block">
-                          {p.quantidade}x Modelo {p.modelo} — Tam. {p.tamanho}
-                        </span>
+                        <div className="font-bold text-neutral-800 dark:text-neutral-200">
+                          <span>{p.quantidade}x Modelo {p.modelo}</span>
+                          {p.tamanho.includes("Camiseta:") || p.tamanho.includes("Short:") ? (
+                            <div className="mt-1">
+                              <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                🩳 {p.tamanho}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-600 dark:text-neutral-400 font-medium text-xs"> — Tam. {p.tamanho}</span>
+                          )}
+                        </div>
+                        {filtroCampanha === "TODAS" && p.campanha?.titulo && (
+                          <span className="block mt-0.5 text-[10px] text-neutral-400 font-medium truncate max-w-[200px]" title={p.campanha.titulo}>
+                            🏷️ {p.campanha.titulo}
+                          </span>
+                        )}
                         {(p.personalizacaoNome || p.personalizacaoNum) && (
-                          <span className="inline-block mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-400/30">
+                          <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-400/30">
                             {[
                               p.personalizacaoNome ? `Nome: ${p.personalizacaoNome}` : "",
                               p.personalizacaoNum ? `Nº: ${p.personalizacaoNum}` : "",
