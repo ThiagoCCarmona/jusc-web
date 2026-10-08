@@ -23,7 +23,16 @@ import {
   QrCode,
 } from "lucide-react";
 
-import { formatarCpf, formatarTelefone, normalizarModelos, formatarDataHoraLimite } from "@/lib/utils";
+import {
+  formatarCpf,
+  formatarTelefone,
+  normalizarModelos,
+  formatarDataHoraLimite,
+  obterTamanhosModelo,
+  obterTamanhosShort,
+  modeloEhConjunto,
+  ordenarTamanhosCatalogo,
+} from "@/lib/utils";
 import { calcularIdade } from "@/lib/rules";
 import { InputDataBr } from "@/components/ui/input-data-br";
 
@@ -124,6 +133,7 @@ export function ModalInscricao({
   const [pediuCamiseta, setPediuCamiseta] = useState(false);
   const [camisetaModelo, setCamisetaModelo] = useState("");
   const [camisetaTamanho, setCamisetaTamanho] = useState("");
+  const [camisetaTamanhoShort, setCamisetaTamanhoShort] = useState("");
   const [camisetaNomePersonalizado, setCamisetaNomePersonalizado] = useState("");
   const [camisetaNumeroPersonalizado, setCamisetaNumeroPersonalizado] = useState("");
 
@@ -133,20 +143,42 @@ export function ModalInscricao({
     ? normalizarModelos(camCamiseta.modelos, camCamiseta.precoUnitario)
     : [];
 
-  let tamanhosCamiseta: string[] = [];
-  if (camCamiseta?.tamanhosDisponiveis) {
-    if (Array.isArray(camCamiseta.tamanhosDisponiveis)) {
-      tamanhosCamiseta = camCamiseta.tamanhosDisponiveis;
-    } else {
-      try {
-        tamanhosCamiseta = JSON.parse(camCamiseta.tamanhosDisponiveis);
-      } catch {
-        tamanhosCamiseta = [String(camCamiseta.tamanhosDisponiveis)];
-      }
+  const modeloAtualNome = camisetaModelo || modelosCamiseta[0]?.nome || "Padrão";
+  const ehConjunto = camCamiseta ? modeloEhConjunto(modeloAtualNome, camCamiseta.modelos) : false;
+
+  const tamanhosDisponiveisModelo = camCamiseta
+    ? ordenarTamanhosCatalogo(
+        obterTamanhosModelo(modeloAtualNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
+        camCamiseta.tamanhosDisponiveis
+      )
+    : [];
+
+  const tamanhosDisponiveisShort = camCamiseta && ehConjunto
+    ? ordenarTamanhosCatalogo(
+        obterTamanhosShort(modeloAtualNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
+        camCamiseta.tamanhosDisponiveis
+      )
+    : [];
+
+  function handleTrocarModeloCamiseta(novoModeloNome: string) {
+    setCamisetaModelo(novoModeloNome);
+    if (!camCamiseta) return;
+
+    const novosTamsModelo = ordenarTamanhosCatalogo(
+      obterTamanhosModelo(novoModeloNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
+      camCamiseta.tamanhosDisponiveis
+    );
+    const novosTamsShort = ordenarTamanhosCatalogo(
+      obterTamanhosShort(novoModeloNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
+      camCamiseta.tamanhosDisponiveis
+    );
+
+    if (!novosTamsModelo.includes(camisetaTamanho)) {
+      setCamisetaTamanho(novosTamsModelo[0] || "M");
     }
-  }
-  if (tamanhosCamiseta.length === 0 && camCamiseta) {
-    tamanhosCamiseta = ["PP", "P", "M", "G", "GG", "XG"];
+    if (!novosTamsShort.includes(camisetaTamanhoShort)) {
+      setCamisetaTamanhoShort(novosTamsShort[0] || "M");
+    }
   }
 
   // Preencher defaults de camiseta ao abrir
@@ -155,11 +187,27 @@ export function ModalInscricao({
       if (campanha.camisetaInclusaNoValor) {
         setPediuCamiseta(true);
       }
-      if (modelosCamiseta.length > 0 && !camisetaModelo) {
+      const modeloPadrao = camisetaModelo || modelosCamiseta[0]?.nome || "Padrão";
+      if (!camisetaModelo && modelosCamiseta.length > 0) {
         setCamisetaModelo(modelosCamiseta[0].nome);
       }
-      if (tamanhosCamiseta.length > 0 && !camisetaTamanho) {
-        setCamisetaTamanho(tamanhosCamiseta[0]);
+
+      const tamsModelo = ordenarTamanhosCatalogo(
+        obterTamanhosModelo(modeloPadrao, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
+        camCamiseta.tamanhosDisponiveis
+      );
+      if (!camisetaTamanho || !tamsModelo.includes(camisetaTamanho)) {
+        setCamisetaTamanho(tamsModelo[0] || "M");
+      }
+
+      if (modeloEhConjunto(modeloPadrao, camCamiseta.modelos)) {
+        const tamsShort = ordenarTamanhosCatalogo(
+          obterTamanhosShort(modeloPadrao, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
+          camCamiseta.tamanhosDisponiveis
+        );
+        if (!camisetaTamanhoShort || !tamsShort.includes(camisetaTamanhoShort)) {
+          setCamisetaTamanhoShort(tamsShort[0] || "M");
+        }
       }
     }
   }, [campanha, camCamiseta]);
@@ -220,7 +268,7 @@ export function ModalInscricao({
 
   if (!aberto) return null;
 
-  const modeloSelecionadoObj = modelosCamiseta.find((m) => m.nome === camisetaModelo);
+  const modeloSelecionadoObj = modelosCamiseta.find((m) => m.nome === (camisetaModelo || modeloAtualNome));
   const precoCamiseta = modeloSelecionadoObj?.preco ?? (camCamiseta?.precoUnitario || 0);
 
   const valorCamisetaCalculado = pediuCamiseta
@@ -292,14 +340,22 @@ export function ModalInscricao({
       return;
     }
 
-    if (pediuCamiseta && (!camisetaModelo || !camisetaTamanho)) {
-      setErro("Por favor, escolha o modelo e o tamanho da camiseta desejada.");
+    if (pediuCamiseta && (!camisetaModelo || !camisetaTamanho || (ehConjunto && !camisetaTamanhoShort))) {
+      setErro(
+        ehConjunto
+          ? "Por favor, escolha o modelo e os tamanhos da camiseta e do short."
+          : "Por favor, escolha o modelo e o tamanho da camiseta desejada."
+      );
       return;
     }
 
     const grupoFinal = campanha.campoGrupo
       ? (grupoTipo === "OUTRO" ? outroGrupo.trim() : "JUSC")
       : "JUSC";
+
+    const tamanhoFinalCamiseta = ehConjunto
+      ? `Camiseta: ${camisetaTamanho} | Short: ${camisetaTamanhoShort}`
+      : camisetaTamanho;
 
     setEnviando(true);
     try {
@@ -327,8 +383,8 @@ export function ModalInscricao({
           primeiraEucaristia: campanha.campoPrimeiraEucaristia ? primeiraEucaristia : false,
           crisma: campanha.campoCrisma ? crisma : false,
           pediuCamiseta: Boolean(pediuCamiseta),
-          camisetaModelo: pediuCamiseta ? camisetaModelo : null,
-          camisetaTamanho: pediuCamiseta ? camisetaTamanho : null,
+          camisetaModelo: pediuCamiseta ? (camisetaModelo || modeloAtualNome) : null,
+          camisetaTamanho: pediuCamiseta ? tamanhoFinalCamiseta : null,
           camisetaNomePersonalizado: pediuCamiseta && camisetaNomePersonalizado ? camisetaNomePersonalizado.trim() : null,
           camisetaNumeroPersonalizado: pediuCamiseta && camisetaNumeroPersonalizado ? camisetaNumeroPersonalizado.trim() : null,
           camisetaValor: valorCamisetaCalculado,
@@ -1232,14 +1288,19 @@ export function ModalInscricao({
                               <button
                                 key={mod.nome}
                                 type="button"
-                                onClick={() => setCamisetaModelo(mod.nome)}
+                                onClick={() => handleTrocarModeloCamiseta(mod.nome)}
                                 className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
-                                  camisetaModelo === mod.nome
+                                  (camisetaModelo || modeloAtualNome) === mod.nome
                                     ? "border-[#FFC72C] bg-[#FFC72C]/15 text-neutral-950 dark:text-white ring-2 ring-[#FFC72C]"
                                     : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700"
                                 }`}
                               >
                                 <span className="block font-black">{mod.nome}</span>
+                                {mod.ehConjunto && (
+                                  <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+                                    🩳 Conjunto
+                                  </span>
+                                )}
                                 {!campanha.camisetaInclusaNoValor && (
                                   <span className="text-[10px] text-neutral-500">
                                     R$ {(mod.preco ?? camCamiseta?.precoUnitario ?? 0).toFixed(2).replace(".", ",")}
@@ -1251,28 +1312,80 @@ export function ModalInscricao({
                         </div>
                       )}
 
-                      {/* Seleção de Tamanho */}
-                      <div>
-                        <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1.5">
-                          Tamanho da Camiseta *
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {tamanhosCamiseta.map((tam) => (
-                            <button
-                              key={tam}
-                              type="button"
-                              onClick={() => setCamisetaTamanho(tam)}
-                              className={`px-3 py-2 rounded-xl border text-xs font-black transition-all ${
-                                camisetaTamanho === tam
-                                  ? "border-[#FFC72C] bg-[#FFC72C] text-neutral-950 shadow-sm"
-                                  : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-700 dark:text-neutral-300"
-                              }`}
-                            >
-                              {tam}
-                            </button>
-                          ))}
+                      {/* Se for CONJUNTO: Dois campos específicos (Camiseta e Short) */}
+                      {ehConjunto ? (
+                        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3">
+                          <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                            <span>🩳 Este modelo é um Conjunto (Short + Camiseta)!</span>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1.5">
+                              👕 Tamanho da Camiseta *
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {tamanhosDisponiveisModelo.map((tam) => (
+                                <button
+                                  key={tam}
+                                  type="button"
+                                  onClick={() => setCamisetaTamanho(tam)}
+                                  className={`px-3 py-2 rounded-xl border text-xs font-black transition-all ${
+                                    camisetaTamanho === tam
+                                      ? "border-[#FFC72C] bg-[#FFC72C] text-neutral-950 shadow-sm"
+                                      : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-700 dark:text-neutral-300 bg-white dark:bg-[#1c202a]"
+                                  }`}
+                                >
+                                  {tam}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1.5">
+                              🩳 Tamanho do Short *
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {tamanhosDisponiveisShort.map((tam) => (
+                                <button
+                                  key={tam}
+                                  type="button"
+                                  onClick={() => setCamisetaTamanhoShort(tam)}
+                                  className={`px-3 py-2 rounded-xl border text-xs font-black transition-all ${
+                                    camisetaTamanhoShort === tam
+                                      ? "border-[#FFC72C] bg-[#FFC72C] text-neutral-950 shadow-sm"
+                                      : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-700 dark:text-neutral-300 bg-white dark:bg-[#1c202a]"
+                                  }`}
+                                >
+                                  {tam}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        /* Seleção de Tamanho Padrão */
+                        <div>
+                          <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block mb-1.5">
+                            Tamanho da Camiseta *
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {tamanhosDisponiveisModelo.map((tam) => (
+                              <button
+                                key={tam}
+                                type="button"
+                                onClick={() => setCamisetaTamanho(tam)}
+                                className={`px-3 py-2 rounded-xl border text-xs font-black transition-all ${
+                                  camisetaTamanho === tam
+                                    ? "border-[#FFC72C] bg-[#FFC72C] text-neutral-950 shadow-sm"
+                                    : "border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 text-neutral-700 dark:text-neutral-300 bg-white dark:bg-[#1c202a]"
+                                }`}
+                              >
+                                {tam}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Personalização (se a campanha permitir nome ou número) */}
                       {(camCamiseta.permiteNome || camCamiseta.permiteNumero) && (
