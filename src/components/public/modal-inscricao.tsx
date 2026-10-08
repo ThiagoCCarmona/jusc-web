@@ -147,31 +147,19 @@ export function ModalInscricao({
   const ehConjunto = camCamiseta ? modeloEhConjunto(modeloAtualNome, camCamiseta.modelos) : false;
 
   const tamanhosDisponiveisModelo = camCamiseta
-    ? ordenarTamanhosCatalogo(
-        obterTamanhosModelo(modeloAtualNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
-        camCamiseta.tamanhosDisponiveis
-      )
+    ? obterTamanhosModelo(modeloAtualNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis)
     : [];
 
   const tamanhosDisponiveisShort = camCamiseta && ehConjunto
-    ? ordenarTamanhosCatalogo(
-        obterTamanhosShort(modeloAtualNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
-        camCamiseta.tamanhosDisponiveis
-      )
+    ? obterTamanhosShort(modeloAtualNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis)
     : [];
 
   function handleTrocarModeloCamiseta(novoModeloNome: string) {
     setCamisetaModelo(novoModeloNome);
     if (!camCamiseta) return;
 
-    const novosTamsModelo = ordenarTamanhosCatalogo(
-      obterTamanhosModelo(novoModeloNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
-      camCamiseta.tamanhosDisponiveis
-    );
-    const novosTamsShort = ordenarTamanhosCatalogo(
-      obterTamanhosShort(novoModeloNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
-      camCamiseta.tamanhosDisponiveis
-    );
+    const novosTamsModelo = obterTamanhosModelo(novoModeloNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis);
+    const novosTamsShort = obterTamanhosShort(novoModeloNome, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis);
 
     if (!novosTamsModelo.includes(camisetaTamanho)) {
       setCamisetaTamanho(novosTamsModelo[0] || "M");
@@ -192,19 +180,13 @@ export function ModalInscricao({
         setCamisetaModelo(modelosCamiseta[0].nome);
       }
 
-      const tamsModelo = ordenarTamanhosCatalogo(
-        obterTamanhosModelo(modeloPadrao, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
-        camCamiseta.tamanhosDisponiveis
-      );
+      const tamsModelo = obterTamanhosModelo(modeloPadrao, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis);
       if (!camisetaTamanho || !tamsModelo.includes(camisetaTamanho)) {
         setCamisetaTamanho(tamsModelo[0] || "M");
       }
 
       if (modeloEhConjunto(modeloPadrao, camCamiseta.modelos)) {
-        const tamsShort = ordenarTamanhosCatalogo(
-          obterTamanhosShort(modeloPadrao, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis),
-          camCamiseta.tamanhosDisponiveis
-        );
+        const tamsShort = obterTamanhosShort(modeloPadrao, camCamiseta.modelos, camCamiseta.tamanhosDisponiveis);
         if (!camisetaTamanhoShort || !tamsShort.includes(camisetaTamanhoShort)) {
           setCamisetaTamanhoShort(tamsShort[0] || "M");
         }

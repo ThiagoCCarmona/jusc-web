@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { AlertTriangle, ChevronDown, ChevronUp, MessageCircle, Sparkles, Shirt, ClipboardList, Calendar, Share2, Check, Copy } from "lucide-react";
-import { normalizarModelos, formatarFaixaPrecos, formatarData, formatarDataHoraLimite } from "@/lib/utils";
+import { normalizarModelos, formatarFaixaPrecos, formatarData, formatarDataHoraLimite, normalizarFotos } from "@/lib/utils";
 import { ModalPedidoCamiseta, CampanhaModalData } from "@/components/public/modal-pedido-camiseta";
 import { ModalInscricao, CampanhaInscricaoData } from "@/components/public/modal-inscricao";
 
@@ -313,8 +313,9 @@ interface BannerCamisetaProps {
 export function BannerCamiseta({ campanha }: BannerCamisetaProps) {
   const [modalAberto, setModalAberto] = useState(false);
   const [copiadoLink, setCopiadoLink] = useState(false);
-  const primeiraFoto = campanha.fotos[0];
-  const fotoCapa = (typeof primeiraFoto === "object" && primeiraFoto ? primeiraFoto.url : primeiraFoto) || "/assets/logo-jusc.jpeg";
+  const fotosFormatadas = normalizarFotos(campanha.fotos);
+  const primeiraFoto = fotosFormatadas[0];
+  const fotoCapa = primeiraFoto?.url || "/assets/logo-jusc.jpeg";
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -369,7 +370,7 @@ export function BannerCamiseta({ campanha }: BannerCamisetaProps) {
               className="object-contain p-1.5"
             />
             <span className="absolute bottom-1 right-1 bg-neutral-950 text-[#FFC72C] text-[10px] font-black px-1.5 py-0.5 rounded-md">
-              {campanha.fotos.length} fotos
+              {fotosFormatadas.length} fotos
             </span>
           </div>
 

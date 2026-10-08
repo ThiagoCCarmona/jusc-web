@@ -25,6 +25,7 @@ import {
   obterTamanhosModelo,
   obterTamanhosShort,
   ordenarTamanhosCatalogo,
+  normalizarFotos,
 } from "@/lib/utils";
 
 
@@ -71,9 +72,7 @@ export function ModalPedidoCamiseta({
   const [outroGrupo, setOutroGrupo] = useState("");
   const [modelo, setModelo] = useState(modelosNormalizados[0]?.nome || "Padrão");
   const [tamanho, setTamanho] = useState(
-    ordenarTamanhosCatalogo(
-      obterTamanhosModelo(modelosNormalizados[0]?.nome || "Padrão", campanha.modelos, campanha.tamanhosDisponiveis)
-    )[0] || "M"
+    obterTamanhosModelo(modelosNormalizados[0]?.nome || "Padrão", campanha.modelos, campanha.tamanhosDisponiveis)[0] || "M"
   );
   const [tamanhoCamiseta, setTamanhoCamiseta] = useState("M");
   const [tamanhoShort, setTamanhoShort] = useState("M");
@@ -101,11 +100,15 @@ export function ModalPedidoCamiseta({
 
   // Tamanhos e modelo dinâmicos
   const ehConjunto = modeloEhConjunto(modelo, campanha.modelos);
-  const tamanhosDisponiveisModelo = ordenarTamanhosCatalogo(
-    obterTamanhosModelo(modelo, campanha.modelos, campanha.tamanhosDisponiveis)
+  const tamanhosDisponiveisModelo = obterTamanhosModelo(
+    modelo,
+    campanha.modelos,
+    campanha.tamanhosDisponiveis
   );
-  const tamanhosDisponiveisShort = ordenarTamanhosCatalogo(
-    obterTamanhosShort(modelo, campanha.modelos, campanha.tamanhosDisponiveis)
+  const tamanhosDisponiveisShort = obterTamanhosShort(
+    modelo,
+    campanha.modelos,
+    campanha.tamanhosDisponiveis
   );
 
   function handleTrocarModelo(novoModeloNome: string) {
@@ -452,11 +455,10 @@ export function ModalPedidoCamiseta({
               </div>
             )}
 
-            {/* Galeria de Fotos (mínimo 2) */}
-            {campanha.fotos && campanha.fotos.length > 0 && (() => {
-              const fotosFormatadas: FotoItemCampanha[] = campanha.fotos.map((f) =>
-                typeof f === "string" ? { url: f, label: "" } : f
-              );
+            {/* Galeria de Fotos */}
+            {(() => {
+              const fotosFormatadas = normalizarFotos(campanha.fotos);
+              if (fotosFormatadas.length === 0) return null;
               const fotoAtual = fotosFormatadas[fotoAtiva] || fotosFormatadas[0];
 
               return (
@@ -476,7 +478,7 @@ export function ModalPedidoCamiseta({
                       </div>
                     )}
 
-                    {campanha.fotos.length > 1 && (
+                    {fotosFormatadas.length > 1 && (
                       <>
                         <button
                           type="button"

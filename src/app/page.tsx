@@ -10,6 +10,7 @@ import {
   BannerCamiseta,
   BannerInscricao,
 } from "@/components/public/home-banners";
+import { normalizarModelos, normalizarListaTamanhos, normalizarFotos } from "@/lib/utils";
 import { Heart, Users, Flame, CalendarCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -158,24 +159,9 @@ export default async function HomePage({
   }
 
   const campanhasCamisetas = campanhasCamisetasRaw.map((c) => {
-    let fotosArr: any[] = [];
-    let modelosArr: any[] = [];
-    let tamanhosArr: string[] = [];
-    try {
-      fotosArr = JSON.parse(c.fotos);
-    } catch {
-      fotosArr = c.fotos ? [c.fotos] : [];
-    }
-    try {
-      modelosArr = JSON.parse(c.modelos);
-    } catch {
-      modelosArr = c.modelos ? [c.modelos] : [];
-    }
-    try {
-      tamanhosArr = JSON.parse(c.tamanhosDisponiveis);
-    } catch {
-      tamanhosArr = c.tamanhosDisponiveis ? [c.tamanhosDisponiveis] : [];
-    }
+    const fotosArr = normalizarFotos(c.fotos);
+    const modelosArr = normalizarModelos(c.modelos, c.precoUnitario);
+    const tamanhosArr = normalizarListaTamanhos(c.tamanhosDisponiveis);
 
     return {
       id: c.id,

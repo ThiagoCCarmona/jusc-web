@@ -209,22 +209,46 @@ export function compararTamanhosPadrao(a: string, b: string): number {
   return normA.localeCompare(normB, "pt-BR");
 }
 
+export function normalizarListaTamanhos(tamanhos: any): string[] {
+  if (!tamanhos) return [];
+  let parsed = tamanhos;
+  if (typeof tamanhos === "string") {
+    const trimmed = tamanhos.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        parsed = trimmed.replace(/^\[|\]$/g, "").split(",").map((s) => s.replace(/["']/g, "").trim());
+      }
+    } else {
+      parsed = trimmed.split(",").map((s) => s.trim());
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .map((t) => String(t || "").trim().toUpperCase())
+    .filter(Boolean);
+}
+
 export function ordenarTamanhosCatalogo(
-  tamanhos: string[],
-  ordemPersonalizada?: string[]
+  tamanhos: any,
+  ordemPersonalizada?: any
 ): string[] {
-  if (ordemPersonalizada && ordemPersonalizada.length > 0) {
-    const ordemUpper = ordemPersonalizada.map((t) => t.trim().toUpperCase());
-    return [...tamanhos].sort((a, b) => {
-      const idxA = ordemUpper.indexOf(a.trim().toUpperCase());
-      const idxB = ordemUpper.indexOf(b.trim().toUpperCase());
+  const tamsArray = normalizarListaTamanhos(tamanhos);
+  const ordemArray = normalizarListaTamanhos(ordemPersonalizada);
+
+  if (ordemArray.length > 0) {
+    return [...tamsArray].sort((a, b) => {
+      const idxA = ordemArray.indexOf(a);
+      const idxB = ordemArray.indexOf(b);
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
       if (idxA !== -1) return -1;
       if (idxB !== -1) return 1;
       return compararTamanhosPadrao(a, b);
     });
   }
-  return [...tamanhos].sort(compararTamanhosPadrao);
+  return [...tamsArray].sort(compararTamanhosPadrao);
 }
 
 export interface ModeloPrecoItem {
@@ -330,17 +354,19 @@ export function modeloEhConjunto(modeloNome: string, modelos: any): boolean {
 export function obterTamanhosModelo(
   modeloNome: string,
   modelos: any,
-  tamanhosPadraoCampanha: string[] = []
+  tamanhosPadraoCampanha: any = []
 ): string[] {
   const norm = normalizarModelos(modelos);
   const encontrado = norm.find(
-    (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
+    (m) => m.nome.toLowerCase() === (modeloNome || "").toLowerCase()
   );
+  const tamsPadrao = normalizarListaTamanhos(tamanhosPadraoCampanha);
+
   if (encontrado?.tamanhos && encontrado.tamanhos.length > 0) {
-    return ordenarTamanhosCatalogo(encontrado.tamanhos, tamanhosPadraoCampanha);
+    return ordenarTamanhosCatalogo(encontrado.tamanhos, tamsPadrao);
   }
-  return tamanhosPadraoCampanha && tamanhosPadraoCampanha.length > 0
-    ? ordenarTamanhosCatalogo(tamanhosPadraoCampanha, tamanhosPadraoCampanha)
+  return tamsPadrao.length > 0
+    ? ordenarTamanhosCatalogo(tamsPadrao, tamsPadrao)
     : ["PP", "P", "M", "G", "GG", "XGG"];
 }
 
@@ -350,21 +376,58 @@ export function obterTamanhosModelo(
 export function obterTamanhosShort(
   modeloNome: string,
   modelos: any,
-  tamanhosPadraoCampanha: string[] = []
+  tamanhosPadraoCampanha: any = []
 ): string[] {
   const norm = normalizarModelos(modelos);
   const encontrado = norm.find(
-    (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
+    (m) => m.nome.toLowerCase() === (modeloNome || "").toLowerCase()
   );
+  const tamsPadrao = normalizarListaTamanhos(tamanhosPadraoCampanha);
+
   if (encontrado?.tamanhosShort && encontrado.tamanhosShort.length > 0) {
-    return ordenarTamanhosCatalogo(encontrado.tamanhosShort, tamanhosPadraoCampanha);
+    return ordenarTamanhosCatalogo(encontrado.tamanhosShort, tamsPadrao);
   }
   if (encontrado?.tamanhos && encontrado.tamanhos.length > 0) {
-    return ordenarTamanhosCatalogo(encontrado.tamanhos, tamanhosPadraoCampanha);
+    return ordenarTamanhosCatalogo(encontrado.tamanhos, tamsPadrao);
   }
-  return tamanhosPadraoCampanha && tamanhosPadraoCampanha.length > 0
-    ? ordenarTamanhosCatalogo(tamanhosPadraoCampanha, tamanhosPadraoCampanha)
+  return tamsPadrao.length > 0
+    ? ordenarTamanhosCatalogo(tamsPadrao, tamsPadrao)
     : ["PP", "P", "M", "G", "GG", "XGG"];
+}
+
+export interface FotoItemCampanha {
+  url: string;
+  label?: string;
+}
+
+export function normalizarFotos(fotos: any): FotoItemCampanha[] {
+  if (!fotos) return [];
+  let parsed = fotos;
+  if (typeof fotos === "string") {
+    const trimmed = fotos.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        parsed = JSON.parse(trimmed);
+      } catch {
+        parsed = [trimmed];
+      }
+    } else {
+      parsed = [trimmed];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const result: FotoItemCampanha[] = [];
+  for (const f of parsed) {
+    if (!f) continue;
+    if (typeof f === "string" && f.trim()) {
+      result.push({ url: f.trim(), label: "" });
+    } else if (typeof f === "object" && f.url) {
+      result.push({ url: String(f.url), label: f.label ? String(f.label) : "" });
+    }
+  }
+  return result;
 }
 
 
