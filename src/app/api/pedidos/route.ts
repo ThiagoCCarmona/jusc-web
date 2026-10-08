@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { GeradorPix, gerarLinkComprovanteWhatsapp } from "@/lib/pix";
+import { GeradorPix, gerarLinkComprovanteWhatsapp, gerarQrCodePixDataUrl } from "@/lib/pix";
 import { obterPrecoModelo } from "@/lib/utils";
 
 // GET: Todos os usuários autenticados (Colaborador, Tesoureiro e Admin) podem visualizar pedidos para relatórios
@@ -116,23 +116,27 @@ export async function POST(req: NextRequest) {
     const cidadeRecebedor = config?.tesoureiroCidadePix || "Foz do Iguacu";
     const telTesoureiro = config?.tesoureiroWhatsapp || config?.coordenadorWhatsapp || "5545991179727";
 
-    // Gerar Código Pix Copia e Cola via gerador-pix (klimadev standard)
+    // Gerar Código Pix Copia e Cola via gerador-pix e QR Code
     let codigoPix = "";
+    let qrCodeDataUrl = "";
     if (formaPagamento === "PIX" && chavePix) {
       try {
+        const descricaoPix = `${nomeComprador.trim()} - Camiseta ${campanha.titulo}`.slice(0, 50);
         const gerador = new GeradorPix({
           chave: chavePix,
           nomeRecebedor,
           cidadeRecebedor,
           valor: valorPagoAgora,
           identificador: codigoPedido.replace("-", ""),
-          descricao: `Camiseta ${campanha.titulo}`.slice(0, 50),
+          descricao: descricaoPix,
         });
         codigoPix = gerador.gerarCodigo();
+        qrCodeDataUrl = await gerarQrCodePixDataUrl(codigoPix);
       } catch (err) {
         console.error("Erro ao gerar Pix Copia e Cola:", err);
       }
     }
+
 
     // Gerar Link de WhatsApp para envio do comprovante para o tesoureiro
     const linkWhatsapp = gerarLinkComprovanteWhatsapp({
@@ -178,6 +182,7 @@ export async function POST(req: NextRequest) {
       success: true,
       pedido,
       codigoPix,
+      qrCodeDataUrl,
       linkWhatsapp,
       valorTotal,
       valorPagoAgora,
@@ -185,6 +190,7 @@ export async function POST(req: NextRequest) {
       tesoureiroNome: nomeRecebedor,
       tesoureiroWhatsapp: telTesoureiro,
     });
+
   } catch (error: any) {
     console.error("Erro ao registrar pedido de camiseta:", error);
     return NextResponse.json({ error: "Erro ao processar pedido." }, { status: 500 });

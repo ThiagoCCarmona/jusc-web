@@ -15,7 +15,9 @@ import {
   Banknote,
   ChevronRight,
   ChevronLeft,
+  QrCode,
 } from "lucide-react";
+
 import { normalizarModelos, ModeloPrecoItem } from "@/lib/utils";
 
 export interface FotoItemCampanha {
@@ -73,13 +75,16 @@ export function ModalPedidoCamiseta({
   const [sucessoData, setSucessoData] = useState<{
     pedido: any;
     codigoPix?: string;
+    qrCodeDataUrl?: string;
     linkWhatsapp: string;
     valorTotal: number;
     valorPagoAgora: number;
     saldoRestante: number;
   } | null>(null);
   const [copiadoPix, setCopiadoPix] = useState(false);
+  const [exibirQrCode, setExibirQrCode] = useState(false);
   const containerScrollRef = useRef<HTMLDivElement>(null);
+
 
   // Travar o scroll do body quando o modal estiver aberto e fechar com Escape
   useEffect(() => {
@@ -163,6 +168,7 @@ export function ModalPedidoCamiseta({
       setSucessoData({
         pedido: data.pedido,
         codigoPix: data.codigoPix,
+        qrCodeDataUrl: data.qrCodeDataUrl,
         linkWhatsapp: data.linkWhatsapp,
         valorTotal: data.valorTotal,
         valorPagoAgora: data.valorPagoAgora,
@@ -191,8 +197,10 @@ export function ModalPedidoCamiseta({
     setErro("");
     setGrupoTipo("JUSC");
     setOutroGrupo("");
+    setExibirQrCode(false);
     onFechar();
   }
+
 
   return (
     <div
@@ -271,38 +279,91 @@ export function ModalPedidoCamiseta({
               )}
             </div>
 
-            {/* Se PIX: Exibir Código Pix Copia e Cola */}
+            {/* Se PIX: Exibir Código Pix Copia e Cola e Botão de QR Code */}
             {formaPagamento === "PIX" && sucessoData.codigoPix && (
-              <div className="space-y-2">
-                <label className="block text-xs font-black uppercase tracking-wider text-neutral-700 dark:text-neutral-300">
-                  Código Pix Copia e Cola (BR Code)
-                </label>
-                <div className="p-3 bg-neutral-100 dark:bg-neutral-900 rounded-xl border border-neutral-300 dark:border-neutral-700 text-[11px] font-mono break-all max-h-24 overflow-y-auto select-all text-neutral-800 dark:text-neutral-200">
-                  {sucessoData.codigoPix}
+              <div className="space-y-3 p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-wider text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-emerald-500" />
+                    Pagamento via Pix
+                  </label>
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    R$ {sucessoData.valorPagoAgora.toFixed(2).replace(".", ",")}
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCopiarPix}
-                  className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                    copiadoPix
-                      ? "bg-emerald-600 text-white"
-                      : "bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 shadow-sm"
-                  }`}
-                >
-                  {copiadoPix ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Código Pix Copiado com Sucesso!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copiar Código Pix para Pagar
-                    </>
-                  )}
-                </button>
+
+                {/* Botões de Ação do Pix: Copiar código ou Exibir QR Code */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopiarPix}
+                    className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                      copiadoPix
+                        ? "bg-emerald-600 text-white"
+                        : "bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 shadow-sm"
+                    }`}
+                  >
+                    {copiadoPix ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Código Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Pix Copia e Cola
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setExibirQrCode(!exibirQrCode)}
+                    className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
+                      exibirQrCode
+                        ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 border-transparent shadow-sm"
+                        : "bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4 text-emerald-500" />
+                    {exibirQrCode ? "Ocultar QR Code" : "Gerar / Ver QR Code"}
+                  </button>
+                </div>
+
+                {/* Exibição do QR Code quando ativo */}
+                {exibirQrCode && (
+                  <div className="pt-2 pb-1 flex flex-col items-center justify-center animate-fadeIn text-center">
+                    <div className="p-3 bg-white rounded-2xl shadow-md border border-neutral-200 dark:border-neutral-700 inline-block">
+                      {sucessoData.qrCodeDataUrl ? (
+                        <img
+                          src={sucessoData.qrCodeDataUrl}
+                          alt="QR Code do Pix"
+                          className="w-48 h-48 sm:w-56 sm:h-56 mx-auto rounded-lg object-contain"
+                        />
+                      ) : (
+                        <div className="w-48 h-48 flex items-center justify-center text-xs text-neutral-400">
+                          Carregando QR Code...
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-2 max-w-xs">
+                      Abra o aplicativo do seu banco, escolha <strong>Pagar com QR Code</strong> e aponte a câmera para a imagem acima.
+                    </p>
+                  </div>
+                )}
+
+                {/* Código Pix Copia e Cola em texto */}
+                <div className="space-y-1 pt-1">
+                  <span className="text-[10px] font-bold text-neutral-500 uppercase">
+                    Código Pix Copia e Cola (BR Code)
+                  </span>
+                  <div className="p-2.5 bg-white dark:bg-black rounded-xl border border-neutral-200 dark:border-neutral-800 text-[10px] font-mono break-all max-h-20 overflow-y-auto select-all text-neutral-800 dark:text-neutral-300">
+                    {sucessoData.codigoPix}
+                  </div>
+                </div>
               </div>
             )}
+
 
             {/* Se DINHEIRO: Aviso de pagamento com a liderança */}
             {formaPagamento === "DINHEIRO" && (

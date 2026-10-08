@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomInt } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, getCurrentUser } from "@/lib/auth";
-import { GeradorPix } from "@/lib/pix";
+import { GeradorPix, gerarQrCodePixDataUrl } from "@/lib/pix";
+
 import { calcularIdade } from "@/lib/rules";
 
 // GET: Toda a coordenação (Colaborador, Tesoureiro e Admin) pode visualizar as inscrições e exportar relatórios
@@ -390,6 +391,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Pix Copia e Cola e Link do TESOUREIRO (se houver pagamento)
     let codigoPix = "";
+    let qrCodeDataUrl = "";
     let linkWhatsappTesoureiro = "";
 
     if (requerPagamento) {
@@ -399,15 +401,17 @@ export async function POST(req: NextRequest) {
 
       if (formaPag === "PIX" && chavePix) {
         try {
+          const descricaoPix = `${nomeCompleto.trim()} - Inscricao ${campanha.titulo}`.slice(0, 50);
           const gerador = new GeradorPix({
             chave: chavePix,
             nomeRecebedor,
             cidadeRecebedor,
             valor: valorPagoAgora,
             identificador: codigoInscricao.replace("-", ""),
-            descricao: `Inscricao ${campanha.titulo}`.slice(0, 50),
+            descricao: descricaoPix,
           });
           codigoPix = gerador.gerarCodigo();
+          qrCodeDataUrl = await gerarQrCodePixDataUrl(codigoPix);
         } catch (err) {
           console.error("Erro ao gerar Pix Copia e Cola da inscrição:", err);
         }
@@ -446,6 +450,7 @@ export async function POST(req: NextRequest) {
       {
         inscricao,
         codigoPix,
+        qrCodeDataUrl,
         linkWhatsappSecretario,
         linkWhatsappTesoureiro,
         linkGrupoWhatsapp: campanha.linkGrupoWhatsapp || null,
@@ -455,6 +460,7 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
+
   } catch (error: any) {
     console.error("Erro ao registrar inscrição:", error);
     return NextResponse.json({ error: "Erro ao registrar inscrição." }, { status: 500 });

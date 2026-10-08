@@ -20,7 +20,9 @@ import {
   AlertTriangle,
   ClipboardList,
   Shirt,
+  QrCode,
 } from "lucide-react";
+
 import { formatarCpf, formatarTelefone, normalizarModelos, formatarDataHoraLimite } from "@/lib/utils";
 import { calcularIdade } from "@/lib/rules";
 import { InputDataBr } from "@/components/ui/input-data-br";
@@ -172,6 +174,7 @@ export function ModalInscricao({
   const [sucessoData, setSucessoData] = useState<{
     inscricao: any;
     codigoPix?: string;
+    qrCodeDataUrl?: string;
     linkWhatsappSecretario: string;
     linkWhatsappTesoureiro?: string;
     linkGrupoWhatsapp?: string | null;
@@ -180,8 +183,10 @@ export function ModalInscricao({
     valorPagoAgora: number;
   } | null>(null);
   const [copiadoPix, setCopiadoPix] = useState(false);
+  const [exibirQrCodeInscricao, setExibirQrCodeInscricao] = useState(false);
   const [clicouGrupoWhatsapp, setClicouGrupoWhatsapp] = useState(false);
   const containerScrollRef = useRef<HTMLDivElement>(null);
+
 
   // Cálculo dinâmico de idade
   const idadeCalculada = dataNascimentoIso ? calcularIdade(dataNascimentoIso) : null;
@@ -341,6 +346,7 @@ export function ModalInscricao({
       setSucessoData({
         inscricao: data.inscricao,
         codigoPix: data.codigoPix,
+        qrCodeDataUrl: data.qrCodeDataUrl,
         linkWhatsappSecretario: data.linkWhatsappSecretario,
         linkWhatsappTesoureiro: data.linkWhatsappTesoureiro,
         linkGrupoWhatsapp: data.linkGrupoWhatsapp || campanha.linkGrupoWhatsapp || null,
@@ -382,8 +388,10 @@ export function ModalInscricao({
     setErro("");
     setGrupoTipo("JUSC");
     setOutroGrupo("");
+    setExibirQrCodeInscricao(false);
     onFechar();
   }
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
@@ -533,24 +541,66 @@ export function ModalInscricao({
                       )}
 
                       {sucessoData.codigoPix && (
-                        <div className="space-y-2">
+                        <div className="space-y-2.5">
                           <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300 block">
-                            Pix Copia e Cola:
+                            Pagamento via Pix:
                           </label>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={handleCopiarPix}
+                              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                                copiadoPix
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-[#FFC72C] hover:bg-[#e5b220] text-neutral-950 shadow-sm"
+                              }`}
+                            >
+                              {copiadoPix ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                              <span>{copiadoPix ? "Código Pix Copiado!" : "Copiar Código Pix"}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setExibirQrCodeInscricao(!exibirQrCodeInscricao)}
+                              className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition-all ${
+                                exibirQrCodeInscricao
+                                  ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 border-transparent shadow-sm"
+                                  : "bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                              }`}
+                            >
+                              <QrCode className="w-4 h-4 text-emerald-500" />
+                              <span>{exibirQrCodeInscricao ? "Ocultar QR Code" : "Gerar / Ver QR Code"}</span>
+                            </button>
+                          </div>
+
+                          {exibirQrCodeInscricao && (
+                            <div className="pt-2 pb-1 flex flex-col items-center justify-center animate-fadeIn text-center">
+                              <div className="p-3 bg-white rounded-2xl shadow-md border border-neutral-200 dark:border-neutral-700 inline-block">
+                                {sucessoData.qrCodeDataUrl ? (
+                                  <img
+                                    src={sucessoData.qrCodeDataUrl}
+                                    alt="QR Code do Pix"
+                                    className="w-48 h-48 sm:w-52 sm:h-52 mx-auto rounded-lg object-contain"
+                                  />
+                                ) : (
+                                  <div className="w-48 h-48 flex items-center justify-center text-xs text-neutral-400">
+                                    Carregando QR Code...
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-2 max-w-xs">
+                                Aponte a câmera do aplicativo do seu banco para o QR Code acima para efetuar o pagamento.
+                              </p>
+                            </div>
+                          )}
+
                           <div className="relative">
                             <textarea
                               readOnly
                               value={sucessoData.codigoPix}
-                              className="w-full text-[11px] font-mono p-2.5 pr-24 rounded-xl bg-white dark:bg-black border border-neutral-300 dark:border-neutral-700 h-16 resize-none focus:outline-none"
+                              className="w-full text-[10px] font-mono p-2 rounded-xl bg-white dark:bg-black border border-neutral-300 dark:border-neutral-700 h-14 resize-none focus:outline-none"
                             />
-                            <button
-                              type="button"
-                              onClick={handleCopiarPix}
-                              className="absolute right-2 top-2 px-3 py-1.5 rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-black text-xs font-black flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-                            >
-                              {copiadoPix ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                              <span>{copiadoPix ? "Copiado!" : "Copiar"}</span>
-                            </button>
                           </div>
                         </div>
                       )}

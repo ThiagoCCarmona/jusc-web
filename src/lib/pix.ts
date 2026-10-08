@@ -3,6 +3,8 @@
  * e na implementação do repositório klimadev/gerador-pix.
  */
 
+import QRCode from "qrcode";
+
 export interface PixConfig {
   chave: string;
   nomeRecebedor: string;
@@ -11,6 +13,28 @@ export interface PixConfig {
   identificador?: string; // TxID (máximo 25 caracteres alfanuméricos)
   descricao?: string;
 }
+
+/**
+ * Gera um Data URL (base64) com a imagem PNG do QR Code do Pix
+ */
+export async function gerarQrCodePixDataUrl(codigoPix: string): Promise<string> {
+  if (!codigoPix) return "";
+  try {
+    return await QRCode.toDataURL(codigoPix, {
+      errorCorrectionLevel: "M",
+      margin: 2,
+      scale: 8,
+      color: {
+        dark: "#000000",
+        light: "#ffffff",
+      },
+    });
+  } catch (err) {
+    console.error("Erro ao gerar QR Code do Pix:", err);
+    return "";
+  }
+}
+
 
 export class GeradorPix {
   private chave: string;
