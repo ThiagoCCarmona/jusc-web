@@ -12,6 +12,9 @@ import {
   Link2,
   Copy,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
 } from "lucide-react";
 import { InputDataBr } from "@/components/ui/input-data-br";
 import {
@@ -110,13 +113,27 @@ export function ModalCampanha({
       });
       setModelos(modelosConfigurados);
 
-      // Atualiza a régua com a base e quaisquer tamanhos da campanha e dos modelos
-      const todosTams = new Set([
-        ...GRADE_TAMANHOS_BASE,
-        ...tamsCampanha,
-        ...modelosConfigurados.flatMap((m) => [...(m.tamanhos || []), ...(m.tamanhosShort || [])]),
-      ]);
-      setReguaTamanhos(ordenarTamanhosCatalogo(Array.from(todosTams)));
+      // Mantém a ordem salva em tamsCampanha se houver, ou ordena inteligentemente
+      const tamsSalvos = Array.isArray(campanha.tamanhosDisponiveis) && campanha.tamanhosDisponiveis.length > 0
+        ? campanha.tamanhosDisponiveis
+        : [];
+      
+      let reguaInicial: string[] = [];
+      if (tamsSalvos.length > 0) {
+        const extras = Array.from(new Set([
+          ...GRADE_TAMANHOS_BASE,
+          ...modelosConfigurados.flatMap((m) => [...(m.tamanhos || []), ...(m.tamanhosShort || [])]),
+        ])).filter((t) => !tamsSalvos.includes(t));
+        reguaInicial = [...tamsSalvos, ...ordenarTamanhosCatalogo(extras)];
+      } else {
+        const todosTams = Array.from(new Set([
+          ...GRADE_TAMANHOS_BASE,
+          ...tamsCampanha,
+          ...modelosConfigurados.flatMap((m) => [...(m.tamanhos || []), ...(m.tamanhosShort || [])]),
+        ]));
+        reguaInicial = ordenarTamanhosCatalogo(todosTams);
+      }
+      setReguaTamanhos(reguaInicial);
 
       setPermiteNome(Boolean(campanha.permiteNome));
       setPermiteNumero(Boolean(campanha.permiteNumero));
@@ -198,7 +215,7 @@ export function ModalCampanha({
           }
           mod.tamanhosShort = atuais.filter((t) => t !== tam);
         } else {
-          mod.tamanhosShort = ordenarTamanhosCatalogo([...atuais, tam]);
+          mod.tamanhosShort = ordenarTamanhosCatalogo([...atuais, tam], reguaTamanhos);
         }
       } else {
         const atuais = mod.tamanhos || [...TAMANHOS_PADRAO_INICIAIS];
@@ -209,7 +226,7 @@ export function ModalCampanha({
           }
           mod.tamanhos = atuais.filter((t) => t !== tam);
         } else {
-          mod.tamanhos = ordenarTamanhosCatalogo([...atuais, tam]);
+          mod.tamanhos = ordenarTamanhosCatalogo([...atuais, tam], reguaTamanhos);
         }
       }
       novos[idx] = mod;
@@ -222,7 +239,9 @@ export function ModalCampanha({
     setModelos((prev) => {
       const novos = [...prev];
       const mod = { ...novos[idx] };
-      const selecionados = tipo === "PADRAO" ? [...TAMANHOS_PADRAO_INICIAIS] : [...reguaTamanhos];
+      const selecionados = tipo === "PADRAO"
+        ? ordenarTamanhosCatalogo([...TAMANHOS_PADRAO_INICIAIS], reguaTamanhos)
+        : [...reguaTamanhos];
       if (ehShort) {
         mod.tamanhosShort = selecionados;
       } else {
@@ -233,11 +252,48 @@ export function ModalCampanha({
     });
   }
 
+  // Mover tamanho na régua para a esquerda (-1) ou direita (+1)
+  function handleMoverTamanhoRegua(index: number, direcao: -1 | 1) {
+    const novoIndex = index + direcao;
+    if (novoIndex < 0 || novoIndex >= reguaTamanhos.length) return;
+    const novaRegua = [...reguaTamanhos];
+    const [item] = novaRegua.splice(index, 1);
+    novaRegua.splice(novoIndex, 0, item);
+    setReguaTamanhos(novaRegua);
+  }
+
+  // Excluir tamanho da régua da campanha
+  function handleExcluirTamanhoRegua(tam: string) {
+    if (reguaTamanhos.length <= 1) {
+      onErro("A grade da campanha deve ter pelo menos um tamanho.");
+      return;
+    }
+    const novaRegua = reguaTamanhos.filter((t) => t !== tam);
+    setReguaTamanhos(novaRegua);
+
+    // Remove esse tamanho de todos os modelos
+    setModelos((prev) =>
+      prev.map((mod) => ({
+        ...mod,
+        tamanhos: (mod.tamanhos || []).filter((t) => t !== tam),
+        tamanhosShort: mod.tamanhosShort
+          ? mod.tamanhosShort.filter((t) => t !== tam)
+          : undefined,
+      }))
+    );
+  }
+
+  // Reordenar automaticamente (números infantis -> PPP -> XXXGG -> especiais)
+  function handleReordenarInteligente() {
+    setReguaTamanhos(ordenarTamanhosCatalogo(reguaTamanhos));
+  }
+
   // Adicionar tamanho extra à régua
   function handleAdicionarTamanhoRegua() {
     const limpo = novoTamanhoExtra.trim().toUpperCase();
     if (!limpo) return;
     if (!reguaTamanhos.includes(limpo)) {
+      // Adiciona e ordena inteligentemente colocando números como 12 no lugar certo!
       setReguaTamanhos(ordenarTamanhosCatalogo([...reguaTamanhos, limpo]));
     }
     setNovoTamanhoExtra("");
@@ -324,10 +380,10 @@ export function ModalCampanha({
               ? m.preco
               : precoBaseNum,
           ehConjunto: Boolean(m.ehConjunto),
-          tamanhos: ordenarTamanhosCatalogo(m.tamanhos || []),
-          tamanhosShort: m.ehConjunto && m.tamanhosShort ? ordenarTamanhosCatalogo(m.tamanhosShort) : undefined,
+          tamanhos: ordenarTamanhosCatalogo(m.tamanhos || [], reguaTamanhos),
+          tamanhosShort: m.ehConjunto && m.tamanhosShort ? ordenarTamanhosCatalogo(m.tamanhosShort, reguaTamanhos) : undefined,
         })),
-        tamanhosDisponiveis: ordenarTamanhosCatalogo(todosTamanhosCampanha),
+        tamanhosDisponiveis: ordenarTamanhosCatalogo(todosTamanhosCampanha, reguaTamanhos),
         permiteNome,
         permiteNumero,
         ocultoNaHome,
@@ -709,15 +765,76 @@ export function ModalCampanha({
                 </button>
               </div>
 
-              {/* Adicionar tamanho personalizado à grade */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-neutral-200 dark:border-neutral-700/80">
-                <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                  <span>Deseja adicionar outro tamanho maior ou menor à grade? (ex: 4G, RN)</span>
+              {/* Organizador da Régua de Tamanhos (Ordem e Exclusão) */}
+              <div className="pt-3 border-t border-neutral-200 dark:border-neutral-700/80 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                      Régua de Tamanhos da Campanha ({reguaTamanhos.length} disponíveis)
+                    </label>
+                    <p className="text-[11px] text-neutral-500">
+                      Reordene com as setas ◀ ▶ para definir a ordem em que aparecem no site, ou exclua (✕) tamanhos não usados.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleReordenarInteligente}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-800 hover:bg-[#FFC72C] hover:text-neutral-950 text-[10px] font-bold transition-colors cursor-pointer self-start sm:self-auto"
+                    title="Ordena automaticamente números primeiro (2, 4... 12, 14), seguidos das letras (PPP a XXXGG)"
+                  >
+                    <ArrowUpDown className="w-3 h-3" />
+                    <span>Auto-ordenar (Infantil → Adulto)</span>
+                  </button>
                 </div>
-                <div className="flex items-center gap-1.5">
+
+                {/* Lista de chips da régua com reordenação e exclusão */}
+                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-white dark:bg-[#15171e] border border-neutral-200 dark:border-neutral-800">
+                  {reguaTamanhos.map((tam, idxTam) => (
+                    <div
+                      key={tam}
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-700 shadow-2xs group hover:border-amber-400 transition-colors"
+                    >
+                      <button
+                        type="button"
+                        disabled={idxTam === 0}
+                        onClick={() => handleMoverTamanhoRegua(idxTam, -1)}
+                        className="p-0.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                        title="Mover para a esquerda"
+                      >
+                        <ChevronLeft className="w-3 h-3" />
+                      </button>
+
+                      <span className="font-black text-xs px-1 text-neutral-800 dark:text-neutral-100 select-none">
+                        {tam}
+                      </span>
+
+                      <button
+                        type="button"
+                        disabled={idxTam === reguaTamanhos.length - 1}
+                        onClick={() => handleMoverTamanhoRegua(idxTam, 1)}
+                        className="p-0.5 text-neutral-400 hover:text-neutral-900 dark:hover:text-white disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                        title="Mover para a direita"
+                      >
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleExcluirTamanhoRegua(tam)}
+                        className="p-0.5 ml-0.5 text-neutral-300 dark:text-neutral-600 hover:text-red-500 dark:hover:text-red-400 cursor-pointer transition-colors"
+                        title={`Excluir tamanho ${tam} da grade`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Input para adicionar novo tamanho */}
+                <div className="flex items-center gap-2 pt-0.5">
                   <input
                     type="text"
-                    placeholder="Novo tam (ex: 4G)"
+                    placeholder="Novo tamanho (ex: 12, 14, 4G, RN...)"
                     value={novoTamanhoExtra}
                     onChange={(e) => setNovoTamanhoExtra(e.target.value)}
                     onKeyDown={(e) => {
@@ -726,14 +843,15 @@ export function ModalCampanha({
                         handleAdicionarTamanhoRegua();
                       }
                     }}
-                    className="w-28 px-2.5 py-1 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-bold uppercase"
+                    className="w-56 px-2.5 py-1 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-bold uppercase"
                   />
                   <button
                     type="button"
                     onClick={handleAdicionarTamanhoRegua}
-                    className="px-2.5 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-800 hover:bg-[#FFC72C] hover:text-neutral-950 font-bold text-xs transition-colors cursor-pointer"
+                    className="px-3 py-1 rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 font-bold text-xs hover:opacity-90 transition-all flex items-center gap-1 cursor-pointer"
                   >
-                    + Adicionar à grade
+                    <PlusCircle className="w-3 h-3" />
+                    <span>+ Adicionar à grade</span>
                   </button>
                 </div>
               </div>

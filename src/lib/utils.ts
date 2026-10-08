@@ -151,29 +151,80 @@ export const TAMANHOS_PADRAO_INICIAIS = [
 // Compatibilidade retroativa
 export const TAMANHOS_CATALOGO_COMPLETO = GRADE_TAMANHOS_BASE;
 
-export function ordenarTamanhosCatalogo(tamanhos: string[]): string[] {
-  const ordem = [
-    "PPP",
-    "PP",
-    "P",
-    "M",
-    "G",
-    "GG",
-    "XG",
-    "XGG",
-    "XXG",
-    "XXGG",
-    "XXXG",
-    "XXXGG",
-  ];
-  return [...tamanhos].sort((a, b) => {
-    const idxA = ordem.indexOf(a.toUpperCase());
-    const idxB = ordem.indexOf(b.toUpperCase());
-    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-    if (idxA !== -1) return -1;
-    if (idxB !== -1) return 1;
-    return a.localeCompare(b, "pt-BR");
-  });
+export const ORDEM_PADRAO_LETRAS = [
+  "RN",
+  "PPP",
+  "PP",
+  "P",
+  "M",
+  "G",
+  "GG",
+  "XG",
+  "XGG",
+  "XXG",
+  "XXGG",
+  "XXXG",
+  "XXXGG",
+  "G1",
+  "G2",
+  "G3",
+  "G4",
+  "G5",
+  "G6",
+  "SOB MEDIDA",
+];
+
+export function compararTamanhosPadrao(a: string, b: string): number {
+  const normA = a.trim().toUpperCase();
+  const normB = b.trim().toUpperCase();
+
+  const ehNumA = /^\d+$/.test(normA);
+  const ehNumB = /^\d+$/.test(normB);
+
+  // Se ambos são números (ex: 2, 4, 6, 8, 10, 12, 14, 16):
+  if (ehNumA && ehNumB) {
+    return parseInt(normA, 10) - parseInt(normB, 10);
+  }
+
+  // Se apenas A é número e B é letra (exceto RN que é recém-nascido):
+  if (ehNumA && !ehNumB) {
+    if (normB === "RN") return 1;
+    return -1; // Números vêm antes de letras adultas (PPP, PP, P, M, G, GG...)
+  }
+
+  // Se A é letra e apenas B é número:
+  if (!ehNumA && ehNumB) {
+    if (normA === "RN") return -1;
+    return 1; // Letras adultas vêm depois de números infantis
+  }
+
+  // Ambos são letras:
+  const idxA = ORDEM_PADRAO_LETRAS.indexOf(normA);
+  const idxB = ORDEM_PADRAO_LETRAS.indexOf(normB);
+
+  if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+  if (idxA !== -1) return -1;
+  if (idxB !== -1) return 1;
+
+  return normA.localeCompare(normB, "pt-BR");
+}
+
+export function ordenarTamanhosCatalogo(
+  tamanhos: string[],
+  ordemPersonalizada?: string[]
+): string[] {
+  if (ordemPersonalizada && ordemPersonalizada.length > 0) {
+    const ordemUpper = ordemPersonalizada.map((t) => t.trim().toUpperCase());
+    return [...tamanhos].sort((a, b) => {
+      const idxA = ordemUpper.indexOf(a.trim().toUpperCase());
+      const idxB = ordemUpper.indexOf(b.trim().toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return compararTamanhosPadrao(a, b);
+    });
+  }
+  return [...tamanhos].sort(compararTamanhosPadrao);
 }
 
 export interface ModeloPrecoItem {
@@ -286,10 +337,10 @@ export function obterTamanhosModelo(
     (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
   );
   if (encontrado?.tamanhos && encontrado.tamanhos.length > 0) {
-    return encontrado.tamanhos;
+    return ordenarTamanhosCatalogo(encontrado.tamanhos, tamanhosPadraoCampanha);
   }
   return tamanhosPadraoCampanha && tamanhosPadraoCampanha.length > 0
-    ? tamanhosPadraoCampanha
+    ? ordenarTamanhosCatalogo(tamanhosPadraoCampanha, tamanhosPadraoCampanha)
     : ["PP", "P", "M", "G", "GG", "XGG"];
 }
 
@@ -306,13 +357,13 @@ export function obterTamanhosShort(
     (m) => m.nome.toLowerCase() === modeloNome.toLowerCase()
   );
   if (encontrado?.tamanhosShort && encontrado.tamanhosShort.length > 0) {
-    return encontrado.tamanhosShort;
+    return ordenarTamanhosCatalogo(encontrado.tamanhosShort, tamanhosPadraoCampanha);
   }
   if (encontrado?.tamanhos && encontrado.tamanhos.length > 0) {
-    return encontrado.tamanhos;
+    return ordenarTamanhosCatalogo(encontrado.tamanhos, tamanhosPadraoCampanha);
   }
   return tamanhosPadraoCampanha && tamanhosPadraoCampanha.length > 0
-    ? tamanhosPadraoCampanha
+    ? ordenarTamanhosCatalogo(tamanhosPadraoCampanha, tamanhosPadraoCampanha)
     : ["PP", "P", "M", "G", "GG", "XGG"];
 }
 
