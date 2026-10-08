@@ -124,29 +124,22 @@ export function formatarNumeroClj(valor: string): string {
   return `${digits}°`;
 }
 
-export const TAMANHOS_INFANTIS = ["2", "4", "6", "8", "10", "12", "14", "16"];
-export const TAMANHOS_ADULTOS = [
+// Grade padrão focada no vestuário do grupo (PP a XGG com suporte a menores PPP e maiores até XXXGG)
+export const GRADE_TAMANHOS_BASE = [
   "PPP",
   "PP",
   "P",
   "M",
   "G",
   "GG",
-  "XG",
   "XGG",
   "XXG",
   "XXGG",
   "XXXG",
-];
-export const TAMANHOS_PLUS_ESPECIAIS = ["G1", "G2", "G3", "G4", "G5", "Sob Medida"];
-
-export const TAMANHOS_CATALOGO_COMPLETO: string[] = [
-  ...TAMANHOS_INFANTIS,
-  ...TAMANHOS_ADULTOS,
-  ...TAMANHOS_PLUS_ESPECIAIS,
+  "XXXGG",
 ];
 
-export const TAMANHOS_PADRAO_INICIAIS: string[] = [
+export const TAMANHOS_PADRAO_INICIAIS = [
   "PP",
   "P",
   "M",
@@ -155,10 +148,27 @@ export const TAMANHOS_PADRAO_INICIAIS: string[] = [
   "XGG",
 ];
 
+// Compatibilidade retroativa
+export const TAMANHOS_CATALOGO_COMPLETO = GRADE_TAMANHOS_BASE;
+
 export function ordenarTamanhosCatalogo(tamanhos: string[]): string[] {
+  const ordem = [
+    "PPP",
+    "PP",
+    "P",
+    "M",
+    "G",
+    "GG",
+    "XG",
+    "XGG",
+    "XXG",
+    "XXGG",
+    "XXXG",
+    "XXXGG",
+  ];
   return [...tamanhos].sort((a, b) => {
-    const idxA = TAMANHOS_CATALOGO_COMPLETO.indexOf(a.toUpperCase());
-    const idxB = TAMANHOS_CATALOGO_COMPLETO.indexOf(b.toUpperCase());
+    const idxA = ordem.indexOf(a.toUpperCase());
+    const idxB = ordem.indexOf(b.toUpperCase());
     if (idxA !== -1 && idxB !== -1) return idxA - idxB;
     if (idxA !== -1) return -1;
     if (idxB !== -1) return 1;
@@ -169,9 +179,9 @@ export function ordenarTamanhosCatalogo(tamanhos: string[]): string[] {
 export interface ModeloPrecoItem {
   nome: string;
   preco?: number;
-  tamanhos?: string[]; // Compatibilidade retroativa
+  tamanhos?: string[]; // Tamanhos específicos para este modelo
   ehConjunto?: boolean; // Se true, modelo é um conjunto (Short + Camiseta)
-  tamanhosShort?: string[]; // Compatibilidade retroativa
+  tamanhosShort?: string[]; // Tamanhos específicos para o short do conjunto
 }
 
 /**

@@ -9,9 +9,6 @@ import {
   Trash2,
   Tag,
   PlusCircle,
-  Check,
-  Edit2,
-  RotateCcw,
   Link2,
   Copy,
   CheckCircle2,
@@ -21,11 +18,8 @@ import {
   normalizarModelos,
   ModeloPrecoItem,
   isoParaBrasileiro,
-  TAMANHOS_CATALOGO_COMPLETO,
+  GRADE_TAMANHOS_BASE,
   TAMANHOS_PADRAO_INICIAIS,
-  TAMANHOS_INFANTIS,
-  TAMANHOS_ADULTOS,
-  TAMANHOS_PLUS_ESPECIAIS,
   ordenarTamanhosCatalogo,
 } from "@/lib/utils";
 
@@ -70,17 +64,15 @@ export function ModalCampanha({
   const [ocultoNaHome, setOcultoNaHome] = useState(false);
   const [copiadoLink, setCopiadoLink] = useState(false);
   const [modelos, setModelos] = useState<ModeloPrecoItem[]>([
-    { nome: "Tradicional" },
-    { nome: "Baby Look" },
+    { nome: "Tradicional", tamanhos: [...TAMANHOS_PADRAO_INICIAIS] },
+    { nome: "Baby Look", tamanhos: [...TAMANHOS_PADRAO_INICIAIS] },
   ]);
   const [novoModeloNome, setNovoModeloNome] = useState("");
   const [novoModeloPreco, setNovoModeloPreco] = useState("");
 
-  // Gestão Dinâmica de Tamanhos (Criar, Editar e Selecionar)
-  const [listaTamanhos, setListaTamanhos] = useState<string[]>(TAMANHOS_CATALOGO_COMPLETO);
-  const [tamanhosSelecionados, setTamanhosSelecionados] = useState<string[]>(TAMANHOS_PADRAO_INICIAIS);
-  const [novoTamanhoInput, setNovoTamanhoInput] = useState("");
-  const [tamanhoEditando, setTamanhoEditando] = useState<{ antigo: string; novo: string } | null>(null);
+  // Grade/Régua de tamanhos e novo tamanho customizado
+  const [reguaTamanhos, setReguaTamanhos] = useState<string[]>(GRADE_TAMANHOS_BASE);
+  const [novoTamanhoExtra, setNovoTamanhoExtra] = useState("");
 
   const [permiteNome, setPermiteNome] = useState(true);
   const [permiteNumero, setPermiteNumero] = useState(true);
@@ -101,16 +93,30 @@ export function ModalCampanha({
       setPrecoBase(campanha.precoUnitario ? campanha.precoUnitario.toString() : "");
 
       const modelosNorm = normalizarModelos(campanha.modelos, campanha.precoUnitario);
-      setModelos(modelosNorm);
-
-      const tams = Array.isArray(campanha.tamanhosDisponiveis) && campanha.tamanhosDisponiveis.length > 0
+      const tamsCampanha = Array.isArray(campanha.tamanhosDisponiveis) && campanha.tamanhosDisponiveis.length > 0
         ? campanha.tamanhosDisponiveis
         : TAMANHOS_PADRAO_INICIAIS;
-      setTamanhosSelecionados(tams);
 
-      // Garante que todos os tamanhos do catálogo e da campanha estejam na lista visível
-      const todosTams = Array.from(new Set([...TAMANHOS_CATALOGO_COMPLETO, ...tams]));
-      setListaTamanhos(todosTams);
+      const modelosConfigurados = modelosNorm.map((m) => {
+        const tams = m.tamanhos && m.tamanhos.length > 0 ? m.tamanhos : [...tamsCampanha];
+        const tamsShort = m.ehConjunto
+          ? (m.tamanhosShort && m.tamanhosShort.length > 0 ? m.tamanhosShort : [...tams])
+          : undefined;
+        return {
+          ...m,
+          tamanhos: tams,
+          tamanhosShort: tamsShort,
+        };
+      });
+      setModelos(modelosConfigurados);
+
+      // Atualiza a régua com a base e quaisquer tamanhos da campanha e dos modelos
+      const todosTams = new Set([
+        ...GRADE_TAMANHOS_BASE,
+        ...tamsCampanha,
+        ...modelosConfigurados.flatMap((m) => [...(m.tamanhos || []), ...(m.tamanhosShort || [])]),
+      ]);
+      setReguaTamanhos(ordenarTamanhosCatalogo(Array.from(todosTams)));
 
       setPermiteNome(Boolean(campanha.permiteNome));
       setPermiteNumero(Boolean(campanha.permiteNumero));
@@ -141,13 +147,13 @@ export function ModalCampanha({
       setPrecoBase("");
       setOcultoNaHome(false);
       setModelos([
-        { nome: "Tradicional" },
-        { nome: "Baby Look" },
+        { nome: "Tradicional", tamanhos: [...TAMANHOS_PADRAO_INICIAIS] },
+        { nome: "Baby Look", tamanhos: [...TAMANHOS_PADRAO_INICIAIS] },
       ]);
       setNovoModeloNome("");
       setNovoModeloPreco("");
-      setListaTamanhos(TAMANHOS_CATALOGO_COMPLETO);
-      setTamanhosSelecionados(TAMANHOS_PADRAO_INICIAIS);
+      setReguaTamanhos(GRADE_TAMANHOS_BASE);
+      setNovoTamanhoExtra("");
       setPermiteNome(true);
       setPermiteNumero(true);
       setDataFimBr("");
@@ -178,143 +184,63 @@ export function ModalCampanha({
     }
   }
 
-  // Adicionar tamanho personalizado
-  function handleAdicionarTamanho() {
-    const limpo = novoTamanhoInput.trim().toUpperCase();
-    if (!limpo) return;
-
-    if (!listaTamanhos.includes(limpo)) {
-      setListaTamanhos([...listaTamanhos, limpo]);
-    }
-    if (!tamanhosSelecionados.includes(limpo)) {
-      setTamanhosSelecionados([...tamanhosSelecionados, limpo]);
-    }
-    setNovoTamanhoInput("");
-  }
-
-  // Confirmar edição de um tamanho existente
-  function handleConfirmarEditarTamanho() {
-    if (!tamanhoEditando) return;
-    const novo = tamanhoEditando.novo.trim().toUpperCase();
-    const antigo = tamanhoEditando.antigo;
-    if (!novo || novo === antigo) {
-      setTamanhoEditando(null);
-      return;
-    }
-
-    setListaTamanhos(listaTamanhos.map((t) => (t === antigo ? novo : t)));
-    setTamanhosSelecionados(tamanhosSelecionados.map((t) => (t === antigo ? novo : t)));
-    setTamanhoEditando(null);
-  }
-
-  // Remover tamanho da lista
-  function handleRemoverTamanho(tam: string) {
-    setListaTamanhos(listaTamanhos.filter((t) => t !== tam));
-    setTamanhosSelecionados(tamanhosSelecionados.filter((t) => t !== tam));
-  }
-
-  function handleToggleTamanho(tam: string) {
-    if (tamanhosSelecionados.includes(tam)) {
-      if (tamanhosSelecionados.length <= 1) {
-        onErro("A campanha deve disponibilizar ao menos um tamanho.");
-        return;
+  // Alternar tamanho específico de um modelo (camiseta ou short)
+  function handleToggleTamanhoModelo(idx: number, tam: string, ehShort = false) {
+    setModelos((prev) => {
+      const novos = [...prev];
+      const mod = { ...novos[idx] };
+      if (ehShort) {
+        const atuais = mod.tamanhosShort || [...TAMANHOS_PADRAO_INICIAIS];
+        if (atuais.includes(tam)) {
+          if (atuais.length <= 1) {
+            onErro("O short deve ter ao menos um tamanho selecionado.");
+            return prev;
+          }
+          mod.tamanhosShort = atuais.filter((t) => t !== tam);
+        } else {
+          mod.tamanhosShort = ordenarTamanhosCatalogo([...atuais, tam]);
+        }
+      } else {
+        const atuais = mod.tamanhos || [...TAMANHOS_PADRAO_INICIAIS];
+        if (atuais.includes(tam)) {
+          if (atuais.length <= 1) {
+            onErro("O modelo deve ter ao menos um tamanho selecionado.");
+            return prev;
+          }
+          mod.tamanhos = atuais.filter((t) => t !== tam);
+        } else {
+          mod.tamanhos = ordenarTamanhosCatalogo([...atuais, tam]);
+        }
       }
-      setTamanhosSelecionados(tamanhosSelecionados.filter((t) => t !== tam));
-    } else {
-      setTamanhosSelecionados([...tamanhosSelecionados, tam]);
-    }
+      novos[idx] = mod;
+      return novos;
+    });
   }
 
-  function renderPillTamanho(tam: string) {
-    const selecionado = tamanhosSelecionados.includes(tam);
-    const isEditingThis = tamanhoEditando?.antigo === tam;
+  // Atalhos rápidos para o modelo (Padrão PP-XGG, Todos da régua)
+  function handleDefinirGradeModelo(idx: number, tipo: "PADRAO" | "TODOS", ehShort = false) {
+    setModelos((prev) => {
+      const novos = [...prev];
+      const mod = { ...novos[idx] };
+      const selecionados = tipo === "PADRAO" ? [...TAMANHOS_PADRAO_INICIAIS] : [...reguaTamanhos];
+      if (ehShort) {
+        mod.tamanhosShort = selecionados;
+      } else {
+        mod.tamanhos = selecionados;
+      }
+      novos[idx] = mod;
+      return novos;
+    });
+  }
 
-    if (isEditingThis) {
-      return (
-        <div
-          key={tam}
-          className="inline-flex items-center gap-1 p-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-[#FFC72C]"
-        >
-          <input
-            type="text"
-            value={tamanhoEditando.novo}
-            onChange={(e) =>
-              setTamanhoEditando({ ...tamanhoEditando, novo: e.target.value })
-            }
-            className="w-16 px-1.5 py-0.5 rounded bg-white dark:bg-[#15171e] text-xs font-bold uppercase"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleConfirmarEditarTamanho();
-              } else if (e.key === "Escape") {
-                setTamanhoEditando(null);
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleConfirmarEditarTamanho}
-            className="p-1 text-emerald-600 hover:bg-emerald-100 rounded"
-            title="Confirmar"
-          >
-            <Check className="w-3 h-3" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setTamanhoEditando(null)}
-            className="p-1 text-neutral-400 hover:text-neutral-700 rounded"
-            title="Cancelar"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
-      );
+  // Adicionar tamanho extra à régua
+  function handleAdicionarTamanhoRegua() {
+    const limpo = novoTamanhoExtra.trim().toUpperCase();
+    if (!limpo) return;
+    if (!reguaTamanhos.includes(limpo)) {
+      setReguaTamanhos(ordenarTamanhosCatalogo([...reguaTamanhos, limpo]));
     }
-
-    return (
-      <div
-        key={tam}
-        className={`group relative inline-flex items-center rounded-xl text-xs font-bold border transition-all ${
-          selecionado
-            ? "bg-[#FFC72C] text-neutral-950 border-amber-400 shadow-xs"
-            : "bg-white dark:bg-[#15171e] border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 opacity-60 hover:opacity-100"
-        }`}
-      >
-        <button
-          type="button"
-          onClick={() => handleToggleTamanho(tam)}
-          className="px-2.5 py-1.5"
-        >
-          {tam}
-        </button>
-
-        <div className="hidden group-hover:flex items-center pr-1.5 gap-0.5">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setTamanhoEditando({ antigo: tam, novo: tam });
-            }}
-            className="p-0.5 text-neutral-600 hover:text-neutral-950 dark:hover:text-white"
-            title="Editar nome do tamanho"
-          >
-            <Edit2 className="w-2.5 h-2.5" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRemoverTamanho(tam);
-            }}
-            className="p-0.5 text-red-500 hover:text-red-700"
-            title="Excluir este tamanho"
-          >
-            <X className="w-2.5 h-2.5" />
-          </button>
-        </div>
-      </div>
-    );
+    setNovoTamanhoExtra("");
   }
 
   function handleCopiarLinkDireto() {
@@ -343,8 +269,33 @@ export function ModalCampanha({
       return;
     }
 
-    if (tamanhosSelecionados.length === 0) {
-      onErro("Selecione pelo menos um tamanho para a camiseta.");
+    // Validar tamanhos de cada modelo
+    for (const mod of modelos) {
+      const tams = mod.tamanhos || [];
+      if (tams.length === 0) {
+        onErro(`Selecione ao menos um tamanho para o modelo "${mod.nome || "sem nome"}".`);
+        return;
+      }
+      if (mod.ehConjunto) {
+        const tamsShort = mod.tamanhosShort || [];
+        if (tamsShort.length === 0) {
+          onErro(`Selecione ao menos um tamanho de short para o conjunto "${mod.nome || "sem nome"}".`);
+          return;
+        }
+      }
+    }
+
+    const todosTamanhosCampanha = Array.from(
+      new Set(
+        modelos.flatMap((m) => [
+          ...(m.tamanhos || []),
+          ...(m.ehConjunto && m.tamanhosShort ? m.tamanhosShort : []),
+        ])
+      )
+    );
+
+    if (todosTamanhosCampanha.length === 0) {
+      onErro("Selecione pelo menos um tamanho nos modelos.");
       return;
     }
 
@@ -373,8 +324,10 @@ export function ModalCampanha({
               ? m.preco
               : precoBaseNum,
           ehConjunto: Boolean(m.ehConjunto),
+          tamanhos: ordenarTamanhosCatalogo(m.tamanhos || []),
+          tamanhosShort: m.ehConjunto && m.tamanhosShort ? ordenarTamanhosCatalogo(m.tamanhosShort) : undefined,
         })),
-        tamanhosDisponiveis: ordenarTamanhosCatalogo(tamanhosSelecionados),
+        tamanhosDisponiveis: ordenarTamanhosCatalogo(todosTamanhosCampanha),
         permiteNome,
         permiteNumero,
         ocultoNaHome,
@@ -559,7 +512,14 @@ export function ModalCampanha({
                           checked={Boolean(mod.ehConjunto)}
                           onChange={(e) => {
                             const novos = [...modelos];
-                            novos[idx] = { ...novos[idx], ehConjunto: e.target.checked };
+                            const ehConj = e.target.checked;
+                            novos[idx] = {
+                              ...novos[idx],
+                              ehConjunto: ehConj,
+                              tamanhosShort: ehConj
+                                ? (novos[idx].tamanhosShort || [...(novos[idx].tamanhos || TAMANHOS_PADRAO_INICIAIS)])
+                                : undefined,
+                            };
                             setModelos(novos);
                           }}
                           className="rounded border-neutral-300 text-amber-500 focus:ring-[#FFC72C]"
@@ -570,6 +530,98 @@ export function ModalCampanha({
                         (O cliente selecionará o tamanho da camiseta e do short separadamente no pedido)
                       </span>
                     </div>
+
+                    {/* Tamanhos da Camiseta deste modelo */}
+                    <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800/80 space-y-1.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                        <span className="font-bold text-neutral-700 dark:text-neutral-300">
+                          Tamanhos da camiseta deste modelo ({(mod.tamanhos || []).length} ativo{(mod.tamanhos || []).length === 1 ? "" : "s"}):
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDefinirGradeModelo(idx, "PADRAO", false)}
+                            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 hover:bg-[#FFC72C] hover:text-neutral-950 transition-colors cursor-pointer"
+                          >
+                            Padrão (PP-XGG)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDefinirGradeModelo(idx, "TODOS", false)}
+                            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 hover:bg-[#FFC72C] hover:text-neutral-950 transition-colors cursor-pointer"
+                          >
+                            Todos da grade
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {reguaTamanhos.map((tam) => {
+                          const selecionado = (mod.tamanhos || TAMANHOS_PADRAO_INICIAIS).includes(tam);
+                          return (
+                            <button
+                              key={tam}
+                              type="button"
+                              onClick={() => handleToggleTamanhoModelo(idx, tam, false)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                selecionado
+                                  ? "bg-[#FFC72C] text-neutral-950 shadow-xs border border-amber-400 font-black"
+                                  : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-transparent hover:border-neutral-300 dark:hover:border-neutral-700"
+                              }`}
+                            >
+                              {tam}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Se for Conjunto: Tamanhos do Short deste modelo */}
+                    {mod.ehConjunto && (
+                      <div className="pt-2 border-t border-dashed border-amber-300/50 dark:border-amber-900/50 space-y-1.5 bg-amber-500/5 -mx-3 px-3 pb-2 rounded-b-2xl">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                          <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                            <span>🩳</span> Tamanhos do short deste modelo ({(mod.tamanhosShort || []).length} ativo{(mod.tamanhosShort || []).length === 1 ? "" : "s"}):
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleDefinirGradeModelo(idx, "PADRAO", true)}
+                              className="px-2 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 hover:bg-amber-400 hover:text-neutral-950 transition-colors cursor-pointer"
+                            >
+                              Padrão (PP-XGG)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDefinirGradeModelo(idx, "TODOS", true)}
+                              className="px-2 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 hover:bg-amber-400 hover:text-neutral-950 transition-colors cursor-pointer"
+                            >
+                              Todos da grade
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {reguaTamanhos.map((tam) => {
+                            const selecionado = (mod.tamanhosShort || mod.tamanhos || TAMANHOS_PADRAO_INICIAIS).includes(tam);
+                            return (
+                              <button
+                                key={tam}
+                                type="button"
+                                onClick={() => handleToggleTamanhoModelo(idx, tam, true)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  selecionado
+                                    ? "bg-amber-500 text-white shadow-xs border border-amber-600 font-black"
+                                    : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-transparent hover:border-neutral-300 dark:hover:border-neutral-700"
+                                }`}
+                              >
+                                {tam}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -591,7 +643,16 @@ export function ModalCampanha({
                           ? parseFloat(precoBase)
                           : undefined;
                         const ehConj = novoModeloNome.toLowerCase().includes("conjunto");
-                        setModelos([...modelos, { nome: novoModeloNome.trim(), preco: p, ehConjunto: ehConj }]);
+                        setModelos([
+                          ...modelos,
+                          {
+                            nome: novoModeloNome.trim(),
+                            preco: p,
+                            ehConjunto: ehConj,
+                            tamanhos: [...TAMANHOS_PADRAO_INICIAIS],
+                            tamanhosShort: ehConj ? [...TAMANHOS_PADRAO_INICIAIS] : undefined,
+                          },
+                        ]);
                         setNovoModeloNome("");
                         setNovoModeloPreco("");
                       }
@@ -628,15 +689,53 @@ export function ModalCampanha({
                       ? parseFloat(precoBase)
                       : undefined;
                     const ehConj = novoModeloNome.toLowerCase().includes("conjunto");
-                    setModelos([...modelos, { nome: novoModeloNome.trim(), preco: p, ehConjunto: ehConj }]);
+                    setModelos([
+                      ...modelos,
+                      {
+                        nome: novoModeloNome.trim(),
+                        preco: p,
+                        ehConjunto: ehConj,
+                        tamanhos: [...TAMANHOS_PADRAO_INICIAIS],
+                        tamanhosShort: ehConj ? [...TAMANHOS_PADRAO_INICIAIS] : undefined,
+                      },
+                    ]);
                     setNovoModeloNome("");
                     setNovoModeloPreco("");
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 font-bold text-xs hover:opacity-90 flex items-center gap-1.5 flex-shrink-0 transition-all"
+                  className="px-3 py-1.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 font-bold text-xs hover:opacity-90 flex items-center gap-1.5 flex-shrink-0 transition-all cursor-pointer"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Adicionar</span>
                 </button>
+              </div>
+
+              {/* Adicionar tamanho personalizado à grade */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-neutral-200 dark:border-neutral-700/80">
+                <div className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                  <span>Deseja adicionar outro tamanho maior ou menor à grade? (ex: 4G, RN)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="Novo tam (ex: 4G)"
+                    value={novoTamanhoExtra}
+                    onChange={(e) => setNovoTamanhoExtra(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAdicionarTamanhoRegua();
+                      }
+                    }}
+                    className="w-28 px-2.5 py-1 rounded-lg bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-bold uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAdicionarTamanhoRegua}
+                    className="px-2.5 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-800 hover:bg-[#FFC72C] hover:text-neutral-950 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    + Adicionar à grade
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -739,162 +838,6 @@ export function ModalCampanha({
               </div>
             )}
 
-            {/* Gestão Dinâmica de Tamanhos (Catálogo Amplo e Seleção Unificada) */}
-            <div className="sm:col-span-2 space-y-3.5 p-4 rounded-2xl bg-neutral-50 dark:bg-[#1c202a] border border-neutral-200 dark:border-neutral-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                    Tamanhos Permitidos na Campanha * ({tamanhosSelecionados.length} selecionado{tamanhosSelecionados.length === 1 ? "" : "s"})
-                  </label>
-                  <p className="text-[11px] text-neutral-500">
-                    Clique nos tamanhos para ativar/desativar na campanha. Use os atalhos abaixo para preenchimento rápido.
-                  </p>
-                </div>
-
-                {/* Atalhos Rápidos de Seleção em Lote */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setTamanhosSelecionados(TAMANHOS_PADRAO_INICIAIS)}
-                    className="px-2 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 hover:bg-[#FFC72C] hover:text-neutral-950 transition-colors"
-                  >
-                    Padrão (PP-XGG)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTamanhosSelecionados((prev) => Array.from(new Set([...prev, ...TAMANHOS_ADULTOS])))}
-                    className="px-2 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 hover:bg-[#FFC72C] hover:text-neutral-950 transition-colors"
-                  >
-                    + Adulto (PPP-XXXG)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTamanhosSelecionados((prev) => Array.from(new Set([...prev, ...TAMANHOS_INFANTIS])))}
-                    className="px-2 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 hover:bg-[#FFC72C] hover:text-neutral-950 transition-colors"
-                  >
-                    + Infantil (2-16)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTamanhosSelecionados((prev) => Array.from(new Set([...prev, ...TAMANHOS_PLUS_ESPECIAIS])))}
-                    className="px-2 py-1 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 hover:bg-[#FFC72C] hover:text-neutral-950 transition-colors"
-                  >
-                    + Plus Size (G1-G5)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTamanhosSelecionados([...listaTamanhos])}
-                    className="px-2 py-1 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 text-[10px] font-bold hover:opacity-80 transition-opacity"
-                  >
-                    Todos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTamanhosSelecionados([])}
-                    className="px-2 py-1 rounded-lg border border-neutral-300 dark:border-neutral-700 text-[10px] font-bold text-neutral-500 hover:text-red-500 transition-colors"
-                  >
-                    Limpar
-                  </button>
-                </div>
-              </div>
-
-              {/* Grupos de Tamanhos em Catálogo Amplo */}
-              <div className="space-y-3 pt-1">
-                {/* 1. Adulto */}
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
-                    <span>👕 Grade Adulta (PPP ao XXXG)</span>
-                    <span className="font-normal text-[9px] text-neutral-400">
-                      {listaTamanhos.filter((t) => TAMANHOS_ADULTOS.includes(t) && tamanhosSelecionados.includes(t)).length} ativo(s)
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {listaTamanhos
-                      .filter((t) => TAMANHOS_ADULTOS.includes(t))
-                      .map((tam) => renderPillTamanho(tam))}
-                  </div>
-                </div>
-
-                {/* 2. Infantil */}
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
-                    <span>🧒 Grade Infantil (2 ao 16)</span>
-                    <span className="font-normal text-[9px] text-neutral-400">
-                      {listaTamanhos.filter((t) => TAMANHOS_INFANTIS.includes(t) && tamanhosSelecionados.includes(t)).length} ativo(s)
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {listaTamanhos
-                      .filter((t) => TAMANHOS_INFANTIS.includes(t))
-                      .map((tam) => renderPillTamanho(tam))}
-                  </div>
-                </div>
-
-                {/* 3. Plus Size & Especiais */}
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center justify-between">
-                    <span>⭐ Plus Size & Especiais (G1 ao G5 e Sob Medida)</span>
-                    <span className="font-normal text-[9px] text-neutral-400">
-                      {listaTamanhos.filter((t) => TAMANHOS_PLUS_ESPECIAIS.includes(t) && tamanhosSelecionados.includes(t)).length} ativo(s)
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {listaTamanhos
-                      .filter((t) => TAMANHOS_PLUS_ESPECIAIS.includes(t))
-                      .map((tam) => renderPillTamanho(tam))}
-                  </div>
-                </div>
-
-                {/* 4. Customizados */}
-                {listaTamanhos.some(
-                  (t) =>
-                    !TAMANHOS_ADULTOS.includes(t) &&
-                    !TAMANHOS_INFANTIS.includes(t) &&
-                    !TAMANHOS_PLUS_ESPECIAIS.includes(t)
-                ) && (
-                  <div className="space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                      🏷️ Tamanhos Customizados
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {listaTamanhos
-                        .filter(
-                          (t) =>
-                            !TAMANHOS_ADULTOS.includes(t) &&
-                            !TAMANHOS_INFANTIS.includes(t) &&
-                            !TAMANHOS_PLUS_ESPECIAIS.includes(t)
-                        )
-                        .map((tam) => renderPillTamanho(tam))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Input para Criar Novo Tamanho */}
-              <div className="flex items-center gap-2 pt-2 border-t border-neutral-200/80 dark:border-neutral-800">
-                <input
-                  type="text"
-                  placeholder="Criar outro tamanho (ex: G6, 18, Especial...)"
-                  value={novoTamanhoInput}
-                  onChange={(e) => setNovoTamanhoInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAdicionarTamanho();
-                    }
-                  }}
-                  className="w-72 px-3 py-1.5 rounded-xl bg-white dark:bg-[#15171e] border border-neutral-300 dark:border-neutral-700 text-xs font-medium uppercase"
-                />
-                <button
-                  type="button"
-                  onClick={handleAdicionarTamanho}
-                  className="px-3 py-1.5 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 font-bold text-xs hover:opacity-90 transition-all flex items-center gap-1"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Adicionar</span>
-                </button>
-              </div>
-            </div>
 
             {/* Upload de Fotos com Legenda e Capa */}
             <div className="sm:col-span-2 space-y-3">
