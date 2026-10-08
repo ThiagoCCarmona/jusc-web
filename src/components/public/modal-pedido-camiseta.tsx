@@ -24,6 +24,7 @@ import {
   modeloEhConjunto,
   obterTamanhosModelo,
   obterTamanhosShort,
+  ordenarTamanhosCatalogo,
 } from "@/lib/utils";
 
 
@@ -70,7 +71,9 @@ export function ModalPedidoCamiseta({
   const [outroGrupo, setOutroGrupo] = useState("");
   const [modelo, setModelo] = useState(modelosNormalizados[0]?.nome || "Padrão");
   const [tamanho, setTamanho] = useState(
-    obterTamanhosModelo(modelosNormalizados[0]?.nome || "Padrão", campanha.modelos, campanha.tamanhosDisponiveis)[0] || "M"
+    ordenarTamanhosCatalogo(
+      obterTamanhosModelo(modelosNormalizados[0]?.nome || "Padrão", campanha.modelos, campanha.tamanhosDisponiveis)
+    )[0] || "M"
   );
   const [tamanhoCamiseta, setTamanhoCamiseta] = useState("M");
   const [tamanhoShort, setTamanhoShort] = useState("M");
@@ -98,8 +101,12 @@ export function ModalPedidoCamiseta({
 
   // Tamanhos e modelo dinâmicos
   const ehConjunto = modeloEhConjunto(modelo, campanha.modelos);
-  const tamanhosDisponiveisModelo = obterTamanhosModelo(modelo, campanha.modelos, campanha.tamanhosDisponiveis);
-  const tamanhosDisponiveisShort = obterTamanhosShort(modelo, campanha.modelos, campanha.tamanhosDisponiveis);
+  const tamanhosDisponiveisModelo = ordenarTamanhosCatalogo(
+    obterTamanhosModelo(modelo, campanha.modelos, campanha.tamanhosDisponiveis)
+  );
+  const tamanhosDisponiveisShort = ordenarTamanhosCatalogo(
+    obterTamanhosShort(modelo, campanha.modelos, campanha.tamanhosDisponiveis)
+  );
 
   function handleTrocarModelo(novoModeloNome: string) {
     setModelo(novoModeloNome);

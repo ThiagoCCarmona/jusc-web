@@ -124,12 +124,54 @@ export function formatarNumeroClj(valor: string): string {
   return `${digits}°`;
 }
 
+export const TAMANHOS_INFANTIS = ["2", "4", "6", "8", "10", "12", "14", "16"];
+export const TAMANHOS_ADULTOS = [
+  "PPP",
+  "PP",
+  "P",
+  "M",
+  "G",
+  "GG",
+  "XG",
+  "XGG",
+  "XXG",
+  "XXGG",
+  "XXXG",
+];
+export const TAMANHOS_PLUS_ESPECIAIS = ["G1", "G2", "G3", "G4", "G5", "Sob Medida"];
+
+export const TAMANHOS_CATALOGO_COMPLETO: string[] = [
+  ...TAMANHOS_INFANTIS,
+  ...TAMANHOS_ADULTOS,
+  ...TAMANHOS_PLUS_ESPECIAIS,
+];
+
+export const TAMANHOS_PADRAO_INICIAIS: string[] = [
+  "PP",
+  "P",
+  "M",
+  "G",
+  "GG",
+  "XGG",
+];
+
+export function ordenarTamanhosCatalogo(tamanhos: string[]): string[] {
+  return [...tamanhos].sort((a, b) => {
+    const idxA = TAMANHOS_CATALOGO_COMPLETO.indexOf(a.toUpperCase());
+    const idxB = TAMANHOS_CATALOGO_COMPLETO.indexOf(b.toUpperCase());
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b, "pt-BR");
+  });
+}
+
 export interface ModeloPrecoItem {
   nome: string;
   preco?: number;
-  tamanhos?: string[]; // Tamanhos específicos para este modelo (ex: ["PPP", "PP", "P", "M", "G", "GG", "XGG", "XXG", "XXXG"])
+  tamanhos?: string[]; // Compatibilidade retroativa
   ehConjunto?: boolean; // Se true, modelo é um conjunto (Short + Camiseta)
-  tamanhosShort?: string[]; // Tamanhos específicos para o short do conjunto
+  tamanhosShort?: string[]; // Compatibilidade retroativa
 }
 
 /**
